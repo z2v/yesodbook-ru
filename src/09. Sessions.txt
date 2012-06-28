@@ -12,10 +12,11 @@ One of the earliest packages spun off from Yesod was clientsession. This package
 
 It might sound like a bad idea from an efficiency standpoint to store data in a cookie: after all, this means that the data must be sent on every request. However, in practice, clientsession can be a great boon for performance.
 
-No server side database lookup is required to service a request.
+* No server side database lookup is required to service a request.
 * We can easily scale horizontally: each request contains all the information we need to send a response.
 * To avoid undue bandwidth overhead, production sites can serve their static content from a separate domain name to avoid the overhead of transmitting the session cookie for each request.
-* Storing megabytes of information in the session will be a bad idea. But for that matter, most session implementations recommend against such practices. If you really need massive storage for a user, it is best to store a lookup key in the session, and put the actual data in a database.
+
+Storing megabytes of information in the session will be a bad idea. But for that matter, most session implementations recommend against such practices. If you really need massive storage for a user, it is best to store a lookup key in the session, and put the actual data in a database.
 
 All of the interaction with clientsession is handled by Yesod internally, but there are a few spots where you can tweak the behavior just a bit.
 
