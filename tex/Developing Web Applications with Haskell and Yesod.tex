@@ -1,17 +1,58 @@
-\documentclass{article}
+\documentclass{book}
 
 \usepackage[utf8]{inputenc}
 \usepackage[russian]{babel}
 \usepackage{listings}
 
+\usepackage{graphicx}
+% fixes problem with spaces in graphics file names
+\usepackage[space]{grffile}
+% graphics path
+\graphicspath{{../img/}}
+
+\usepackage{caption}
+\usepackage{subcaption}
+
 % set listings default parameters
 \lstset{language=Haskell,
 	extendedchars=true,
 	inputencoding=utf8,
-	texcl=true,
-	morecomment=[l]{--},
-	morecomment=[s]{\{-}{-\}}}
+	literate=true
+    %% morestring=[b]",
+    %% morestring=[b]',
+	%% morecomment=[l]{--},
+	%% morecomment=[s]{\{-}{-\}}
+}
 
 \begin{document}
+
+\input "01. Introduction.tex"
+\input "02. Haskell.tex"
+\input "03. Basics.tex"
+\input "04. Shakespearean Templates.tex"
+\input "05. Widgets.tex"
+\input "06. Yesod Typeclass.tex"
+\input "07. Routing and Handlers.tex"
+\input "08. Forms.tex"
+\input "09. Sessions.tex"
+\input "10. Persistent.tex"
+\input "11. Deploying your Webapp.tex"
+\input "12. RESTful Content.tex"
+\input "13. Yesod's Monads.tex"
+\input "14. Authentication and Authorization.tex"
+\input "15. Scaffolding and the Site Template.tex"
+\input "16. Internationalization.tex"
+\input "17. Creating a Subsite.tex"
+\input "18. Blog i18n, authentication, authorization, and database.tex"
+\input "19. Wiki - markdown, chat subsite, event source.tex"
+\input "20. JSON Web Service.tex"
+\input "21. Case Study - Sphinx-based Search.tex"
+\input "22. monad-control.tex"
+\input "23. Conduit.tex"
+\input "24. Web Application Interface.tex"
+\input "25. Settings Types.tex"
+\input "26. http-conduit.tex"
+\input "27. xml-conduit.tex"
+\input "28. Enumerator Package.tex"
 
 \end{document}
