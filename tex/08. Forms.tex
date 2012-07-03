@@ -241,7 +241,7 @@ getCarR = do
 |]
 \end{lstlisting}
 
-Here, we've explicitly split up applicative and monadic forms. In carAForm, we use the <$> and <*> operators. This should not be surprising; these are almost always used in applicative-style code. And we have one line for each record in our Car datatype. Perhaps unsurprisingly, we have a textField for the Text record, and an intField for the Int record.
+Here, we've explicitly split up applicative and monadic forms. In carAForm, we use the <\$> and <*> operators. This should not be surprising; these are almost always used in applicative-style code. And we have one line for each record in our Car datatype. Perhaps unsurprisingly, we have a textField for the Text record, and an intField for the Int record.
 
 Let's look a bit more closely at the areq function. Its (simplified) type signature is Field a -> FieldSettings -> Maybe a -> AForm a. So that first argument is going to determine the datatype of this field, how to parse it, and how to render it. The next argument, FieldSettings, tells us the label, tooltip, name and ID of the field. In this case, we're using the previously-mentioned IsString instance of FieldSettings.
 
@@ -406,6 +406,7 @@ You may have noticed the explicit Text type signature on errorMessage. In the pr
 
 It's great to make sure the car isn't too old. But what if we want to make sure that the year specified is not from the future? In order to look up the current year, we'll need to run some IO. For such circumstances, we'll need checkM:
 
+\begin{lstlisting}
     carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
 
     inPast y = do
@@ -413,7 +414,9 @@ It's great to make sure the car isn't too old. But what if we want to make sure 
         return $ if y <= thisYear
             then Right y
             else Left ("You have a time machine!" :: Text)
+\end{lstlisting}
 
+\begin{lstlisting}
 getCurrentYear :: IO Int
 getCurrentYear = do
     now <- getCurrentTime
@@ -435,6 +438,7 @@ getCarR = do
         ^{widget}
     <input type=submit>
 |]
+\end{lstlisting}
 
 inPast is a function that will return an Either result. However, it uses a Handler monad. We use liftIO getCurrentYear to get the current year and then compare it against the user-supplied year. Also, notice how we can chain together multiple validators.
 
@@ -446,6 +450,7 @@ Our color entry field is nice, but it's not exactly user-friendly. What we reall
 
 Drop-down lists
 
+\begin{lstlisting}
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -496,11 +501,13 @@ getCarR = do
         ^{widget}
     <input type=submit>
 |]
+\end{lstlisting}
 
 selectFieldList takes a list of pairs. The first item in the pair is the text displayed to the user in the drop-down list, and the second item is the actual Haskell value. Of course, the code above looks really repetitive; we can get the same result using the Enum and Bounded instance GHC automatically derives for us.
 
 Uses Enum and Bounded
 
+\begin{lstlisting}
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -550,13 +557,15 @@ getCarR = do
         ^{widget}
     <input type=submit>
 |]
+\end{lstlisting}
 
-[minBound..maxBound] gives us a list of all the different Color values. We then apply a map and &&& (a.k.a, the fan-out operator) to turn that into a list of pairs.
+[minBound..maxBound] gives us a list of all the different Color values. We then apply a map and \lstinline'&&&' (a.k.a, the fan-out operator) to turn that into a list of pairs.
 
 Some people prefer radio buttons to drop-down lists. Fortunately, this is just a one-word change. For example, see Radio buttons
 
 Radio buttons
 
+\begin{lstlisting}
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -606,6 +615,7 @@ getCarR = do
         ^{widget}
     <input type=submit>
 |]
+\end{lstlisting}
 
 Running forms
 
@@ -617,7 +627,7 @@ This will run your form against any submitted POST parameters. If this is not a 
 
 runFormGet
 
-Same as runFormPost, for GET parameters. In order to distinguish a normal GET page load from a GET submission, it includes an extra _hasdata hidden field in the form.
+Same as runFormPost, for GET parameters. In order to distinguish a normal GET page load from a GET submission, it includes an extra \lstinline'_hasdata' hidden field in the form.
 
 runFormPostNoNonce
 
@@ -640,8 +650,10 @@ There have been a few references to i18n in this chapter. The topic will get mor
 * There is an automatic instance of RenderMessage for Text in every site, so you can just use plain strings if you don't care about i18n support. However, you may need to use explicit type signatures occassionally.
 * yesod-form expresses all of its messages in terms of the FormMessage datatype. Therefore, to use yesod-form, you'll need to have an appropriate RenderMessage instance. A simple one that uses the default English translations would be:
 
+\begin{lstlisting}
 instance RenderMessage MyApp FormMessage where
     renderMessage _ _ = defaultFormMessage
+\end{lstlisting}
 
 This is provided automatically by the scaffolded site.
 
@@ -653,6 +665,7 @@ A non-standard form layout
 
 For these use cases, monadic forms fit the bill. They are a bit more verbose than their applicative cousins, but this verbosity allows you to have complete control over what the form will look like. In order to generate the form above, we could code something like this.
 
+\begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, MultiParamTypeClasses #-}
 
@@ -708,6 +721,7 @@ getRootR = do
 
 main :: IO ()
 main = warpDebug 3000 MFormExample
+\end{lstlisting}
 
 Similar to the applicative areq, we use mreq for monadic forms. (And yes, there's also mopt for optional fields.) But there's a big difference: mreq gives us back a pair of values. Instead of hiding away the FieldView value and automatically inserting it into a widget, we get the control to insert it as we see fit.
 
@@ -715,6 +729,7 @@ FieldView has a number of pieces of information. The most important is fvInput, 
 
 You might be wondering what the story is with the "this is not used" and "neither is this" values. mreq takes a FieldSettings as its second argument. Since FieldSettings provides an IsString instance, the strings are essentially expanded by the compiler to:
 
+\begin{lstlisting}
 fromString "this is not used" == FieldSettings
     { fsLabel = "this is not used"
     , fsTooltip = Nothing
@@ -722,6 +737,7 @@ fromString "this is not used" == FieldSettings
     , fsName = Nothing
     , fsClass = []
     }
+\end{lstlisting}
 
 In the case of applicative forms, the fsLabel and fsTooltip values are used when constructing your HTML. In the case of monadic forms, Yesod does not generate any of the "wrapper" HTML for you, and therefore these values are ignored. However, we still keep the FieldSettings parameter to allow you to override the id and name attributes of your fields if desired.
 
@@ -742,6 +758,7 @@ These work mostly the same as applicative and monadic forms, with some differenc
 
 You can use input forms to recreate the previous example. Note, however, that the input version is less user friendly. If you make a mistake in an applicative or monadic form, you will be brought back to the same page, with your previously entered values in the form, and an error message explaning what you need to correct. With input forms, the user simply gets an error message.
 
+\begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, MultiParamTypeClasses #-}
 
@@ -785,6 +802,7 @@ getInputR = do
 
 main :: IO ()
 main = warpDebug 3000 Input
+\end{lstlisting}
 
 Custom fields
 
@@ -804,6 +822,7 @@ What did I mean by result? It's actually an Either, giving either the unparsed i
 
 As a small example, we'll create a new field type that is a password confirm field. This field has two text inputs- both with the same name attribute- and returns an error message if the values don't match. Note that, unlike most fields, it does not provide a value attribute on the input tags, as you don't want to send back a user-entered password in your HTML ever.
 
+\begin{lstlisting}
 passwordConfirmField :: Field sub master Text
 passwordConfirmField = Field
     { fieldParse = \rawVals ->
@@ -832,6 +851,7 @@ getRootR = do
 |]
 main :: IO ()
 main = warpDebug 3000 Password
+\end{lstlisting}
 
 Summary
 

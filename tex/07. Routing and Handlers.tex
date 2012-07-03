@@ -86,7 +86,7 @@ Dynamic single
 
 This is a single piece (ie, between two forward slashes), but can be a
 user-submitted value. This is the primary method of receiving extra
-user input on a page request. These pieces begin with a hash (#) and
+user input on a page request. These pieces begin with a hash (\#) and
 are followed by a data type. The datatype must be an instance of
 PathPiece.
 
@@ -105,7 +105,7 @@ want to write. Starting simply, the root of an application will just
 be /. Similarly, you may want to place your FAQ at /page/faq.
 
 Now let's say you are going to write a Fibonacci website. You may
-construct your URLs like /fib/#Int. But there's a slight problem with
+construct your URLs like /fib/\#Int. But there's a slight problem with
 this: we do not want to allow negative numbers or zero to be passed
 into our application. Fortunately, the type system can protect us:
 
@@ -176,7 +176,7 @@ PersonR "Michael" may not resolve to a valid page if there is no
 Michael in the database.
 
 Let's get some real examples going here. If you had the resource
-patterns /person/#Text named PersonR, /year/#Int named YearR and
+patterns /person/\#Text named PersonR, /year/\#Int named YearR and
 /page/faq named FaqR, you would end up with a route data type roughly
 looking like:
 
@@ -208,7 +208,7 @@ handleFaqR.
 
 A separate handler for each request method will be the same, plus a
 list of request methods. The request methods must be all capital
-letters. For example, /person/#String PersonR GET POST DELETE. In this
+letters. For example, /person/\#String PersonR GET POST DELETE. In this
 case, you would need to define three handler functions: getPersonR,
 postPersonR and deletePersonR.
 
