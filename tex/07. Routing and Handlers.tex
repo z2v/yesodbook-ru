@@ -1,4 +1,4 @@
-Routing and Handlers
+\chapter{Маршрутизация URL и обработчики}
 
 If we look at Yesod as a Model-View-Controller framework, routing and
 handlers make up the controller. For contrast, let's describe two
@@ -24,7 +24,7 @@ routing declarations, give you a glimpse of what code is generated for
 you, and explain the interaction between routing and handler
 functions.
 
-Route Syntax
+\section{Синтаксис записи маршрута}
 
 Instead of trying to shoe-horn route declarations into an existing
 syntax, Yesod's approach is to use a simplified syntax designed just
@@ -43,7 +43,7 @@ A basic example of this syntax is:
 The next few sections will explain the full details of what goes on in
 the route declaration.
 
-Pieces
+\subsection{Составляющие части URL}
 
 One of the first thing Yesod does when it gets a request is split up
 the requested path into pieces. The pieces are tokenized at all
@@ -68,7 +68,7 @@ If, by the way, you want more fine-tuned control of how paths are
 split into pieces and joined together again, you'll want to look at
 the cleanPath and joinPath methods in the Yesod typeclass chapter.
 
-Types of Pieces
+\subsubsection{Типы составляющих частей}
 
 When you are declaring your routes, you have three types of pieces at
 your disposal:
@@ -147,7 +147,7 @@ instance PathMultiPiece Page where
     fromPathMultiPiece _ = Nothing
 main = return ()
 
-Resource name
+\subsection{Наименование ресурса}
 
 Each resource pattern also has a name associated with it. That name
 will become the constructor for the type safe URL datatype associated
@@ -182,7 +182,7 @@ it into the value YearR 2009. /person/Michael becomes PersonR
 /year/two-thousand-nine, /person/michael/snoyman and /page/FAQ would
 all result in 404 errors without ever seeing your code.
 
-Handler specification
+\section{Спецификация обработчика}
 
 The last piece of the puzzle when declaring your resources is how they
 will be handled. There are three options in Yesod:
@@ -223,8 +223,8 @@ Let's not get too caught up in the details of subsites now. We will
 look more closely at the static subsite in the scaffolded site
 chapter.
 
-Dispatch
-
+%FIXME: уточнить перевод для dispatch
+\section{Отправка}
 Once you have specified your routes, Yesod will take care of all the
 pesky details of URL dispatch for you. You just need to make sure to
 provide the appropriate handler functions. For subsite routes, you do
@@ -233,7 +233,7 @@ two. We mentioned the naming rules above (MyHandlerR GET becomes
 getMyHandlerR, MyOtherHandlerR becomes handleMyOtherHandlerR). Now we
 need the type signature.
 
-Return Type
+\subsection{Возвращаемый тип}
 
 Let's look at a simple handler function:
 
@@ -266,7 +266,7 @@ choose the correct representation of your data based on the client
 request. For now, we will focus just on simple instances such as
 RepHtml, which only provide one representation.
 
-Arguments
+\subsection{Аргументы}
 
 Not every route is as simple as the HomeR we just defined. Take for
 instance our PersonR route from earlier. The name of the person needs
@@ -296,7 +296,7 @@ The arguments have the types of the dynamic pieces for each route, in
 the order specified. Also, notice how we are able to use both RepHtml
 and RepPlain.
 
-The Handler Monad
+\section{Монада Handler}
 
 The vast majority of code you write in Yesod sits in the Handler
 monad. If you are approaching this from an MVC (Model-View-Controller)
@@ -329,7 +329,7 @@ of the most common functions living in the Handler monad. I am
 specifically not covering any of the session functions; that will be
 addressed in the sessions chapter.
 
-Application Information
+\subsection{Информация о приложении}
 
 There are a number of functions that return information about your
 application as a whole, and give no information about individual
@@ -358,7 +358,7 @@ A variant of getUrlRender that converts both a type-safe URL and a
 list of query-string parameters. This function handles all
 percent-encoding necessary.
 
-Request Information
+\subsection{Информация о запросе}
 
 The most common information you will want to get about the current
 request is the requested path, the query string parameters and POSTed
@@ -378,7 +378,8 @@ If you need even more raw data, like request headers, you can use
 waiRequest to access the Web Application Interface (WAI) request
 value. See the WAI appendix for more details.
 
-Short Circuiting
+\subsection{Неполная обработка запроса}
+%FIXME: Вариант перевода: `Обработка запроса по короткой схеме`
 
 The following functions immediately end execution of a handler
 function and return a result to the user.
@@ -425,7 +426,7 @@ When you need to get low-level and send out a raw WAI response. This
 can be especially useful for creating streaming responses or a
 technique like server-sent events.
 
-Response Headers
+\subsection{Заголовки ответа}
 
 setCookie
 
@@ -467,7 +468,7 @@ expiresAt
 
 Sets the Expires header to the specified date/time.
 
-Summary
+\section{Выводы}
 
 Routing and dispatch is arguably the core of Yesod: it is from here
 that our type-safe URLs are defined, and the majority of our code is
