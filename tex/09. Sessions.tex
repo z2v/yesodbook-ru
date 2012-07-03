@@ -38,6 +38,7 @@ Clientsession
 
 Как и большинство фреймворков, сессии в Yesod представляет собой хранилище пар ключ-значение. API базовой сессии сводится к четырем функциям: lookupSession получает значение для ключа (если имеется), getSession возвращает все пары ключ/значение, setSession задаёт значение для ключа, а deleteSession очищает значение для ключа.
 
+\begin{lstlisting}
 {-# LANGUAGE TypeFamilies, QuasiQuotes, TemplateHaskell, MultiParamTypeClasses, OverloadedStrings #-}
 import Yesod
 import Control.Applicative ((<$>), (<*>))
@@ -80,6 +81,7 @@ instance RenderMessage SessionExample FormMessage where
 
 main :: IO ()
 main = warpDebug 3000 SessionExample
+\end{lstlisting}
 
 Сообщения
 
@@ -89,6 +91,7 @@ Yesod предоставляет пару функций, чтобы сдела�
 
 Рекомендуется вызовать getMessage в defaultLayout, так любое доступное сообщение покажеться пользователю немедленно, без необходимости помнить о добавлениии вызова getMessage в каждый обработчик. 
 
+\begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell,
              QuasiQuotes, MultiParamTypeClasses #-}
 
@@ -136,15 +139,33 @@ postSetMessageR = do
 
 main :: IO ()
 main = warpDebug 3000 Messages
+\end{lstlisting}
 
-Первая загрузка страницы, нет сообщения
-%FIXME Вставить картинку http://www.yesodweb.com/book/image/messages-1
-Новое сообщение введено в текстовое поле
-%FIXME Вставить картинку http://www.yesodweb.com/book/image/messages-2
-После отправки формы, сообщение появляется в верхней части страницы
-%FIXME Вставить картинку http://www.yesodweb.com/book/image/messages-3
-После обновления, сообщение очищено
-%FIXME Вставить картинку http://www.yesodweb.com/book/image/messages-4
+\begin{figure}
+  \begin{subfigure}[tbh]{0.5\textwidth}
+    \centering
+    \includegraphics{09. Sessions. Image 01.png}
+    \caption{Первая загрузка страницы, нет сообщения}
+  \end{subfigure}
+
+  \begin{subfigure}[tbh]{0.5\textwidth}
+    \centering
+    \includegraphics{09. Sessions. Image 02.png}
+    \caption{Новое сообщение введено в текстовое поле}
+  \end{subfigure}
+
+  \begin{subfigure}[tbh]{0.5\textwidth}
+    \centering
+    \caption{После отправки формы, сообщение появляется в верхней части страницы}
+    \includegraphics{09. Sessions. Image 03.png}
+  \end{subfigure}
+
+  \begin{subfigure}[tbh]{0.5\textwidth}
+    \centering
+    \caption{После обновления, сообщение очищено}
+    \includegraphics{09. Sessions. Image 04.png}
+  \end{subfigure}
+\end{figure}
 
 Пункт назначения
 
