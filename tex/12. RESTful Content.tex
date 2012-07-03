@@ -1,4 +1,4 @@
-RESTful содержимое
+trRESTful содержимое
 
 Одна из историй ранних дней развития Интернета - как поисковые системы уничтожали целые web-сайты. Когда динамические сайты были еще новой концепцией, разработчики не принимали во внимание различий между GET и POST запросами. В результате, они создавали страницы, удаляющие содержимое, с доступомчерез GET-метод. Когда поисковики начинали сканировать эти сайты, они могли удалить все содержимое.
 
@@ -79,6 +79,94 @@ class HasReps a where
 
 Этот класс типов - основа REST-подхода, принятого в Yesod для представлений. Каждая функция-обработчик должна возвращать экземпляр \lstinline `HasReps`. Когда Yesod генерирует функцию-диспетчер, он автоматически применяет \lstinline 'chooseRep' к каждому обработчику, по существу давая всем функциям тип \lstinline 'Handler \lstinline ChooseRep'. После  запуска \lstinline 'Handler' и получения результата \lstinline 'ChooseRep',  он применяет список типов содержимого, полученный из Accept-заголовка.
 
+В Yesod определены многочисленные экземпляры класса HasReps. Например, когда мы используем \lstinline `defaultLayout`, возвращается тип \lstinline 'RepHtml', который выглядит так:
+
+\begin{lstlisting}
+newtype RepHtml = RepHtml Content
+instance HasReps RepHtml where
+    chooseRep (RepHtml content) _ = return ("text/html", content)
+\end{lstlisting}
+
+Заметьте, что мы полностью игнорируем список ожидаемых типов содержимого. Многочисленные встроенные представления (\lstinline 'RepHtml', \lstinline 'RepPlain', \lstinline 'RepJson', \lstinline 'RepXml'), в действительности, поддерживают только единственное представление и, следовательно, то, что содержится в Accept-заголовке клиентского запроса, является несущественным.
+
+\lstinline 'RepHtmlJson'
+
+Противоположный пример - \lstinline 'RepHtmlJson', который создает либо HTML либо JSON представление. Этот экземпляр класса особенно полезен в программировании AJAX приложений. Вот пример, возвращающий либо HTML либо JSON данные, в зависимости от того, что хочет клиент. 
+%FIXME перевел "This instance helps greatly in programming AJAX applications that degrade nicely" как "Этот экземпляр класса особенно полезен в программировании AJAX приложений". Как перевести "that degrade nicely" (что ухудшает красиво) не придумал и просто опустил.
+
+\begin{lstlisting}
+{-# LANGUAGE QuasiQuotes, TypeFamilies, OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell #-}
+import Yesod
+data R = R
+mkYesod "R" [parseRoutes|
+/ RootR GET
+/#String NameR GET
+|]
+instance Yesod R
+
+getRootR = defaultLayout $ do
+    setTitle "Homepage"
+    addScriptRemote "http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"
+    toWidget [julius|
+$(function(){
+    $("#ajax a").click(function(){
+        jQuery.getJSON($(this).attr("href"), function(o){
+            $("div").text(o.name);
+        });
+        return false;
+    });
+});
+|]
+    let names = words "Larry Moe Curly"
+    [whamlet|
+<h2>AJAX Version
+<div #results>
+    AJAX results will be placed here when you click #
+    the names below.
+<ul #ajax>
+    $forall name <- names
+        <li>
+            <a href=@{NameR name}>#{name}
+
+<h2>HTML Version
+<p>
+    Clicking the names below will redirect the page #
+    to an HTML version.
+<ul #html>
+    $forall name <- names
+        <li>
+            <a href=@{NameR name}>#{name}
+
+|]
+
+getNameR name = do
+    let widget = do
+            setTitle $ toHtml name
+            [whamlet|Looks like you have Javascript off. Name: #{name}|]
+    let json = object ["name" .= name]
+    defaultLayoutJson widget json
+
+main = warpDebug 4000 R
+
+\end{lstlisting}
+
+Наш \lstinline обработчик 'getRootR' создает страницу c тремя ссылками и Javascript-кодом, который перехватывает нажатия на ссылки и производит асинхронные запросы. Если у пользователя разрешен Javascript, то нажатие на ссылку приводит к запросу, отсылаемому с Accept-заголовком application/json. В этом случае, \lstinline 'getNameR' будет возвращать JSON-представление.
+
+Если пользователь запрещает Javascript, то нажатие на ссылку будет отсылать пользователя к соответствующему URL. Браузер укажет приоритет HTML-представления данных и, следовательно, будет возвращена страница, определенная виджетом.
+
+Мы конечно можем расширить это поведение для работы с XML, Atom feeds, или даже двоичным представлением данных. Для развлечения можно было бы написать веб-приложение, которое готовит данные просто используя экземпляры по умолчанию класса \lstinline 'Show' типов данных. И затем написать веб-клиента, который разбирает результаты, используя экземпляры по умолчанию класса Read.
+%FIXME Atom feeds
+
+Возможно, вас беспокоит эффективность этого подхода. Разве это не означает, что мы должны генерировать и HTML и JSON ответы для каждого запроса? Благодаря ленивости этого не происходит. В функции \lstinline 'getNameR' ни \lstinline 'widget' ни \lstinline 'json' не будет вычислен, пока не будет выбран соответствующий тип ответа, и, следовательно, всегда будет выполняться только один из них.
+
+\subsubsection News Feeds
+
+
+
+
+
+ 
 
 
 
