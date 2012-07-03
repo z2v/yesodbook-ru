@@ -141,30 +141,28 @@ main :: IO ()
 main = warpDebug 3000 Messages
 \end{lstlisting}
 
-\begin{figure}
-  \begin{subfigure}[tbh]{0.5\textwidth}
-    \centering
-    \includegraphics{09. Sessions. Image 01.png}
-    \caption{Первая загрузка страницы, нет сообщения}
-  \end{subfigure}
+\begin{figure}[tbh]
+  \centering
+  \includegraphics{09-sessions-image-01.png}
+  \caption{Первая загрузка страницы, нет сообщения}
+\end{figure}
 
-  \begin{subfigure}[tbh]{0.5\textwidth}
-    \centering
-    \includegraphics{09. Sessions. Image 02.png}
-    \caption{Новое сообщение введено в текстовое поле}
-  \end{subfigure}
+\begin{figure}[tbh]
+  \centering
+  \includegraphics{09-sessions-image-02.png}
+  \caption{Новое сообщение введено в текстовое поле}
+\end{figure}
 
-  \begin{subfigure}[tbh]{0.5\textwidth}
-    \centering
-    \caption{После отправки формы, сообщение появляется в верхней части страницы}
-    \includegraphics{09. Sessions. Image 03.png}
-  \end{subfigure}
+\begin{figure}[tbh]
+  \centering
+  \caption{После отправки формы, сообщение появляется в верхней части страницы}
+  \includegraphics{09-sessions-image-03.png}
+\end{figure}
 
-  \begin{subfigure}[tbh]{0.5\textwidth}
-    \centering
-    \caption{После обновления, сообщение очищено}
-    \includegraphics{09. Sessions. Image 04.png}
-  \end{subfigure}
+\begin{figure}[tbh]
+  \centering
+  \caption{После обновления, сообщение очищено}
+  \includegraphics{09-sessions-image-04.png}
 \end{figure}
 
 Пункт назначения
@@ -179,6 +177,7 @@ main = warpDebug 3000 Messages
 
 Давайте рассмотрим небольшой пример приложения. Оно позволит пользователю задать его имя в сессии, а затем скажет ему его имя с другого маршрута. Если имя ещё не было установлено, пользователь будет перенаправлен на страницу ввода имени, с пунктом назначения установленым в возврат к текущей странице.
 
+\begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell,
              QuasiQuotes, MultiParamTypeClasses #-}
 
@@ -241,6 +240,7 @@ getSayHelloR = do
 
 main :: IO ()
 main = warpDebug 3000 UltDest
+\end{lstlisting}
 
 Выводы
 
