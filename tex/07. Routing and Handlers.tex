@@ -34,11 +34,13 @@ and understand the sitemap of your application.
 
 A basic example of this syntax is:
 
+\begin{verbatim}
 /             RootR     GET
 /blog         BlogR     GET POST
 /blog/#BlogId BlogPostR GET POST
 
 /static       StaticR   Static getStatic
+\end{verbatim}
 
 The next few sections will explain the full details of what goes on in
 the route declaration.
@@ -49,8 +51,10 @@ One of the first thing Yesod does when it gets a request is split up
 the requested path into pieces. The pieces are tokenized at all
 forward slashes. For example:
 
+\begin{lstlisting}
 toPieces "/" = []
 toPieces "/foo/bar/baz/" = ["foo", "bar", "baz", ""]
+\end{lstlisting}
 
 You may notice that there are some funny things going on with trailing
 slashes, or double slashes ("/foo//bar//"), or a few other
@@ -105,6 +109,7 @@ construct your URLs like /fib/#Int. But there's a slight problem with
 this: we do not want to allow negative numbers or zero to be passed
 into our application. Fortunately, the type system can protect us:
 
+\begin{lstlisting}
 newtype Natural = Natural Int
     deriving (Show, Read, Eq, Num, Ord)
 instance PathPiece Natural where
@@ -123,6 +128,7 @@ fibs = 1 : 1 : zipWith (+) fibs (tail fibs)
 getFibsR :: Natural -> GHandler Fibs Fibs RepPlain
 getFibsR (Natural i) = return $ RepPlain $ toContent $ show $ fibs !! (i - 1)
 main = warpDebug 3000 Fibs
+\end{lstlisting}
 
 On line 1 we define a simple newtype wrapper around Int to protect
 ourselves from invalid input. We can see that PathPiece is a typeclass
@@ -140,12 +146,14 @@ the purposes of this example, we've kept the code simple.
 
 Defining a PathMultiPiece is just as simple. Let's say we want to have a Wiki with at least two levels of hierarchy; we might define a datatype such as:
 
+\begin{lstlisting}
 data Page = Page Text Text [Text] -- 2 or more
 instance PathMultiPiece Page where
     toPathMultiPiece (Page x y z) = x : y : z
     fromPathMultiPiece (x:y:z) = Just $ Page x y z
     fromPathMultiPiece _ = Nothing
 main = return ()
+\end{lstlisting}
 
 \subsection{Наименование ресурса}
 
@@ -172,9 +180,11 @@ patterns /person/#Text named PersonR, /year/#Int named YearR and
 /page/faq named FaqR, you would end up with a route data type roughly
 looking like:
 
+\begin{lstlisting}
 data MyRoute = PersonR Text
              | YearR Int
              | FaqR
+\end{lstlisting}
 
 If a user requests the relative URL of /year/2009, Yesod will convert
 it into the value YearR 2009. /person/Michael becomes PersonR
@@ -208,7 +218,9 @@ most commonly used subsite is the static subsite, which serves static
 files for your application. In order to serve static files from
 /static, you would need a resource line like:
 
+\begin{verbatim}
 /static StaticR Static getStatic
+\end{verbatim}
 
 In this line, /static just says where in your URL structure to serve
 the static files from. There is nothing magical about the word static,
@@ -237,6 +249,7 @@ need the type signature.
 
 Let's look at a simple handler function:
 
+\begin{lstlisting}
 mkYesod "Simple" [parseRoutes|
 / HomeR GET
 |]
@@ -246,6 +259,7 @@ getHomeR = defaultLayout [whamlet|<h1>This is simple
 |]
 instance Yesod Simple
 main = warpDebug 3000 Simple
+\end{lstlisting}
 
 Look at the type signature of getHomeR. The first component is
 Handler. Handler is a special monad that all handler functions live
@@ -273,6 +287,7 @@ instance our PersonR route from earlier. The name of the person needs
 to be passed to the handler function. This translation is very
 straight-forward, and hopefully intuitive. For example:
 
+\begin{lstlisting}
 mkYesod "Args" [parseRoutes|
 /person/#Text PersonR GET
 /year/#Integer/month/#Text/day/#Int DateR
@@ -291,6 +306,7 @@ getWikiR :: [Text] -> Handler RepPlain
 getWikiR = return . RepPlain . toContent . T.unwords
 instance Yesod Args
 main = warpDebug 3000 Args
+\end{lstlisting}
 
 The arguments have the types of the dynamic pieces for each route, in
 the order specified. Also, notice how we are able to use both RepHtml
