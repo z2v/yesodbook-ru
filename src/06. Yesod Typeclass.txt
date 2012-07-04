@@ -21,17 +21,15 @@ And finally, Yesod doesn't make any assumption about where you host your applica
 Using the wiki example, you would write your Yesod instance as:
 
 instance Yesod MyWiki where
-    approot _ = "http://static.example.com/wiki" -- FIXME this is out-of-date
+    approot = ApprootStatic "http://static.example.com/wiki"
 
 Notice that there is no trailing slash there. Next, when Yesod wants to construct a URL for SomePathR, it determines that the relative path for SomePathR is /some/path, appends that to your approot and creates http://static.example.com/wiki/some/path.
 
-This also explains our cryptic approot _ = "" FIXME: for our examples in the book, we're always serving from the root of the domain (in our case, localhost). By using an empty string, SomePathR renders to /some/path, which works just fine. In real life applications, however, you should use a real application root.
+But if you remember, most of our examples so far haven't used an approot method. In those cases, our application gets a blank approot, or the empty string. This works for many use cases, since many applications are served from the root of the domain. In such a case, a route like SomePathR will be rendered to /some/path, which is a valid relative link from anywhere in your site. However, some use cases (like Atom/RSS feeds or XML sitemaps) require absolute paths. In such cases, you should state your approot explicitly.
 
-The first argument to approot FIXME is the site foundation. This means that you could load your approot at program initialization, store it in the foundation, and then retrieve it. This is in fact what the scaffolded site does, using a YAML config file.
+In addition to the ApprootStatic constructor demonstrated above, you can also use the ApprootMaster and ApprootRequest constructors. The former allows you to determine the approot from the foundation value, which would let you load up the approot from a config file, for instance. The latter allows you to additionally use the request value to determine the approot; using this, you could for example provide a different domain name depending on how the user requested the site in the first place.
 
-And by the way, the scaffolded site can load different settings for developing, testing, staging, and production builds, so you can easily test on one domain- like localhost- and serve from a different domain.
-
-To reiterate: even though for the simple cases in this book, the first argument to approot is usually ignored, in real life code it usually isn't. We also need to keep that argument so that Haskell's type system can determine which instance of Yesod to use in grabbing the approot.
+The scaffolded site uses ApprootMaster by default, and pulls your approot from a config file on launch. Additionally, it load different settings for developing, testing, staging, and production builds, so you can easily test on one domain- like localhost- and serve from a different domain.
 
 joinPath
 
