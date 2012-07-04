@@ -51,14 +51,16 @@ instance Yesod MyWiki where
 
 \section {cleanPath}
 
-The flip side to joinPath is cleanPath. Let's look at how it gets used in the dispatch process:
+Противоположной функцией по отношению к \lstinline'joinPath' является \lstinline'cleanPath'. Давайте посмотрим, как она используется в процессе диспетчеризации:
 
-1. The path info requested by the user is split into a series of path pieces.
-2. We pass the path pieces to the cleanPath function.
-3. If cleanPath indicates a redirect (a Left response), then a 301 response is sent to the client. This is used to force canonical URLs (eg, remove extra slashes).
-4. Otherwise, we try to dispatch using the response from cleanPath (a Right). If this works, we return a response. Otherwise, we return a 404.
+\begin{enumerate}
+  \item Путь, запрашиваемый пользователем, разбивается на последовательность участков пути.
+  \item Мы передаём участки пути в функцию \lstinline'cleanPath'.
+  \item  Если \lstinline'cleanPath' указывает на перенаправление (возвращая \lstinline'Left'), то пользователю возвращается ответ с кодом 301. Такое поведение применяется для принудительного использования канонических URL (к примеру, убирая лишние косые черты).
+  \item Иначе мы пытаемся выполнить диспетчеризацию, используя результат \lstinline'cleanPath' (\lstinline'Right' в ответе). Если получается, то возвращаем получившийся ответ. В противном случае возвращаем статус 404.
+\end{enumerate}
 
-This combination allows subsites to retain full control of how their URLs appear, yet allows master sites to have modified URLs. As a simple example, let's see how we could modify Yesod to always produce trailing slashes on URLs:
+Такая комбинация даёт подсайтам полный контроль над тем, как будут выглядеть их URL, в то же время позволяя основному сайту иметь изменённые URL. В качестве простого примера, давайте посмотрим, как мы можем указать Yesod, что нужно всегда добавлять косую черту в конце URL:
 
 \begin{lstlisting}
 {-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
@@ -87,15 +89,15 @@ instance Yesod Slash where
         go x = Just $ TE.encodeUtf8 x
         pieces = pieces' ++ [""]
 
-    -- We want to keep canonical URLs. Therefore, if the URL is missing a
-    -- trailing slash, redirect. But the empty set of pieces always stays the
-    -- same.
+    -- Мы хотим сохранить канонические URL. Поэтому, если на конце URL отсутствует
+    -- косая черта, делаем перенаправление. Но пустой список остаётся как
+    -- есть.
     cleanPath _ [] = Right []
     cleanPath _ s
-        | dropWhile (not . T.null) s == [""] = -- the only empty string is the last one
+        | dropWhile (not . T.null) s == [""] = -- единственно возможная пустая строка - последняя
             Right $ init s
-        -- Since joinPath will append the missing trailing slash, we simply
-        -- remove empty pieces.
+        -- Т.к. joinPath добавит недостающую косую черту, мы просто
+        -- удаляем пустые участки.
         | otherwise = Left $ filter (not . T.null) s
 
 getRootR = defaultLayout [whamlet|
@@ -108,23 +110,24 @@ getRootR = defaultLayout [whamlet|
 getFooR = getRootR
 
 main = warpDebug 3000 Slash
-\end{lstlisting}
+\end{lstlisting}%$
 
-First, let's look at our joinPath implementation. This is copied almost verbatim from the default Yesod implementation, with one difference: we append an extra empty string to the end. When dealing with path pieces, an empty string will append another slash. So adding an extra empty string will force a trailing slash.
+Во-первых, давайте посмотрим на нашу реализацию \lstinline'joinPath'. Она почти полностью скопирована из реализации по умолчанию из Yesod c одним изменением: мы добавляем дополнительную пустую строку в конец. При обработке участков пути пустая строка приведёт к добавлению дополнительной косой черты. Таким образом дополнительная пустая строка приведёт к обязательному наличию косой черты на конце.
 
-cleanPath is a little bit trickier. First, we check for the empty path like before, and if so pass it through as-is. We use Right to indicate that a redirect is not necessary. The next clause is actually checking for two different possible URL issues:
+\lstinline'cleanPath' немного сложнее. Во-первых, мы проверяем на соотвествие пустому пути как ранее и, если встречаем его, то оставляем его как есть. Мы используем Right чтобы указать, что нет необходимости в перенаправлении. Следующий клоз в действительности проверяет 2 возможных случая с URL:
 
-* There is a double slash, which would show up as an empty string in the middle of our paths.
-* There is a missing trailing slash, which would show up as the last piece not being an empty string.
+* В пути имеется две косых черты подряд, которые будут выглядет как пустая строка в середине списка участков пути.
+* В пути нет косой черты на конце, что даст нам в результате последний участок пути не равный пустой строке.
 
-Assuming neither of those conditions hold, then only the last piece is empty, and we should dispatch based on all but the last piece. However, if this is not the case, we want to redirect to a canonical URL. In this case, we strip out all empty pieces and do not bother appending a trailing slash, since joinPath will do that for us.
+Предполагая, что ни одно из этих условий не выполняется, получаем что только последний участок является пустой строкой и нам нужно выполнить диспетчеризацию по списку участков за исключением последнего. С другой стороы, если это не так, то нам нужно перенаправление на канонический URL. В данном случае, мы удалим все пустые участки и не будем утруждаться добавлением косой черты в конце, т.к. \lstinline'joinPath' сделает это для нас.
 
-defaultLayout
+\section {defaultLayout}
 
-Most websites like to apply some general template to all of their pages. defaultLayout is the recommended approach for this. While you could just as easily define your own function and call that instead, when you override defaultLayout all of the Yesod-generated pages (error pages, authentication pages) automatically get this style.
+Большинство вебсайтов используют некий общий шаблон для всех своих страниц. \lstinline'defaultLayout' является рекомендуемым способом для этого. В то время как вы могли бы с лёгкостью определить свою собственную функцию и вызывать её вместо этого метода, когда вы переопределяете \lstinline'defaultLayout' все страницы, генерируемые Yesod (страницы сообщений об ошибках, страницы аутентификации) автоматически получат заданный стиль.
 
-Overriding is very straight-forward: we use widgetToPageContent to convert a Widget to a title, head tags and body tags, and then use hamletToRepHtml to convert a Hamlet template into a RepHtml. We can even add extra widget components, like a Lucius template. from within defaultLayout. An example should make this all clear:
+Переопределение делается довольно просто: мы используем \lstinline{widgetToPageContent} для того чтобы получить из Widget заголовок, тэги заголовка и тела html, а затем используем \lstinline{hamletToRepHtml} для того чтобы преобразовать шаблон Hamlet к \lstinline{RepHtml}. Мы может использовать дополнительные компоненты виджетов, такие как шаблоны Lucius из \lstinline{defaultLayout}. Пример должен сделать это понятным:
 
+\begin{lstlisting}
     defaultLayout contents = do
         PageContent title headTags bodyTags <- widgetToPageContent $ do
             toWidget [cassius|
@@ -153,14 +156,16 @@ getRootR = defaultLayout $ do
 |]
     toWidget [hamlet|<h1>Hello|]
 main = warpDebug 4000 Layout
+\end{lstlisting}%$
 
-getMessage
+\section {getMessage}
 
 Even though we haven't covered sessions yet, I'd like to mention getMessage here. A common pattern in web development is setting a message in one handler and displaying it in another. For example, if a user POSTs a form, you may want to redirect him/her to another page along with a "Form submission complete" message.
 
 This is commonly known as Post/Redirect/Get.
 To facilitate this, Yesod comes built in with a pair of functions: setMessage sets a message in the user session, and getMessage retrieves the message (and clears it, so it doesn't appear a second time). It's recommended that you put the result of getMessage into your defaultLayout. For example:
 
+\begin{lstlisting}
     defaultLayout contents = do
         PageContent title headTags bodyTags <- widgetToPageContent contents
         mmsg <- getMessage
@@ -179,13 +184,15 @@ $doctype 5
 getRootR = defaultLayout [whamlet|<a href="@{MsgR}">message|]
 getMsgR = setMessage "foo" >> redirect RootR >> return ()
 main = warpDebug 4000 Layout
+\end{lstlisting}%$
 
 We'll cover getMessage/setMessage in more detail when we discuss sessions.
 
-Custom error pages
+\section {Custom error pages}
 
 One of the marks of a professional web site is a properly designed error page. Yesod gets you a long way there by automatically using your defaultLayout for displaying error pages. But sometimes, you'll want to go even further. For this, you'll want to override the errorHandler method:
 
+\begin{lstlisting}
     errorHandler NotFound = fmap chooseRep $ defaultLayout $ do
         setTitle "Request page not located"
         toWidget [hamlet|
@@ -195,15 +202,18 @@ One of the marks of a professional web site is a properly designed error page. Y
     errorHandler other = defaultErrorHandler other
 getRootR = defaultLayout [whamlet|Hello World|]
 main = warpDebug 4000 Layout
+\end{lstlisting}
 
 Here we specify a custom 404 error page. We can also use the defaultErrorHandler when we don't want to write a custom handler for each error type. Due to type constraints, we need to start off our methods with fmap chooseRep, but otherwise you can write a typical handler function.
 
 In fact, you could even use special responses like redirects:
 
+\begin{lstlisting}
     errorHandler NotFound = redirect RootR
     errorHandler other = defaultErrorHandler other
 getRootR = defaultLayout [whamlet|Hello World|]
 main = warpDebug 4000 Layout
+\end{lstlisting}
 
 Even though you can do this, I don't actually recommend such practices. A 404 should be a 404.
 
@@ -245,9 +255,11 @@ Google recommends an important optimization: serve static files from a separate 
 
 To facilitate this, we have the urlRenderOverride method. This method intercepts the normal URL rendering and sets a special value for some routes. For example, the scaffolding defines this method as:
 
+\begin{lstlisting}
     urlRenderOverride y (StaticR s) =
         Just $ uncurry (joinPath y (Settings.staticRoot $ settings y)) $ renderRoute s
     urlRenderOverride _ _ = Nothing
+\end{lstlisting}%$
 
 This means that static routes are served from a special static root, which you can configure to be a different domain. This is a great example of the power and flexibility of type-safe URLs: with a single line of code you're able to change the rendering of static routes throughout all of your handlers.
 
