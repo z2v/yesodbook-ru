@@ -108,7 +108,7 @@ getRootR = defaultLayout [whamlet|
 getFooR = getRootR
 
 main = warpDebug 3000 Slash
-\end{listing}
+\end{lstlisting}
 
 First, let's look at our joinPath implementation. This is copied almost verbatim from the default Yesod implementation, with one difference: we append an extra empty string to the end. When dealing with path pieces, an empty string will append another slash. So adding an extra empty string will force a trailing slash.
 
