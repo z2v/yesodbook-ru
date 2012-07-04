@@ -22,6 +22,8 @@
 \usepackage{caption}
 \usepackage{subcaption}
 
+\usepackage{color}
+
 % for JSON
 \lstdefinelanguage{JavaScript}{
   keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
@@ -31,6 +33,20 @@
   identifierstyle=\color{black},
   sensitive=false,
   comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstdefinelanguage{CSS}{
+  keywords={},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={@import, @media, @page, @font-face, @charset, @namespace},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
   morecomment=[s]{/*}{*/},
   commentstyle=\color{purple}\ttfamily,
   stringstyle=\color{red}\ttfamily,
