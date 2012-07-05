@@ -29,15 +29,14 @@ Yesod ближе, в принципе, к последней технике. О�
 обработки запросов.
 
 \section{Синтаксис записи маршрута}
+Вместо того, чтобы пытаться втиснуть объявления маршрутов в
+существующий синтаксис, подход Yesod~--- использовать упрощённый
+синтаксис, разработанный специально для маршрутов. Преимущество такого
+подхода~--- код не только проще писать, но он становится достаточно
+простым для не имеющих опыта работы с Yesod, чтобы прочитать и понять
+схему сайта вашего приложения.
 
-Instead of trying to shoe-horn route declarations into an existing
-syntax, Yesod's approach is to use a simplified syntax designed just
-for routes. This has the advantage of making the code not only easy to
-write, but simple enough for someone with no Yesod experience to read
-and understand the sitemap of your application.
-
-A basic example of this syntax is:
-
+Простой пример синтаксиса:
 \begin{verbatim}
 /             RootR     GET
 /blog         BlogR     GET POST
@@ -46,35 +45,36 @@ A basic example of this syntax is:
 /static       StaticR   Static getStatic
 \end{verbatim}
 
-The next few sections will explain the full details of what goes on in
-the route declaration.
+В следующих нескольких разделах будет подробно описано, что происходит
+при объявлении маршрута.
 
 \subsection{Участки пути URL}
-
-One of the first thing Yesod does when it gets a request is split up
-the requested path into pieces. The pieces are tokenized at all
-forward slashes. For example:
-
+Одно из первых действий, совершаемых Yesod при получении запроса,~---
+разбиение запрошенного пути на участки.  Участки разделяются символами
+косой черты (/). Например:
 \begin{lstlisting}
 toPieces "/" = []
 toPieces "/foo/bar/baz/" = ["foo", "bar", "baz", ""]
 \end{lstlisting}
 
-You may notice that there are some funny things going on with trailing
-slashes, or double slashes ("/foo//bar//"), or a few other
-things. Yesod believes in having canonical URLs; if someone requests a
-URL with a trailing slash, or with a double slash, they automatically
-get a redirect to the canonical version. This ensures you have one URL
-for one resource, and can help with your search rankings.
+Вы можете заметить, что некоторые забавные вещи происходят с
+завершающим символом косой черты, или с двойным символом косой черты
+("/foo//bar//"), или ещё с чем-то. Yesod рассчитывает на получение
+канонических адресов URL; если кто-то запросит URL с завершающим
+символом косой черты, или с двойным символом косой черты, они
+автоматически переадресуются на каноническую версия адреса. Это
+гарантирует, что у вас одному URL соответствует один ресурс, и может
+помочь с вашими поисковыми рейтингами.
 
-What this means for you is that you needn't concern yourself with the
-exact structure of your URLs: you can safely think about pieces of a
-path, and Yesod automatically handles intercalating the slashes and
-escaping problematic characters.
+Для вас это означает, что вам нет необходимости беспокоиться о точной
+структуре ваших адресов URL: вы можете спокойно думать об участках
+маршрута, а Yesod автоматически выполнит вставку символов косой черты
+и экранирование проблемных символов.
 
-If, by the way, you want more fine-tuned control of how paths are
-split into pieces and joined together again, you'll want to look at
-the cleanPath and joinPath methods in the Yesod typeclass chapter.
+Если, кстати, вы захотите более тонкой настройки того, как маршруты
+разбиваются на участки и собираются обратно, вам следует посмотреть
+методы \lstinline!cleanPath! и \lstinline!joinPath! в главе о классе
+типов \lstinline!Yesod!.\marginpar{Вставить ссылку на главу}
 
 \subsubsection{Типы участков}
 
