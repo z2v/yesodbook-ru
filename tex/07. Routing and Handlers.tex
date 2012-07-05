@@ -77,42 +77,43 @@ toPieces "/foo/bar/baz/" = ["foo", "bar", "baz", ""]
 типов \lstinline!Yesod!.\marginpar{Вставить ссылку на главу}
 
 \subsubsection{Типы участков}
+Когда вы объявляет ваши маршруты, у вас в распоряжении имеются три
+типа участков:
 
-When you are declaring your routes, you have three types of pieces at
-your disposal:
+Статический
 
-Static
+Это простая строка, которая должно в точности совпадать в URL.
 
-This is a plain string that must be matched against precisely in the
-URL.
+Динамический одинарный
 
-Dynamic single
+Это один участок (т.е. между двумя символами косой черты), но может
+быть предоставленным пользователем значением. Это основой способ
+получения дополнительного пользовательского ввода при запросе
+страницы. Эти участки начинаются с символа решётки (\#), за которым
+следует тип данных. Тип данных должен быть экземпляром
+\lstinline!PathPiece!.
 
-This is a single piece (ie, between two forward slashes), but can be a
-user-submitted value. This is the primary method of receiving extra
-user input on a page request. These pieces begin with a hash (\#) and
-are followed by a data type. The datatype must be an instance of
-PathPiece.
+Динамический множественный
 
-Dynamic multi
+Аналогичен предыдущему, но может получать множество участков URL. Это
+всегда должен быть последний участок в шаблоне ресурса. Задаётся
+символом звёздочки (*), за которым следует тип данных, который должен
+быть экземпляром \lstinline!PathMultiPiece!. Множественные участки не
+столь распространены, как предыдущие два типа, хотя они очень важны
+для реализации таких возможностей, как статические деревья,
+представляющих файловую структуру \marginpar{file structure - Может, имеется в виду
+  структура файловой системы?} или вики с произвольными иерархиями.
 
-The same as before, but can receive multiple pieces of the URL. This
-must always be the last piece in a resource pattern. It is specified
-by an asterisk (*) followed by a datatype, which must be an instance
-of PathMultiPiece. Multi pieces are not as common as the other two,
-though they are very important for implementing features like static
-trees representing file structure or wikis with arbitrary
-hierarchies.
+Давайте посмотрим на некоторые стандартные типы шаблонов ресурса,
+которые вы возможно захотите написать. Начиная с простого, корень
+приложения будет просто /. Также, вы возможно захотите поместить свои
+часто задаваемые вопросы (FAQ) по адресу /page/faq.
 
-Let us take a look at some standard kinds of resource patterns you may
-want to write. Starting simply, the root of an application will just
-be /. Similarly, you may want to place your FAQ at /page/faq.
-
-Now let's say you are going to write a Fibonacci website. You may
-construct your URLs like /fib/\#Int. But there's a slight problem with
-this: we do not want to allow negative numbers or zero to be passed
-into our application. Fortunately, the type system can protect us:
-
+Теперь давайте представим, что вы собираетесь сделать сайт для
+вычисления чисел Фибоначчи. Вы можете сделать свои URL наподобие
+/fib/\#Int. Но тут есть следующая небольшая проблема: мы не хотим
+разрешать, чтобы отрицательные числа или ноль передавались в наше
+приложение. К счастью, система типов может защитить нас:
 \begin{lstlisting}
 newtype Natural = Natural Int
     deriving (Show, Read, Eq, Num, Ord)
