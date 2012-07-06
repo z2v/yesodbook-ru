@@ -136,24 +136,31 @@ getFibsR (Natural i) = return $ RepPlain $ toContent $ show $ fibs !! (i - 1)
 main = warpDebug 3000 Fibs
 \end{lstlisting}
 
-On line 1 we define a simple newtype wrapper around Int to protect
-ourselves from invalid input. We can see that PathPiece is a typeclass
-with two methods. toPathPiece does nothing more than convert to a
-Text. fromPathPiece attempts to convert a Text to our datatype,
-returning Nothing when this conversion is impossible. By using this
-datatype, we can ensure that our handler function is only ever given
-natural numbers, allowing us to once again use the type system to
-battle the boundary issue.
+В строке 1 мы определяем для \lstinline!Int! изоморфный тип, который
+защитит нас от некорректного ввода. Мы можем увидеть, что
+\lstinline!PathPiece!~--- это класс типов с двумя
+методами. \lstinline!toPathPiece! просто конвертирует в
+\lstinline!Text! и ничего больше. \lstinline!fromPathPiece!
+\emph{пытается} преобразовать \lstinline!Text! в наш тип данных,
+возвращая \lstinline!Nothing!, если преобразование
+невозможно. Используя этот тип данных, мы можем быть уверены, что
+нашей функции обработчику будут передаваться только натуральные числа,
+позволяя нам в очередной раз использовать систему типов для борьбы с
+краевыми случаями.
 
-In a real life application, we would also want to ensure we never
-accidently constructed an invalid Natural value internally to our
-app. To do so, we could use an approach like smart constructors. For
-the purposes of this example, we've kept the code simple.
+В реальном приложении, мы бы ещё захотели удостовериться, что никогда
+случайно не создадим некорректное значение \lstinline!Natural! внутри
+нашего приложения. Для этого, мы могли бы использовать подход
+наподобие умных конструкторов (smart constructors)
+\marginpar{вставить ссылку на
+  http://www.haskell.org/haskellwiki/Smart\_constructors}.
+Для целей примера, мы оставили код простым.
 
-Defining a PathMultiPiece is just as simple. Let's say we want to have a Wiki with at least two levels of hierarchy; we might define a datatype such as:
-
+Определение \lstinline!PathMultiPiece! столь же простое. Допустим,
+что мы хотим сделать вики с иерархией не меньше, чем два уровня;
+тогда мы могли бы определить тип данных так:
 \begin{lstlisting}
-data Page = Page Text Text [Text] -- 2 or more
+data Page = Page Text Text [Text] -- 2 или больше
 instance PathMultiPiece Page where
     toPathMultiPiece (Page x y z) = x : y : z
     fromPathMultiPiece (x:y:z) = Just $ Page x y z
