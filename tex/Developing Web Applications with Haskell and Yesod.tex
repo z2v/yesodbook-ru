@@ -1,4 +1,4 @@
-\documentclass[]{book}
+\documentclass[openany]{book}
 
 \usepackage{fontspec}
 \defaultfontfeatures{Mapping=tex-text}  % For archaic input (e.g. convert -- to en-dash)
@@ -11,6 +11,16 @@
 \setdefaultlanguage{russian}
 
 \usepackage{listings}
+
+
+% fancy headers
+\usepackage{fancyhdr}
+\fancyhead{}
+\fancyfoot{}
+\fancyhead[LO]{\rm\small\raggedright\nouppercase\rightmark}
+\fancyhead[RE]{\rm\small\raggedleft\nouppercase\leftmark}
+\fancyhead[RO,LE]{\rm\small\thepage}
+\pagestyle{fancy}
 
 \usepackage{graphicx}
 % graphics path
@@ -56,10 +66,23 @@
 
 % set listings default parameters
 \lstset{language=Haskell,
-        extendedchars=\true,
-        keepspaces=true,
-	inputencoding=utf8
+	extendedchars=true,
+	keepspaces=true,
+	inputencoding=utf8,
+	basicstyle=\ttfamily % using monospaced font for listings
 }
+
+% avoiding math minus symbol in listings
+\makeatletter
+\lst@CCPutMacro\lst@ProcessOther {"2D}{\lst@ttfamily{-{}}{-{}}}
+\@empty\z@\@empty
+\makeatother
+
+% for hyperlinks
+\usepackage{hyperref}
+
+% use long spaces to remove overfull a la Word
+\sloppy
 
 \begin{document}
 
