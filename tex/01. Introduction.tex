@@ -28,11 +28,11 @@ Yesod пытается упростить процесс веб-разработ
 
 \section{Производительность}
 
-Haskell's main compiler, the GHC, has amazing performance characteristics, and is improving all the time. This choice of language by itself gives Yesod a large performance advantage over other offerings. But that's not enough: we need an architecture designed for performance.
+GHC, наиболее популярный компилятор языка Haskell, обладает потрясающими характеристиками производительности, и они постоянно улучшаются. Один только выбор языка программирования дал Yesod огромное преимущество в плане производительности по сравнению с альтернативами. Но одного языка не достаточно --- нам нужна архитектура, ориентированная на производительность.
 
-Our approach to templates is one example: by allowing HTML, CSS and JavaScript to be analyzed at compile time, Yesod both avoids costly disk I/O at runtime and can optimize the rendering of this code. But the architectural decisions go deeper: we use advanced techniques such as conduits and builders in the underlying libraries to make sure our code runs in constant memory, without exhausting precious file handles and other resources. By offering high-level abstractions, you can get highly compressed and properly cached CSS and JavaScript.
+Для примера рассмотрим подход к работе с шаблонами. Разрешив анализ HTML, CSS и JavaScript кода на этапе компиляции, Yesod не только избежал дорогостоящих операций ввода/вывода с диска, но и получил возможность оптимизировать рендеринг этого кода. Однако на этом архитектурные решения не заканчиваются. Благодаря тому, что лежащие в основе Yesod библиотеки используют такие продвинутые приемы, как каналы (conduits) и строители (builders), мы можем быть уверены в том, что наш код потребляет постоянное количество оперативной памяти, не используя при этом файловые дескрипторы и другие дорогостоящие ресурсы. Используя высокоуровевые абстракции, вы можете получить сильно сжатый и должным образом кэшируемый код на CSS и JavaScript.
 
-Yesod's flagship web server, Warp, is the fastest Haskell web server around. When these two pieces of technology are combined, it produces one of the fastest web application deployment solutions available.
+Warp, флагманский веб-сервер Yesod, является быстрейшим веб-сервером на Haskell. Совместно используя эти две технологии, мы получаем одно из самых высокопроизводительных решений для создания веб-приложений.
 
 \section{Модульность}
 
