@@ -18,13 +18,13 @@ Yesod пытается упростить процесс веб-разработ
 
 \begin{itemize}
   \item Библиотека для работы с формами в большинстве случаев уменьшает количество кода путем использования класса типов Applicative.
-  \item Routes are declared in a very terse format, without sacrificing type safety.
-  \item Serializing your data to and from a database is handled automatically via code generation.
+  \item Объявления маршрутов очень немногословны, но не в убыток безопасности типов.
+  \item Код для сериализации и десериализации ваших данных генерируется автоматически.
 \end{itemize}
 
-In Yesod, we have two kinds of code generation. To get your project started, we provide a scaffolding tool to set up your file and folder structure. However, most code generation is done at compile time via meta programming. This means your generated code will never get stale, as a simple library upgrade will bring all your generated code up-to-date.
+В Yesod есть два вида кодогенерации. Для начала нового проекта предоставляется утилита, предназначенная для создания структуры файлов и каталогов. Тем не менее, большая часть кода генерируется на этапе компиляции благодаря механизму метапрограммирования. Таким образом, сгенерированный код никогда не устареет. Простое обновление библиотеки автоматически обновит весь сгенерированный код.
 
-But for those who like to stay in control, and know exactly what their code is doing, you can always run closer to the compiler and write all your code yourself.
+Но для тех, кто предпочитает сохранять контроль и точно знать, что делает написанный код, предусмотренна возможность оставаться ближе к компилятору и писать весь код самостоятельно.
 
 \section{Производительность}
 
