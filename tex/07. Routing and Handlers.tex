@@ -148,6 +148,7 @@ main = warpDebug 3000 Fibs
 позволяя нам в очередной раз использовать систему типов для борьбы с
 краевыми случаями.
 
+\fbox{\begin{minipage}[!h]{.9\linewidth}
 В реальном приложении, мы бы ещё захотели удостовериться, что никогда
 случайно не создадим некорректное значение \lstinline!Natural! внутри
 нашего приложения. Для этого, мы могли бы использовать подход
@@ -156,6 +157,7 @@ main = warpDebug 3000 Fibs
 {\texttt{smart constructors}}
 \footnote{http://www.haskell.org/haskellwiki/Smart\_constructors}).
 Для целей примера, мы оставили код простым.
+\end{minipage}}
 
 Определение \lstinline!PathMultiPiece! столь же простое. Допустим,
 что мы хотим сделать вики с иерархией не меньше, чем два уровня;
@@ -183,11 +185,16 @@ main = return ()
 типа данных. Это даёт нам соотношение 1-к-1 между нашим типом для
 типобезопасных URL и корректными URL для нашего приложения.
 
+%FIXME: если раскомментировать fbox, пропадёт текст аж до следующего раздела
+%\fbox{
+\begin{minipage}[!h]{.9\linewidth}
 Это не означает непременно, что каждое значение типа представляет
 рабочую страницу, это означает, что значение типа является потенциально
 корректным URL. Например, значение \lstinline!PersonR "Michael"! может
 не разрешиться в корректную страницу, если в базе данных нет записи для
 \lstinline!"Michael"!.
+\end{minipage}
+%}
 
 Давайте теперь обратимся к реальным примерам. Если бы у вас были такие
 шаблоны ресурсов: \lstinline!/person/#Text! с именем
@@ -428,9 +435,11 @@ Sends a redirect response to the user (a 303 response). If you want to
 use a different response code (e.g., a permanent 301 redirect), you
 can use redirectWith.
 
+\fbox{\begin{minipage}[!h]{.9\linewidth}
 Yesod uses a 303 response for HTTP/1.1 clients, and a 302 response for
 HTTP/1.0 clients. You can read up on this sordid saga in the HTTP
 spec.
+\end{minipage}}
 
 notFound
 
