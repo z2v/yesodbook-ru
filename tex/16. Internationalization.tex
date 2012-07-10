@@ -128,25 +128,25 @@ toEnglish (MsgUsersLoggedIn i) = "There are " ++ show i ++ " users logged in."
 Сайт, созданный с помощью генератора кода, содержит полностью настроенный каталог сообщений. % The scaffolded site already includes a fully configured message folder.
 \end{minipage}}
 
-So firstly, a word about language codes. There are really two choices available: using a two-letter language code, or a language-LOCALE code. For example, when I load up a page in my web browser, it sends two language codes: en-US and en. What my browser is saying is <<if you have American English, I like that the most. If you have English, I'll take that instead>>.
+Для начала поговорим о кодах для обозначения языков. На самом деле их существует два вида --- двубуквенные коды языков и коды вида <<язык-страна>>. Например, когда я загружаю страницу в веб-браузере, он передает два код: <<en-US>> и <<en>>. Это означает <<я бы предпочел американский английский, но если вы его не поддерживаете, сойдет и английский>>.
 
-So which format should you use in your application? Most likely two-letter codes, unless you are actually creating separate translations by locale. This ensures that someone asking for Canadian English will still see your English. Behind the scenes, Yesod will add the two-letter codes where relevant. For example, suppose a user has the following language list:
+Так какой же формат следует использовать в своем приложении? Скорее всего это двухбуквенные коды, если только вы на самом деле не создаете отдельные переводы для разных стран. Это гарантирует, что если кто-то запросит канадский английский, он все равно получит английский. За сценой Yesod добавляет двубуквенные коды там, где это уместно. Допустим, пользователь имеет следующий список языков:
 
 \begin{lstlisting}
 pt-BR, es, he
 \end{lstlisting}
 
-What this means is <<I like Brazilian Porteguese, then Spanish, and then Hebrew>>. Suppose your application provides the languages pt (general Porteguese) and English, with English as the default. Strictly following the user's language list would result in the user being served English. Instead, Yesod translates that list into:
+Это означает <<я предпочел бы бразильский португальский, затем испанский, а затем иврит>>. Допустим, ваше приложение поддерживает языки pt (общий португальский) и английсикй, притом английский используется по умолчанию. Если строго следовать списку, предоставленному пользователем, будет выбран английский язык. Однако Yesod преобразует список в следующий:
 
 \begin{lstlisting}
 pt-BR, es, he, pt
 \end{lstlisting}
 
-In other words: unless you're giving different translations based on locale, just stick to the two-letter language codes.
+Другими словами, если только вы не предоставляете отдельный перевод на диалекте языка, используемом в конкретной стране, используйте двубуквенные коды. % In other words: unless you're giving different translations based on locale, just stick to the two-letter language codes.
 
-Now what about these message files? The syntax should be very familiar after your work with Hamlet and Persistent. The line starts off with the name of the message. Since this is a data constructor, it must start with a capital letter. Next, you can have individual parameters, which must be given as lower case. These will be arguments to the data constructor.
+А что там на счет файлов сообщений? После работы с Hamlet и Persistent синтаксис должен показаться вам очень знакомым. Строка начинается с имени сообщения. Поскольку это конструктор данных, он должен начинаться с заглавной буквы. Далее можно указать параметры. Их следует набирать в нижнем регистре. Они будут использованы в качестве аргументов конструктора данных.
 
-The argument list is terminated by a colon, and then followed by the translated string, which allows usage of our typical variable interpolation syntax \lstinline'#{myVar}'. By referring to the parameters defined before the colon, and using translation helper functions to deal with issues like pluralization, you can create all the translated messages you need.
+Список аргументов завершается двоеточием, за которым следует переведенная строка, в которой можно использовать традиционный синтаксис интерполяции \lstinline'#{myVar}'. Ссылаясь на параметры, заданные перед двоеточием, и используя хелперы для решения проблем вроде плюрализации, вы можете получить любые переводы, какие пожелаете.
 
 \section{Определяя типы} % Specifying types
 
