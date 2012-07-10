@@ -1,14 +1,14 @@
 \chapter{Интернационализация} % Internationalization
 
-Users expect our software to speak their language. Unfortunately for us, there will likely be more than one language involved. While doing simple string replacement isn't too involved, correctly dealing with all the grammar issues can be tricky. After all, who wants to see "List 1 file(s)" from a program output?
+Пользователи ожидают от наших программ, что они будут разговаривать с ними на одном языке. К несчастью для нас, для этого скорее всего потребуется поддержка более, чем одного языка. В то время, как простая замена строк не представляет собой большой проблемы, корректное формирование фраз в соответствии со всеми правилами грамматики может оказаться нетривиальной задачей. В конце концов, кому из нас приятно видеть в выводе программы <<Список 1 файл(ов)>>?
 
-But a real i18n solution needs to do more than just provide a means of achieving the correct output. It needs to make this process easy for both the programmer and the translator and relatively error-proof. Yesod's answer to the problem gives you:
+Но от настоящей интернационализации (i18n, от англ. internationalization - прим. пер.) требуется не только возможность формировать корректный вывод. Также требуется сделать этот процесс простым как для программиста, так и для переводчика, а также оставить относительно простой проверку на ошибки. Решение, реализованное в Yesod, позволяет вам:
 
 \begin{itemize}
-  \item Intelligent guessing of the user's desired language based on request headers, with the ability to override.
-  \item A simple syntax for giving translations which requires no Haskell knowledge. (After all, most translators aren't programmers.)
-  \item The ability to bring in the full power of Haskell for tricky grammar issues as necessary, along with a default selection of helper functions to cover most needs.
-  \item Absolutely no issues at all with word order.
+  \item Угадывать язык пользователя основываясь на информации, переданной HTTP запросе, с возможностью перезаписи.
+  \item Простой синтаксис для формирования переводов, не требующий знания Haskell. (В конце концов, не всякий переводчик является еще и программистом.)
+  \item Возможность при необходимости использовать всю мощь языка Haskell для нетривиальных грамматических проблем, а также выбор хелперов по умолчанию для покрытия большинства случаев.
+  \item Полное отсутсвие проблем с порядком слов. % Absolutely no issues at all with word order
 \end{itemize}
 
 \section{Краткое содержание} % Synopsis
@@ -128,7 +128,7 @@ The simplest approach to creating translations is via message files. The setup i
 The scaffolded site already includes a fully configured message folder.
 \end{minipage}}
 
-So firstly, a word about language codes. There are really two choices available: using a two-letter language code, or a language-LOCALE code. For example, when I load up a page in my web browser, it sends two language codes: en-US and en. What my browser is saying is "if you have American English, I like that the most. If you have English, I'll take that instead."
+So firstly, a word about language codes. There are really two choices available: using a two-letter language code, or a language-LOCALE code. For example, when I load up a page in my web browser, it sends two language codes: en-US and en. What my browser is saying is <<if you have American English, I like that the most. If you have English, I'll take that instead>>.
 
 So which format should you use in your application? Most likely two-letter codes, unless you are actually creating separate translations by locale. This ensures that someone asking for Canadian English will still see your English. Behind the scenes, Yesod will add the two-letter codes where relevant. For example, suppose a user has the following language list:
 
@@ -136,7 +136,7 @@ So which format should you use in your application? Most likely two-letter codes
 pt-BR, es, he
 \end{lstlisting}
 
-What this means is "I like Brazilian Porteguese, then Spanish, and then Hebrew." Suppose your application provides the languages pt (general Porteguese) and English, with English as the default. Strictly following the user's language list would result in the user being served English. Instead, Yesod translates that list into:
+What this means is <<I like Brazilian Porteguese, then Spanish, and then Hebrew>>. Suppose your application provides the languages pt (general Porteguese) and English, with English as the default. Strictly following the user's language list would result in the user being served English. Instead, Yesod translates that list into:
 
 \begin{lstlisting}
 pt-BR, es, he, pt
@@ -146,11 +146,11 @@ In other words: unless you're giving different translations based on locale, jus
 
 Now what about these message files? The syntax should be very familiar after your work with Hamlet and Persistent. The line starts off with the name of the message. Since this is a data constructor, it must start with a capital letter. Next, you can have individual parameters, which must be given as lower case. These will be arguments to the data constructor.
 
-The argument list is terminated by a colon, and then followed by the translated string, which allows usage of our typical variable interpolation syntax #{myVar}. By referring to the parameters defined before the colon, and using translation helper functions to deal with issues like pluralization, you can create all the translated messages you need.
+The argument list is terminated by a colon, and then followed by the translated string, which allows usage of our typical variable interpolation syntax \lstinline'#{myVar}'. By referring to the parameters defined before the colon, and using translation helper functions to deal with issues like pluralization, you can create all the translated messages you need.
 
 \section{Определяя типы} % Specifying types
 
-Since we will be creating a datatype out of our message specifications, each parameter to a data constructor must be given a data type. We use a @-syntax for this. For example, to create the datatype data MyMessage = MsgHello | MsgSayAge Int, we would write:
+Since we will be creating a datatype out of our message specifications, each parameter to a data constructor must be given a data type. We use a @-syntax for this. For example, to create the datatype \lstinline'data MyMessage = MsgHello | MsgSayAge Int', we would write:
 
 \begin{lstlisting}
 Hello: Hi there!
@@ -210,17 +210,17 @@ But odds are that you will never need to worry about writing this stuff manually
 
 \section{Интерполяция} % Interpolation
 
-One way to use your new RenderMessage instance would be to directly call the renderMessage function. This would work, but it's a bit tedious: you need to pass in the foundation value and the language list manually. Instead, Hamlet provides a specialized i18n interpolation, which looks like _{...}.
+One way to use your new RenderMessage instance would be to directly call the renderMessage function. This would work, but it's a bit tedious: you need to pass in the foundation value and the language list manually. Instead, Hamlet provides a specialized i18n interpolation, which looks like \lstinline'_{...}'.
 
 \fbox{\begin{minipage}[!h]{.9\linewidth}
 Why the underscore? Underscore is already a well-established character for i18n, as it is used in the gettext library.
 \end{minipage}}
 
-Hamlet will then automatically translate that to a call to renderMessage. Once Hamlet gets the output Text value, it uses the toHtml function to produce an Html value, meaning that any special characters (<, &, >) will be automatically escaped.
+Hamlet will then automatically translate that to a call to renderMessage. Once Hamlet gets the output Text value, it uses the toHtml function to produce an Html value, meaning that any special characters (\lstinline'<, &, >') will be automatically escaped.
 
 \section{Фразы, а не слова} % Phrases, not words
 
-As a final note, I'd just like to give some general i18n advice. Let's say you have an application for selling turtles. You're going to use the word "turtle" in multiple places, like "You have added 4 turtles to your cart." and "You have purchased 4 turtles, congratulations!" As a programmer, you'll immediately notice the code reuse potential: we have the phrase "4 turtles" twice. So you might structure your message file as:
+As a final note, I'd just like to give some general i18n advice. Let's say you have an application for selling turtles. You're going to use the word <<turtle>> in multiple places, like <<You have added 4 turtles to your cart>> and <<You have purchased 4 turtles, congratulations>>. As a programmer, you'll immediately notice the code reuse potential: we have the phrase <<4 turtles>> twice. So you might structure your message file as:
 
 \begin{lstlisting}
 AddStart: You have added
