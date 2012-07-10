@@ -150,25 +150,25 @@ pt-BR, es, he, pt
 
 \section{Определяя типы} % Specifying types
 
-Since we will be creating a datatype out of our message specifications, each parameter to a data constructor must be given a data type. We use a @-syntax for this. For example, to create the datatype \lstinline'data MyMessage = MsgHello | MsgSayAge Int', we would write:
+Поскольку мы собираемся создавать тип данных <<сообщение>> из файла сообщений, для каждого параметра конструктора данных должен быть определен тип. Для этого можно использовать символ @ (<<собака>>). Например, для создания типа данных \lstinline'data MyMessage = MsgHello | MsgSayAge Int' следует написать:
 
 \begin{lstlisting}
-Hello: Hi there!
-SayAge age@Int: Your age is: #{show age}
+Hello: Привет!
+SayAge age@Int: Ваш возраст: #{show age}
 \end{lstlisting}
 
-But there are two problems with this:
+Но тут имеют место две проблемы:
 
 \begin{enumerate}
-  \item It's not very DRY (don't repeat yourself) to have to specify this datatype in every file.
-  \item Translators will be confused having to specify these datatypes.
+  \item Определять типы параметров в каждом файле не очень-то соответствует принципу DRY (<<don't repeat yourself>>, или <<не повторяйтесь>>).
+  \item Переводчикам будет затруднительно определить правильный тип.
 \end{enumerate}
 
-So instead, the type specification is only required in the main language file. This is specified as the third argument in the mkMessage function. This also specifies what the backup language will be, to be used when none of the languages provided by your application match the user's language list.
+По этим причинам определение типов данных требуется только в главном языковом файле. Он задается третьим аргументом фунции mkMessage. Этот же файл является <<запасным>>, то есть он используется в случае, если приложение не поддерживает ни один из языков, указанных в списке пользователя.
 
 \section{Класс типов RenderMessage} % RenderMessage typeclass
 
-Your call to mkMessage creates an instance of the RenderMessage typeclass, which is the core of Yesod's i18n. It is defined as:
+Вызов функции mkMessage создает экземпляр класса типов RenderMessage, который представляет собой ядро интернационализации в Yesod. Вот его определение:
 \begin{lstlisting}
 class RenderMessage master message where
     renderMessage :: master
