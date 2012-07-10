@@ -169,41 +169,43 @@ main = return ()
 \end{lstlisting}
 
 \subsection{Наименование ресурса}
+Каждый шаблон ресурса имеет имя, связанное с ним. Это имя становится
+конструктором типа данных для типобезопасного URL, связанного с вашим
+приложением. Поэтому оно должно начинаться с прописной буквы. По
+соглашению, эти наименования ресурсов все заканчиваются прописной
+буквой <<R>>. Это не обязательное требование, просто общепринятая
+практика.
 
-Each resource pattern also has a name associated with it. That name
-will become the constructor for the type safe URL datatype associated
-with your application. Therefore, it has to start with a capital
-letter. By convention, these resource names all end with a capital
-R. There is nothing forcing you to do this, it is just common
-practice.
+Точное определение нашего конструктора зависит от шаблона ресурса, к
+которому оно относится. Все типы данных, которые включены в одинарные
+и множественные динамические участки шаблона, становятся аргументами
+типа данных. Это даёт нам соотношение 1-к-1 между нашим типом для
+типобезопасных URL и корректными URL для нашего приложения.
 
-The exact definition of our constructor depends upon the resource
-pattern it is attached to. Whatever datatypes are included in single
-and multi pieces of the pattern become arguments to the datatype. This
-gives us a 1-to-1 correspondence between our type safe URL values and
-valid URLs in our application.
+Это не означает непременно, что каждое значение типа представляет
+рабочую страницу, это означает, что значение типа является потенциально
+корректным URL. Например, значение \lstinline!PersonR "Michael"! может
+не разрешиться в корректную страницу, если в базе данных нет записи для
+\lstinline!"Michael"!.
 
-This doesn't necessarily mean that every value is a working page, just
-that it is is a potentially valid URL. As an example, that value
-PersonR "Michael" may not resolve to a valid page if there is no
-Michael in the database.
-
-Let's get some real examples going here. If you had the resource
-patterns /person/\#Text named PersonR, /year/\#Int named YearR and
-/page/faq named FaqR, you would end up with a route data type roughly
-looking like:
-
+Давайте теперь обратимся к реальным примерам. Если бы у вас были такие
+шаблоны ресурсов: \lstinline!/person/#Text! с именем
+\lstinline!PersonR!; \lstinline!/year/#Int! с именем
+\lstinline!YearR! и \lstinline!/page/faq! с именем \lstinline!FaqR!,
+то ваш тип данных для маршрутов выглядел бы приблизительно так:
 \begin{lstlisting}
 data MyRoute = PersonR Text
              | YearR Int
              | FaqR
 \end{lstlisting}
 
-If a user requests the relative URL of /year/2009, Yesod will convert
-it into the value YearR 2009. /person/Michael becomes PersonR
-"Michael" and /page/faq becomes FaqR. On the other hand,
-/year/two-thousand-nine, /person/michael/snoyman and /page/FAQ would
-all result in 404 errors without ever seeing your code.
+Если пользователь запросит относительный URL \lstinline!/year/2009!,
+Yesod преобразует его в значение \lstinline!YearR 2009!.
+\lstinline!/person/Michael! станет \lstinline!PersonR "Michael"!
+и \lstinline!/page/faq! станет \lstinline!FaqR!. С другой
+стороны, \lstinline!/year/two-thousand-nine!,
+\lstinline!/person/michael/snoyman! и \lstinline!/page/FAQ! привели бы
+к получению 404 ошибок даже без обращения к вашему коду.
 
 \section{Спецификация обработчика}
 
