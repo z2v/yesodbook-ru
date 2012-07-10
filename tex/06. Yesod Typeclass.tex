@@ -1,12 +1,12 @@
-\chapter {Класс типов Yesod}
+\chapter {Класс типов Yesod}\label{ch:yesod-typeclass}
 
-Для любого вашего приложения, использующего Yesod, требуется наличие экземпляра класса типов \lstinline'Yesod'. До этого мы видели только \lstinline'defaultLayout'. В этой главе мы рассмотрим значение других методов \lstinline'Yesod'.
+Для любого вашего приложения, использующего Yesod, требуется наличие экземпляра класса типов \lstinline!Yesod!. До этого мы видели только \lstinline!defaultLayout!. В этой главе мы рассмотрим значение других методов \lstinline!Yesod!.
 
-Класс типов \lstinline'Yesod' являет собой основное место для определения настроек приложения. Для остальных методов имеются определения по умолчанию, которые обычно являются достаточными. Но, для того чтобы создать достаточно сложное, учитывающее требования пользователя прилжоение, вам, скорее всего, потребуется переопределить по меньшей мере некоторые из этих методов.
+Класс типов \lstinline!Yesod! является основным местом для определения настроек приложения. Для остальных методов имеются определения по умолчанию, которые обычно являются достаточными. Но, для того чтобы создать сложное, учитывающее требования пользователя приложение, вам, скорее всего, потребуется переопределить, по меньшей мере, некоторые из этих методов.
 
 \section {Рендеринг в строку и разбор URL}
 
-Мы уже отмечали, что в Yesod есть возможность автоматического рендеринга в строку типобезопасных URL в текстовое представление, которое может быть вставлено в HTML-страницу. Допустим, у нас есть определение маршрута, которое выглядит следующим образом:
+Мы уже отмечали, что в Yesod есть возможность автоматического рендеринга типобезопасных URL в текстовое представление, которое может быть вставлено в HTML-страницу. Допустим, у нас есть определение маршрута, которое выглядит следующим образом:
 
 \begin{lstlisting}
 mkYesod "MyApp" [parseRoutes|
@@ -14,34 +14,36 @@ mkYesod "MyApp" [parseRoutes|
 ]
 \end{lstlisting}
 
-Если мы используем \lstinline'SomePathR' в hamlet-шаблоне, то во что Yesod его отобразит? Yesod всегда пытается сформировать \emph{абсолютные} URL. Это особенно полезно, если мы создаём XML карты сайта и Atom-ленты, или при отсылке электронной почты. Но для того чтобы сформировать абсолютный URL нам необходимо знать доменное имя приложения.
+Если мы используем \lstinline!SomePath! в hamlet-шаблоне, то во что Yesod его отобразит? Yesod всегда пытается сформировать \emph{абсолютные} URL. Это особенно полезно, если мы создаём XML карты сайта и Atom-ленты, или при рассылке электронной почты. Но, для того чтобы сформировать абсолютный URL, нам необходимо знать доменное имя приложения.
 
-Возможно, вы подумали, что можно получить эту информацию из запроса пользователя, но нам также надо учитывать номера портов. И, даже если бы мы брали номер порта из запроса, то каку узнать используется ли HTTP или HTTPS? Но, даже если нам известно \emph{это}, то это бы значило, что в зависимости от того, как пользователь делает запрос, получались бы различные URL. К примеру, формировались бы различные URL в зависимости от того, подключается ли пользователь к "example.com" или "www.example.com". Для поисковой оптимизации нам бы хотелось иметь возможность объединить эти варианты в одном каноническом URL.
+Возможно вы подумали, что можно получить эту информацию из запроса пользователя, но нам также надо учитывать номера портов. И, даже если бы мы брали номер порта из запроса, то как узнать используется ли HTTP или HTTPS? Даже если нам было известно об \emph{этом}, то это бы значило, что в зависимости от того, как пользователь делает запрос, получались бы различные URL. К примеру, формировались бы различные URL в зависимости от того, подключается ли пользователь к "example.com" или к "www.example.com". Для поисковой оптимизации нам бы хотелось иметь возможность объединить эти варианты в одном каноническом URL.
 
-И, наконец, Yesod не делает никаких предположений о том, \emph{где} вы будете разворачивать ваше приложение. К примеру, у нас может быть большей частью статический сайт (http://static.example.com/), но также хотелось бы резместить вики, построенное на Yesod по пути /wiki/. Нет надёжного способа получить из приложения путь, на котором оно развёрнуто. Таким образом, вместо подобных догадок, вам надо указать Yesod путь, который является корнем приложения.
+И, наконец, Yesod не делает никаких предположений о том, \emph{где} вы будете разворачивать ваше приложение. К примеру, у нас может быть большей частью статический сайт (http://static.example.com/), но также хотелось бы резместить вики, построенное на основе Yesod по пути /wiki/. Нет надёжного способа получить из приложения путь, на котором оно развёрнуто. Таким образом, вместо подобных догадок, вам надо указать Yesod путь, который является корнем приложения.
 
-В примере с вики вам нужно записать экземпляр \lstinline'Yesod' следующим образом:
+В примере с вики вам нужно записать экземпляр \lstinline!Yesod! следующим образом:
 
 \begin{lstlisting}
 instance Yesod MyWiki where
     approot = ApprootStatic "http://static.example.com/wiki"
 \end{lstlisting}
 
-Заметьте, что на конце нет косой черты. Далее, когда Yesod будет конструировать URL для \lstinline'SomePathR', он определит, что относительный путь для \lstinline'SomePathR' выглядит как \lstinline'/some/path', добавит эту строку к approot и получит в итоге \lstinline'http://static.example.com/wiki/some/path'.
+Заметьте, что на конце нет косой черты. Далее, когда Yesod будет конструировать URL для \lstinline!SomePathR!, он определит, что относительный путь для \lstinline!SomePathR! выглядит как \lstinline!/some/path!, добавит эту строку к approot и получит в итоге \lstinline!http://static.example.com/wiki/some/path!.
 
-Но, если вы помните, большинство наших примеров не использовало метод \lstinline'approot. В таких случаях, наше приложение получает пустой approot или пустую строку. Это работает для многих вариантов использования, так как большое число приложений работают с корня домена. В таком случае, маршрут аналогичный \lstinline'SomePathR' будет рендериться как \lstinline'/some/path', что является корректной относительной ссылкой в любом месте вашего сайта. Однако для некоторых вариантов использования (ленты Atom/RSS или XML карты сайтов) требуются абсолютные пути. В таком случае вам следует указать approot явно.
+Но, если вы помните, большинство наших примеров не использовало метод \lstinline!approot!. В таких случаях, наше приложение получает пустой approot или пустую строку. Это подходит для многих случаев, так как большое число приложений работают с корня домена. В таком случае, маршрут аналогичный \lstinline!SomePathR! будет рендериться как \lstinline!/some/path!, что является корректной относительной ссылкой в любом месте вашего сайта. Однако для некоторых вариантов использования (ленты Atom/RSS или XML карты сайтов) требуются абсолютные пути. В таком случае вам следует указать approot явно.
 
 %FIXME foundation value
-Кроме конструктора \lstinline'ApprootStatic', уже показанного выше, можно использовать конструкторы \lstinline'AppMaster' и \lstinline'AppRequest'. Первый позволяет определить approot из значения основы, которое позволит вам загрузить approot из файла конфигурации, к примеру. Последний же позволит вам кроме того использовать данные запроса для определения approot, с помощью этого вы сможете, например, указывать разные доменные имена в зависимости того, как пользователь обращается к сайту.
+Кроме конструктора \lstinline!ApprootStatic!, уже показанного выше, можно использовать конструкторы \lstinline!AppMaster! и \lstinline!AppRequest!. Первый позволяет определить approot из значения основы, которое позволит вам загрузить approot из файла конфигурации, к примеру. Последний же даст возможность кроме этого использовать данные запроса для определения approot, и с помощью этого вы сможете, например, указывать разные доменные имена в зависимости того, как пользователь обращается к сайту.
 
 %FIXME scaffoled, staging, production
-Каркасный сайт использует ApprootMaster по умолчанию и получает approot из конфигурационного файла при запуске. Помимо этого, он загружает различные настройки для сборок разработки, тестирования, подготовки к ``боевому режиму'' и ``боевой'' сборки, таким образом вы с лёгкостью можете проводить тестирование на одном домене, к примеру на localhost, а запускать приложение на другом домене.
+Каркасный сайт использует \lstinline!ApprootMaster! по умолчанию и получает approot из конфигурационного файла при запуске. Помимо этого, он загружает различные настройки для сборок разработки, тестирования, подготовки к ``боевому режиму'' и ``боевой'' сборки, таким образом, вы с лёгкостью можете проводить тестирование на одном домене, к примеру на localhost, а запускать приложение на другом домене.
 
 \section {joinPath}
 
-Для того, чтобы сконвертировать типобезопасный URL в текстовое значение, Yesod использует две вспомогательные функции. Первая - это метод renderRoute класса типов RenderRoute. Каждый типобезопасный URL является экземпляром этого класса типов. renderRoute преобразовывает значение в участки пути. К примеру, SomePathR из примера выше будет преобразовано в ["some", "path"].
+Для того, чтобы сконвертировать типобезопасный URL в текстовое значение, Yesod использует две вспомогательные функции. Первая - это метод renderRoute класса типов RenderRoute. Каждый типобезопасный URL является экземпляром этого класса типов. renderRoute преобразовывает значение в участки пути. Так SomePathR из примера выше будет преобразовано в ["some", "path"].
 
+\fbox{\begin{minipage}[!h]{.9\linewidth}
 На самом деле renderRoute создаёт и участки пути и список параметров строки запроса. Определение по умолчанию renderRoute всегда задаёт пустой список параметров строки запроса. Но это поведение можно переопределить. Одним из вариантов использования этого является статический подсайт, который добавляет хэш содержимого файла в строку параметров для управления кэшированием
+\end{minipage}}
 
 %FIXME значение основы
 Другой функцией является метод joinPath класса типов Yesod. Эта функция принимает четыре аргумента: значение основы, корень приложения, список сегментов пути, список параметров строки вызова, а возвращает URL в виде текста. Реализация по умолчению делает ``правильно'': отделяет участки пути при помощи косой черты, добавляет корень приложения в начало и дописывает в конец строку запроса.
@@ -51,16 +53,16 @@ instance Yesod MyWiki where
 
 \section {cleanPath}
 
-Противоположной функцией по отношению к \lstinline'joinPath' является \lstinline'cleanPath'. Давайте посмотрим, как она используется в процессе диспетчеризации:
+Противоположной функцией по отношению к \lstinline!joinPath! является \lstinline!cleanPath!. Давайте посмотрим, как она используется в процессе диспетчеризации:
 
 \begin{enumerate}
   \item Путь, запрашиваемый пользователем, разбивается на последовательность участков пути.
-  \item Мы передаём участки пути в функцию \lstinline'cleanPath'.
-  \item  Если \lstinline'cleanPath' указывает на перенаправление (возвращая \lstinline'Left'), то пользователю возвращается ответ с кодом 301. Такое поведение применяется для принудительного использования канонических URL (к примеру, убирая лишние косые черты).
-  \item Иначе мы пытаемся выполнить диспетчеризацию, используя результат \lstinline'cleanPath' (\lstinline'Right' в ответе). Если получается, то возвращаем получившийся ответ. В противном случае возвращаем статус 404.
+  \item Мы передаём участки пути в функцию \lstinline!cleanPath!.
+  \item Если \lstinline!cleanPath! указывает на перенаправление (возвращая \lstinline!Left!), то пользователю возвращается ответ с кодом 301. Такое поведение применяется для принудительного использования канонических URL (к примеру, убирая лишние косые черты).
+  \item Иначе мы пытаемся выполнить диспетчеризацию, используя результат \lstinline!cleanPath! (\lstinline!Right! в результате вызова). Если получается, то возвращаем получившийся ответ. В противном случае возвращаем статус 404.
 \end{enumerate}
 
-Такая комбинация даёт подсайтам полный контроль над тем, как будут выглядеть их URL, в то же время позволяя основному сайту иметь изменённые URL. В качестве простого примера, давайте посмотрим, как мы можем указать Yesod, что нужно всегда добавлять косую черту в конце URL:
+Такая комбинация даёт подсайтам полный контроль над тем, как будут выглядеть их URL, в то же время позволяя основному сайту иметь изменённые URL. В качестве простого примера давайте посмотрим, как мы можем указать Yesod, что нужно всегда добавлять косую черту в конце URL:
 
 \begin{lstlisting}
 {-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
@@ -112,20 +114,22 @@ getFooR = getRootR
 main = warpDebug 3000 Slash
 \end{lstlisting}%$
 
-Во-первых, давайте посмотрим на нашу реализацию \lstinline'joinPath'. Она почти полностью скопирована из реализации по умолчанию из Yesod c одним изменением: мы добавляем дополнительную пустую строку в конец. При обработке участков пути пустая строка приведёт к добавлению дополнительной косой черты. Таким образом дополнительная пустая строка приведёт к обязательному наличию косой черты на конце.
+Во-первых, давайте посмотрим на нашу реализацию \lstinline!joinPath!. Она почти полностью скопирована из реализации по умолчанию в Yesod c одним изменением: мы добавляем дополнительную пустую строку в конец. При обработке участков пути пустая строка приведёт к добавлению дополнительной косой черты. Таким образом дополнительная пустая строка приведёт к обязательному наличию косой черты на конце.
 
-\lstinline'cleanPath' немного сложнее. Во-первых, мы проверяем на соотвествие пустому пути как ранее и, если встречаем его, то оставляем его как есть. Мы используем Right чтобы указать, что нет необходимости в перенаправлении. Следующий клоз в действительности проверяет 2 возможных случая с URL:
+\lstinline!cleanPath! немного сложнее. Во-первых, мы проверяем на соотвествие пустому пути как ранее и, если встречаем его, то оставляем его как есть. Мы используем Right чтобы указать, что нет необходимости в перенаправлении. Следующий клоз в действительности проверяет 2 возможных случая с URL:
 
-* В пути имеется две косых черты подряд, которые будут выглядет как пустая строка в середине списка участков пути.
-* В пути нет косой черты на конце, что даст нам в результате последний участок пути не равный пустой строке.
+\begin{itemize}
+  \item В пути имеется две косых черты подряд, которые будут выглядет как пустая строка в середине списка участков пути.
+  \item В пути нет косой черты на конце, что даст нам в результате последний участок пути не равный пустой строке.
+\end{itemize}
 
-Предполагая, что ни одно из этих условий не выполняется, получаем что только последний участок является пустой строкой и нам нужно выполнить диспетчеризацию по списку участков за исключением последнего. С другой стороы, если это не так, то нам нужно перенаправление на канонический URL. В данном случае, мы удалим все пустые участки и не будем утруждаться добавлением косой черты в конце, т.к. \lstinline'joinPath' сделает это для нас.
+Предполагая, что ни одно из этих условий не выполняется, получаем, что только последний участок является пустой строкой, и нам нужно выполнить диспетчеризацию по списку участков за исключением последнего. С другой стороы, если это не так, то нам необходимо перенаправление на канонический URL. В этом случае мы удалим все пустые участки и не будем утруждаться добавлением косой черты в конце, т.к. \lstinline!joinPath! сделает это за нас.
 
 \section {defaultLayout}
 
-Большинство вебсайтов используют некий общий шаблон для всех своих страниц. \lstinline'defaultLayout' является рекомендуемым способом для этого. В то время как вы могли бы с лёгкостью определить свою собственную функцию и вызывать её вместо этого метода, когда вы переопределяете \lstinline'defaultLayout' все страницы, генерируемые Yesod (страницы сообщений об ошибках, страницы аутентификации) автоматически получат заданный стиль.
+Большинство вебсайтов используют некий общий шаблон для всех своих страниц. \lstinline!defaultLayout! является рекомендуемым способом для этого. В то время, как вы могли бы с лёгкостью определить свою собственную функцию и вызывать её вместо этого метода, если вы переопределяете \lstinline!defaultLayout!, то все страницы, генерируемые Yesod (страницы сообщений об ошибках, страницы аутентификации) автоматически получат заданный стиль.
 
-Переопределение делается довольно просто: мы используем \lstinline{widgetToPageContent} для того чтобы получить из Widget заголовок, тэги заголовка и тела html, а затем используем \lstinline{hamletToRepHtml} для того чтобы преобразовать шаблон Hamlet к \lstinline{RepHtml}. Мы может использовать дополнительные компоненты виджетов, такие как шаблоны Lucius из \lstinline{defaultLayout}. Пример должен сделать это понятным:
+Переопределение делается довольно просто: мы используем \lstinline!widgetToPageContent! для того, чтобы получить из Widget заголовок, тэги заголовка и тела html, а затем используем \lstinline!hamletToRepHtml! для того, чтобы преобразовать шаблон Hamlet к \lstinline!RepHtml!. В \lstinline!defaultLayout! мы может использовать дополнительные компоненты виджетов, такие как шаблоны Lucius. Пример должен сделать это понятным:
 
 \begin{lstlisting}
     defaultLayout contents = do
@@ -160,10 +164,15 @@ main = warpDebug 4000 Layout
 
 \section {getMessage}
 
-Even though we haven't covered sessions yet, I'd like to mention getMessage here. A common pattern in web development is setting a message in one handler and displaying it in another. For example, if a user POSTs a form, you may want to redirect him/her to another page along with a "Form submission complete" message.
+Даже несмотря на то, что мы ещё не рассказывали о сессиях, нам бы хотелось упомянуть \lstinline!getMessage!. Обычным приёмом в веб-программировании является установка сообщения в одном обработчике и отображение его в другом. К примеру, если пользователь отправляет методом \lstinline!POST! форму, вы можете захотеть перенаправить его на другую страницу с сообщением ``Форма отправлена''.
 
-This is commonly known as Post/Redirect/Get.
-To facilitate this, Yesod comes built in with a pair of functions: setMessage sets a message in the user session, and getMessage retrieves the message (and clears it, so it doesn't appear a second time). It's recommended that you put the result of getMessage into your defaultLayout. For example:
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+Такой сценарий известен как \href{http://en.wikipedia.org/wiki/Post/Redirect/Get}{Post/Redirect/Get}\footnotemark[\value{footnote}].
+\end{minipage}}
+
+\footnotetext{\href{http://en.wikipedia.org/wiki/Post/Redirect/Get}{\texttt{http://en.wikipedia.org/wiki/Post/Redirect/Get}}}
+
+Чтобы облегчить его реализацию в Yesod  есть пара функций: \lstinline!setMessage!, устанавливающая сообщение в пользовательской сессии, и \lstinline!getMessage!, достающая это сообщение (и удаляющая его, чтобы оно не появилось второй раз). Рекомендуется, чтобы вы отобразили результат \lstinline!getMessage! в \lstinline!defaultLayout!. К примеру:
 
 \begin{lstlisting}
     defaultLayout contents = do
@@ -186,27 +195,28 @@ getMsgR = setMessage "foo" >> redirect RootR >> return ()
 main = warpDebug 4000 Layout
 \end{lstlisting}%$
 
-We'll cover getMessage/setMessage in more detail when we discuss sessions.
+Мы рассмотрим \lstinline!getMessage!/\lstinline!setMessage! более детально, когда мы будем обсуждать сессии.
+% FIXME ссылка на \ref{ch:sessions}
 
-\section {Custom error pages}
+\section {Нестандартные страницы сообщений об ошибках}
 
-One of the marks of a professional web site is a properly designed error page. Yesod gets you a long way there by automatically using your defaultLayout for displaying error pages. But sometimes, you'll want to go even further. For this, you'll want to override the errorHandler method:
+Одной из отличительных черт профессионального вебсайта являются должным образом спроектированные страницы сообщений об ошибках. Yesod помогает вам в этом используя автоматически \lstinline!defaultLayout! для отображения страниц ошибок. Но иногда вам потребуется пойти чуть дальше. Для этого вы захотите переопределить метод \lstinline!errorHandler!:
 
 \begin{lstlisting}
     errorHandler NotFound = fmap chooseRep $ defaultLayout $ do
-        setTitle "Request page not located"
+        setTitle "Запрашиваемая страница не найдена"
         toWidget [hamlet|
-<h1>Not Found
-<p>We apologize for the inconvenience, but the requested page could not be located.
+<h1>Страница не найдена
+<p>Извиняемся за неудобство, но запрашиваемая страница не может быть найдена.
 |]
     errorHandler other = defaultErrorHandler other
 getRootR = defaultLayout [whamlet|Hello World|]
 main = warpDebug 4000 Layout
 \end{lstlisting}
 
-Here we specify a custom 404 error page. We can also use the defaultErrorHandler when we don't want to write a custom handler for each error type. Due to type constraints, we need to start off our methods with fmap chooseRep, but otherwise you can write a typical handler function.
+Здесь мы указываем нестандартную страницу для ошибки 404. Также мы можем использовать \lstinline!defaultErrorHandler!, и тогда нам не нужно писать индивидуальный обработчик для каждой страницы сообщений об ошибке. Из-за ограничений типов нам приходится начинать определение методов с \lstinline!fmap chooseRep!, но, с другой стороны, вы можете написать обычную функцию-обработчик.
 
-In fact, you could even use special responses like redirects:
+Фактически вы даже можете возвращать специальные типы ответов, такие как, например, перенаправления:
 
 \begin{lstlisting}
     errorHandler NotFound = redirect RootR
@@ -215,45 +225,49 @@ getRootR = defaultLayout [whamlet|Hello World|]
 main = warpDebug 4000 Layout
 \end{lstlisting}
 
-Even though you can do this, I don't actually recommend such practices. A 404 should be a 404.
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+Но, несмотря на то, что вы можете сделать это, мы не рекомендуем пользоваться таким приёмом. Ошибка 404 должна быть ошибкой 404.
+\end{minipage}}
 
-External CSS and Javascript
+\section {Внешние CSS и Javascript}
 
-The functionality described here is automatically included in the scaffolded site, so you don't need to worry about implementing this yourself.
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+Функциональность, описываемая в этом разделе, автоматически включена в сгенерированном шаблоне сайта, таким образом вам самим не нужно беспокоиться о её реализации.
+\end{minipage}}
 
-One of the most powerful, and most intimidating, methods in the Yesod typeclass is addStaticContent. Remember that a Widget consists of multiple components, including CSS and Javascript. How exactly does that CSS/JS arrive in the user's browser? By default, they are served in the <head> of the page, inside <style> and <script> tags, respectively.
+Одним из наиболее мощных и наиболее пугащих пользователей методов класса типов Yesod является \lstinline!addStaticContent!. Запомните, что Widget состоит из нескольких компонентов, среди которых CSS и Javascript. Каким образом эти CSS/JS попадают в браузер пользователя? По умолчанию они выдаются в тэге \lstinline!<head>! страницы, в тэгах \lstinline!<style>! и \lstinline!<script>!, соотвественно.
 
-That might be simple, but it's far from efficient. Every page load will now require loading up the CSS/JS from scratch, even if nothing changed! What we really want is to store this content in an external file and then refer to it from the HTML.
+Такое решение является простым, но оно далеко от эффективного. Каждая загрузка страницы будет требовать загрузки всех CSS/JS ``с нуля'', даже в том случае, если ничего не изменилось! Что нам на самом деле требуется, дак это сохранение этого содержимого во внешнем файле и ссылка на него из HTML.
 
-This is where addStaticContent comes in. It takes three arguments: the filename extension of the content (css or js), the mime-type of the content (text/css or text/javascript) and the content itself. It will then return one of three possible results:
+И в этом нам поможет \lstinline!addStaticContent!. Этот метод принимает три аргумента: расширение файла для содержимого (\lstinline!css! or \lstinline!js!), MIME-тип содержимого (\lstinline!text/css! или \lstinline!text/javascript!) и само содежримое. А возвращает он один из трёх вариантов результата:
 
-Nothing
+\begin{description}
+  \item {Nothing}  \hfill \\
+    Никакого сохранения статических файлов не происходит; нужно встроить это содержимое непосредственно в HTML. Это поведение по умолчанию.
+  \item {Just (Left Text)} \hfill \\
+    Содержимое сохраняется в виде отдельного файла и используется заданная текстовая ссылка для указания на этот файл.
+  \item {Just (Right (Route a, Query))} \hfill \\
+    Аналогично, но используется типобезопасный URL с указанием параметров строки запроса.
+\end{description}
 
-No static file saving occurred; embed this content directly in the HTML. This is the default behavior.
+Вариант с \lstinline!Left! полезен, если вы хотите сохранять статические файлы на внешнем сервере, например на CDN или сервером с большим объёмом памяти. Более часто используется вариант \lstinline!Right!, который хорошо связывается со статическим подсайтом\marginpar{речь, судя по всему про yesod-static, возможно, нужно примечание}. Это рекомендованный подход для большинства приложений, и он обеспечивается сгенерированным шаблонным сайтом по умолчанию.
 
-Just (Left Text)
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+Возможно, вы спросите: если это рекомендованный подход, то почему он не является вариантом по умолчанию? Проблема заключается в том, что он делает несколько предположений, которые не всегда соблюдаются: ваше приложение включает в себя статический сайт и местоположение ваших статических файлов.
+\end{minipage}}
 
-This content was saved in an external file, and use the given textual link to refer to it.
+Сгенерированный \lstinline!addStaticContent! делает несколько действий в помощь вам:
+\begin{itemize}
+  \item Он автоматически минифицирует ваш Javascript используя пакет \href{http://hackage.haskell.org/package/hjsmin}{hjsmin}\footnote{\href{http://hackage.haskell.org/package/hjsmin}{\texttt{http://hackage.haskell.org/package/hjsmin}}}
+  \item Он именует файлы используя хэш содержимого файлов. Это значит, что вы можете выставлять заголовки кэширования на дату в будущем, не боясь получить устаревшее содержимое.
+  \item Также, т.к. имена файлов используют хэши, вам гарантируется, что файл не требуется перезаписывать поверх существующего. Сгенерированный шаблонный код автоматически проверяет существование такого файла и исключает затратные операции ввода-вывода н диск, если операция записи не является необходимой.
+\end{itemize}
 
-Just (Right (Route a, Query))
+\section {Более умные статические файлы}
 
-Same, but now use a type-safe URL along with some query string parameters.
+Google рекоммендует использовать одну важную оптимизацию: \href{http://code.google.com/speed/page-speed/docs/request.html\#ServeFromCookielessDomain}{отдавайте статические файлы с отдельного домена}\footnote{\href{http://code.google.com/speed/page-speed/docs/request.html\#ServeFromCookielessDomain}{\texttt{http://code.google.com/speed/page-speed/docs/request.html\#ServeFromCookielessDomain}}}. Преимущество такого подхода состоит в том, что cookie отсылаемые для вашего домена не будут отсылаться при запросе статических файлов, тем самым будет экономиться часть сетевой полосы пропускания.
 
-The Left result is useful if you want to store your static files on an external server, such as a CDN or memory-backed server. The Right result is more commonly used, and ties in very well with the static subsite. This is the recommended approach for most applications, and is provided by the scaffolded site by default.
-
-You might be wondering: if this is the recommended approach, why isn't it the default? The problem is that it makes a number of assumptions that don't universally hold: your application has a static subsite, and the location of your static files.
-
-The scaffolded addStaticContent does a number of intelligent things to help you out:
-
-* It automatically minifies your Javascript using the hjsmin package.
-* It names the output files based on a hash of the file contents. This means you can set your cache headers to far in the future without fears of stale content.
-* Also, since filenames are based on hashes, you can be guaranteed that a file doesn't need to be written if a file with the same name already exists. The scaffold code automatically checks for the existence of that file, and avoids the costly disk I/O of a write if it's not necessary.
-
-Smarter Static Files
-
-Google recommends an important optimization: serve static files from a separate domain. The advantage to this approach is that cookies set on your main domain are not sent when retrieving static files, thus saving on a bit of bandwidth.
-
-To facilitate this, we have the urlRenderOverride method. This method intercepts the normal URL rendering and sets a special value for some routes. For example, the scaffolding defines this method as:
+Чтобы осуществить это, у нас есть метод \lstinline!urlRenderOverride!. Этот метод внедряется в обыный рендеринг URL в строку\marginpar{FIXME rendering} и выставляет специальное значение для определённых маршрутов. К примеру, в сгенерированном шаблонном коде этот метод реализуется как:
 
 \begin{lstlisting}
     urlRenderOverride y (StaticR s) =
@@ -261,64 +275,70 @@ To facilitate this, we have the urlRenderOverride method. This method intercepts
     urlRenderOverride _ _ = Nothing
 \end{lstlisting}%$
 
-This means that static routes are served from a special static root, which you can configure to be a different domain. This is a great example of the power and flexibility of type-safe URLs: with a single line of code you're able to change the rendering of static routes throughout all of your handlers.
+Это означает, что статические маршруты обслуживаются со специального ``статического корня'', для которого вы можете указать при конфигурировании значение с другого домена. Такое поведение является прекрасным примером мощности и гибкости типобезопасных URL: при помощи одной строки кода вы можете изменить ренгдеринг статических маршрутов во всех ваших обработчиках.
 
-Authentication/Authorization
+\section {Аутентификация/авторизация}
 
-For simple applications, checking permissions inside each handler function can be a simple, convenient approach. However, it doesn't scale well. Eventually, you're going to want to have a more declarative approach. Many systems out there define ACLs, special config files, and a lot of other hocus-pocus. In Yesod, it's just plain old Haskell. There are three methods involved:
+Для простых приложений проверка доступа в каждой функции-обработчике может быть простым и удобным решением. Однако, такой подход не очень хорошо масштабируется. Со временем вы захотите использовать более декларативный метод. Многие системы определяют свои списки контроля доступа, специальные файлы конфигуациии и другие ``фокусы''. В Yesod это делается при помощи старого доброго Haskell. Для этого используются следующие три метода:
 
-isWriteRequest
+\begin{description}
+  \item {isWriteRequest} \hfill \\
+    Определяет, является ли текущий запрос операцией ``чтения'' или ``записи''. По умолчанию Yesod следует RESTful принципам и предполагает, что запросы GET, HEAD, OPTIONS, и TRACE предназначены только для чтения, тогда как остальные могут выполнять запись.
 
-Determine if the current request is a "read" or "write" operations. By default, Yesod follows RESTful principles, and assumes GET, HEAD, OPTIONS, and TRACE requests are read-only, while all others are can write.
+  \item {isAuthorized} \hfill \\
 
-isAuthorized
+    Этот метод принимает в качетве параметров маршрут (т.е. типобезопасный URL) и булево значение, указывающее на то, является ли запрос запросом записи. А возвращает он \lstinline!AuthResult!, который может быть одним из трёх значений:
 
-Takes a route (i.e., type-safe URL) and a boolean indicating whether or not the request is a write request. It returns an AuthResult, which can have one of three values:
+    \begin{itemize}
+      \item \lstinline!Authorized!
+      \item \lstinline!AuthenticationRequired!
+      \item \lstinline!Unauthorized!
+    \end{itemize}
 
-* Authorized
-* AuthenticationRequired
-* Unauthorized
+    По умолчанию он возвращает Authorized для всех запросов.
 
-By default, it returns Authorized for all requests.
+  \item {authRoute} \hfill \\
 
-authRoute
+    Если \lstinline!isAuthorized! возвращает \lstinline!AuthenticationRequired!, то делается перенаправление по указанному маршруту. Если не указан маршрут (поведение по умолчанию), будет отправлено сообщение 403 "Permission Denied".
 
-If isAuthorized returns AuthenticationRequired, then redirect to the given route. If no route is provided (the default), return a 403 "Permission Denied" message.
+\end{description}
 
-These methods tie in nicely with the yesod-auth package, which is used by the scaffolded site to provide a number of authentication options, such as OpenID, BrowserID, email, username and Twitter. We'll cover more concrete examples in the auth chapter.
+Эти методы прекрасно взаимодействют с пакетом \href{http://hackage.haskell.org/package/yesod-auth}{yesod-auth}\footnote{\href{http://hackage.haskell.org/package/yesod-auth}{\texttt{http://hackage.haskell.org/package/yesod-auth}}}, который используется сгенерированным шаблонным сайтом, предоставляя целый набор вариантов аутентификации, таких как OpenID, BrowserID, электронная почта, имя пользвователя и Twitter. Мы покажем более конкретные примеры в главе ~\ref{ch:auth}.
 
-Some Simple Settings
+\section {Простые настройки}
 
-Not everything in the Yesod typeclass is complicated. Some methods are simple functions. Let's just go through the list:
+Не всё в классе типов Yesod является сложным. Некоторые методы представляют собой простые функции. Давайте пройдёмся по их списку:
 
-encryptKey
+\subsection {encryptKey}
 
-Yesod uses client-side sessions, which are stored in encrypted, cryptographically-hashed cookies. Well, as long as you provide an encryption key. If this function returns Nothing, then sessions are disabled. This can be a useful optimization on sites that don't need session facilities, as it avoids an encrypt/decrypt pair on each request.
+Yesod использует сессии на клиенте, которые хранятся в зашифрованных, криптографически захэшированных cookie. Но этото происходит в том случае, если вы указываете ключ шифрования. Если эта функция возвращает \lstinline!Nothing!, то сессии отключаются. Это может быть полезной оптимизацией для сайтов, которым не требуются возможности, предоставляемые сессиями, т.к. это отключает пару операций шифровки/расшифровки для каждого запроса.
 
-The combination of encryption and hashing guarantees two properties: the session payload is tamper-proof, and is opaque. Encryption without hashing would allow a user to randomly change the cookie data and still have it accepted by the server, while hashing without encryption would allow inspection of the data.
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+Комбинация шифрования и хэширования даёт гарантию двух свойств: данные сессии защищены от несанкционированного доступа и непрозрачны. Шифрование без хэширования дадут пользователю возможность произвольно менять данные cookie, и они продолжат приниматься сервером, а хэширование без шифрования позволят просмотреть данные.
+\end{minipage}}
 
-clientSessionDuration
+\subsection {clientSessionDuration}
 
-How long a session should last for. By default, this is two hours.
+Задаёт время, которое будет длиться сессия. По умолчанию - 2 часа.
 
-sessionIpAddress
+\subsection {sessionIpAddress}
 
-By default, sessions are tied to an individual IP address. If your users are sitting behind a proxy server, this can cause trouble when their IP suddenly changes. This setting lets you disable this security feature.
+По умолчанию сессии привязаны к IP адресу. Если ваши пользователи находятся за прокси-сервером, то это может привести к проблемам, если их IP вдруг изменится. Данная настройка позволяет отключить эту меру безопасности.
 
-cookiePath
+\subsection {cookiePath}
 
-What paths within your current domain to set cookies for. The default is "/", and will almost always be correct. One exception might be when you're serving from a subpath within a domain (like our wiki example above).
+Задаёт на какой путь в текущем домене будут выставлены cookie. По умолчанию - ``/'', и это в большинстве случаев будет правильным вариантом. Исключением может быть сценарий, когда приложение работает на подпути в домене (как в примере с вики, приведённом ранее).
 
-maximumContentLength
+\subsection {maximumContentLength}
 
-To prevent Denial of Server (DoS) attacks, Yesod will limit the size of request bodies. Some of the time, you'll want to bump that limit for some routes (e.g., a file upload page). This is where you'd do that.
+Для того, чтобы предотвратить DoS-атаку\footnote{Denial of Service - отказ в обслуживании}, Yesod ограничивает максимальный размер тела запроса.  Иногда вам потребуется поднять этот максимум для некоторых маршрутов (к примеру для страниц загрузки файлов). Данный метод позволит вам сделать это.
 
-yepnopeJs
+\subsection {yepnopeJs}
 
-You can specify the location of the yepnope Javascript library. If this is given, then yepnope will be used to asynchronously load all of the Javascript on your page.
+Здесь мы можете указать местополжение Javascript-библиотеки \href{http://yepnopejs.com/}{yepnope}\footnote{\href{http://yepnopejs.com/}{\texttt{http://yepnopejs.com/}}}. Если это местоположение задано, то yepnope будет асинхронно загружать Javascript для ваших страниц.
 
-Summary
+\section {Выводы}
 
-The Yesod typeclass has a number of overrideable methods that allow you to configure your application. They are all optional, and provide sensible defaults. By using built-in Yesod constructs like defaultLayout and getMessage, you'll get a consistent look-and-feel throughout your site, including pages automatically generated by Yesod such as error pages and authentication.
+Класс типов Yesod включает в себя набор переопределяемых методов, которые позволяют сконфигурировать ваше приложение. Они не обязательны и имеют достаточные версии по умолчанию. Используя встроенные в Yesod конструкции, такие как \lstinline!defaultLayout! и \lstinline!getMessage!, вы получите единообразный внешний вид для всего вашего сайта, включая страницы, автоматически сгенерированные Yesod, такие как страницы сообщений об ошибках и страницы аутентификации.
 
-We haven't covered all the methods in the Yesod typeclass in this chapter. For a full listing of methods available, you should consult the Haddock documentation.
+Мы не рассмотрели полностью все методы класса типов Yesod в этой главе. Для просмотра всего списка доступных методов обратитесь к Haddock-документации.
