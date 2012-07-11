@@ -1,32 +1,32 @@
 monad-control
 
-monad-control is used in a few places within Yesod, most notably to ensure proper exception handling within Persistent. It is a general purpose package to extend standard functionality in monad transformers.
+Пакет monad-control используется в нескольких местах внутри Yesod, в первую очередь для обеспечения надлежащей обработки исключений в Persistent. Это универсальный пакет, расширяющий стандартную функциональность трансформаторов монад.
 
-Overview
+Обзор
 
-One of the powerful, and sometimes confusing, features in Haskell is monad transformers. They allow you to take different pieces of functionality- such as mutable state, error handling, or logging- and compose them together easily. Though I swore I'd never write a monad tutorial, I'm going to employ a painful analogy here: monads are like onions. (Monads are not like cakes.) By that, I mean layers.
+Одними из мощных, а иногда и запутанных, возможностях Haskell являются  трансформаторы монад. Они позволяют брать различные функциональности, такие как изменяемые состояния, обработка ошибок, или логинг, и легко объединять их вместе. Хотя я поклялся, что никогда не буду писать учебник по монадам, я воспользюсь слезоточивоой аналогией: монады они как луковицы. (Монады не как пироженные.) Я имею ввиду слои.
 
-We have the core monad- also known as the innermost or bottom monad. On top of this core, we add layers, each adding a new feature and spreading outward/upward. As a motivating example, let's consider an Error monad stacked on top of the IO monad:
+У нас есть центральная монада, также известная как внутренняя или основная монады. И вокруг этого центра, мы добавляем слои, каждый из которых добавляет новые возможности, действие которых распространяется наружу/вверх. В качестве мотивирующего примера, давайте рассмотрим монаду Error обёрнутую влкруг монады IO:
 
 \begin{lstlisting}
 newtype ErrorT e m a = ErrorT { runErrorT :: m (Either e a) }
 type MyStack = ErrorT MyError IO
 \end{lstlisting}
 
-Now pay close attention here: ErrorT is just a simple newtype around an Either wrapped in a monad. Getting rid of the newtype, we have:
+Обратите пристальное внимание: ErrorT это простой newtype вокруг Either завернутого в монаду. Если развернкть, избавляясь от newtype, получиться:
 
 \begin{lstlisting}
 type ErrorTUnwrapped e m a = m (Either e a)
 \end{lstlisting}
 
-At some point, we'll need to actually perform some IO inside our MyStack. If we went with the unwrapped approach, it would be trivial, since there would be no ErrorT constructor in the way. However, we need that newtype wrapper for a whole bunch of type reasons I won't go into here (this isn't a monad transformer tutorial after all). So the solution is the MonadTrans typeclass:
+В какой-то момент нам будет нужно выполнить некоторые IO внутри нашего MyStack. Если бы мы использовали развернутый подход, это было бы тривиально, так как у нас на пути не стоял бы конструктор ErrorT. Тем не менее, нам нужна newtype обёртка по целому ряду причин, но я не буду вдаваться в подробности почему (в конце концов это ведь не учебник по трансформаторам монад). Таким образом, решением является класс типов MonadTrans:
 
 \begin{lstlisting}
 class MonadTrans t where
     lift :: Monad m => m a -> t m a
 \end{lstlisting}
 
-I'll admit, the first time I saw that type signature, my response was stunned confusion, and incredulity that it actually meant anything. But looking at an instance helps a bit:
+Должен признать, что когда я увидел эту сигнатуру типа в первый раз, моей реакцией было замешательство и недоверие, что она хоть что-то значит. Но изучение екземпляра немного помогло:
 
 \begin{lstlisting}
 instance (Error e) => MonadTrans (ErrorT e) where
@@ -35,9 +35,9 @@ instance (Error e) => MonadTrans (ErrorT e) where
         return (Right a)
 \end{lstlisting}
 
-All we're doing is wrapping the inside of the IO with a Right value, and then applying our newtype wrapper. This allows us to take an action that lives in IO, and "lift" it to the outer/upper monad.
+Всё, что мы здесь делаем это оборачиваем содержимое IO в значение Right, а затем применяем нашу newtype обёртку. Это позволяет нам взять действие которое живёт в IO, и протянуть его во внешнюю монаду.
 
-But now to the point at hand. This works very well for simple functions. For example:
+А сейчас к делу. Для простых функций это работает очень хорошо. Например:
 
 \begin{lstlisting}
 sayHi :: IO ()
@@ -47,7 +47,7 @@ sayHiError :: ErrorT MyError IO ()
 sayHiError = lift $ putStrLn "Hello"
 \end{lstlisting}
 
-But let's take something slightly more complicated, like a callback:
+Но давайте возьмём что-то посложнее, к примеру callback:
 
 \begin{lstlisting}
 withMyFile :: (Handle -> IO a) -> IO a
@@ -60,7 +60,7 @@ useMyFile :: IO ()
 useMyFile = withMyFile sayHi
 \end{lstlisting}
 
-So far so good, right? Now let's say that we need a version of sayHi that has access to the Error monad:
+Пока все хорошо. Теперь предположим, что нам нужна версия sayHi которая имеет доступ к монаде Error:
 
 \begin{lstlisting}
 sayHiError :: Handle -> ErrorT MyError IO ()
@@ -69,7 +69,7 @@ sayHiError handle = do
     throwError MyError
 \end{lstlisting}
 
-We would like to write a function that combines withMyFile and sayHiError. Unfortunately, GHC doesn't like this very much:
+Мы бы хотели написать функцию которая объединяет withMyFile и sayHiError. К сожалению, GHC не очень это любит:
 
 \begin{lstlisting}
 useMyFileErrorBad :: ErrorT MyError IO ()
@@ -79,7 +79,7 @@ useMyFileErrorBad = withMyFile sayHiError
                 with actual type `IO ()'
 \end{lstlisting}
 
-Why does this happen, and how can we work around it?
+Почему это происходит и как мы можем это обойти?
 
 Intuition
 
