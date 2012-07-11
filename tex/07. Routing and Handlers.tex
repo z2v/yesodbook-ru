@@ -1,4 +1,4 @@
-\chapter{Маршрутизация URL и обработчики}
+\chapter{Маршрутизация URL и обработчики}\label{ch:routing}
 Если мы посмотрим на Yesod как на веб-фреймворк, реализующий схему
 Модель-Вид-Контроллер, маршрутизация URL и обработчики запросов
 формируют часть <<Контроллер>>. Для сравнения, опишем два других
@@ -73,8 +73,8 @@ toPieces "/foo/bar/baz/" = ["foo", "bar", "baz", ""]
 
 Если, кстати, вы захотите более тонкой настройки того, как маршруты
 разбиваются на участки и собираются обратно, вам следует посмотреть
-методы \lstinline!cleanPath! и \lstinline!joinPath! в главе о классе
-типов \lstinline!Yesod!.\marginpar{Вставить ссылку на главу}
+методы \lstinline!cleanPath! и \lstinline!joinPath! в главе~\ref{ch:yesod-typeclass}
+о классе типов \lstinline!Yesod!.
 
 \subsubsection{Типы участков}
 Когда вы объявляет ваши маршруты, у вас в распоряжении имеются три
@@ -148,13 +148,16 @@ main = warpDebug 3000 Fibs
 позволяя нам в очередной раз использовать систему типов для борьбы с
 краевыми случаями.
 
+\fbox{\begin{minipage}[!h]{.9\linewidth}
 В реальном приложении, мы бы ещё захотели удостовериться, что никогда
 случайно не создадим некорректное значение \lstinline!Natural! внутри
 нашего приложения. Для этого, мы могли бы использовать подход
-наподобие умных конструкторов (smart constructors)
-\marginpar{вставить ссылку на
-  http://www.haskell.org/haskellwiki/Smart\_constructors}.
+наподобие умных конструкторов
+(\href{http://www.haskell.org/haskellwiki/Smart\_constructors}
+{\texttt{smart constructors}}
+\footnote{http://www.haskell.org/haskellwiki/Smart\_constructors}).
 Для целей примера, мы оставили код простым.
+\end{minipage}}
 
 Определение \lstinline!PathMultiPiece! столь же простое. Допустим,
 что мы хотим сделать вики с иерархией не меньше, чем два уровня;
@@ -182,11 +185,16 @@ main = return ()
 типа данных. Это даёт нам соотношение 1-к-1 между нашим типом для
 типобезопасных URL и корректными URL для нашего приложения.
 
+%FIXME: если раскомментировать fbox, пропадёт текст аж до следующего раздела
+%\fbox{
+\begin{minipage}[!h]{.9\linewidth}
 Это не означает непременно, что каждое значение типа представляет
 рабочую страницу, это означает, что значение типа является потенциально
 корректным URL. Например, значение \lstinline!PersonR "Michael"! может
 не разрешиться в корректную страницу, если в базе данных нет записи для
 \lstinline!"Michael"!.
+\end{minipage}
+%}
 
 Давайте теперь обратимся к реальным примерам. Если бы у вас были такие
 шаблоны ресурсов: \lstinline!/person/#Text! с именем
@@ -208,47 +216,53 @@ Yesod преобразует его в значение \lstinline!YearR 2009!.
 к получению 404 ошибок даже без обращения к вашему коду.
 
 \section{Спецификация обработчика}
+Последний кусочек головоломки объявления ваших ресурсов~--- описание
+того, как они будут обработаны. В Yesod есть три варианта:
+\begin{itemize}
+\item у заданного маршрута единственный обработчик для всех методов запроса;
+\item у заданного маршрута для каждого метода отдельный
+  обработчик. Для неуказанных методов будет генерироваться ответ с
+  кодом 405 <<Метод не поддерживается>> (405 Method Not
+  Allowed);\marginpar{в оригинале - 405 Bad Method}
+\item вы хотите перейти на подсайт.
+\end{itemize}
 
-The last piece of the puzzle when declaring your resources is how they
-will be handled. There are three options in Yesod:
+В первых двух случаях спецификация обработчика очень проста. Для
+единственного обработчика это будет просто строка с шаблоном ресурса и
+наименованием ресурса, например \lstinline!/page/faq FaqR!. В этом
+случае, имя функции обработчика должно быть \lstinline!handleFaqR!.
 
-* A single handler function for all request methods on a given route.
-* A separate handler function for each request method on a given route. Any other request method will generate a 405 Bad Method response.
-* You want to pass off to a subsite.
+Для отдельных обработчиков для каждого метода спецификация аналогична,
+только добавляется список доступных методов запросов. Методы запросов
+должны быть записаны прописными буквами. Например,
+\lstinline!/person/#String PersonR GET POST DELETE!.
+В данном случае, вам потребуется определить три функции-обработчика:
+\lstinline!getPersonR!, \lstinline!postPersonR! и \lstinline!deletePersonR!.
 
-The first two can be easily specified. A single handler function will
-be a line with just a resource pattern and the resource name, such as
-/page/faq FaqR. In this case, the handler function must be named
-handleFaqR.
-
-A separate handler for each request method will be the same, plus a
-list of request methods. The request methods must be all capital
-letters. For example, /person/\#String PersonR GET POST DELETE. In this
-case, you would need to define three handler functions: getPersonR,
-postPersonR and deletePersonR.
-
-Subsites are a very useful— but complicated— topic in Yesod. We will
-cover writing subsites later, but using them is not too difficult. The
-most commonly used subsite is the static subsite, which serves static
-files for your application. In order to serve static files from
-/static, you would need a resource line like:
-
+Подсайты~--- очень полезная, но сложная, тема в Yesod. Мы рассмотрим
+создание подсайтов позже, но использовать их не очень сложно. Самый
+часто используемый подсайт~--- это статический подсайт, который
+обслуживает статические файлы для вашего приложения. Для того, что
+отдавать статические файлы из \lstinline!/static!, вам нужно описать
+ресурс вида:
 \begin{verbatim}
 /static StaticR Static getStatic
 \end{verbatim}
 
-In this line, /static just says where in your URL structure to serve
-the static files from. There is nothing magical about the word static,
-you could easily replace it with /my/non-dynamic/files.
+В этой строке, \lstinline!/static! просто говорит о том, откуда в вашей
+структуре URL отдавать статические файлы. Нет никакой магии в слове
+static (статический), вы легко можете заменить его на
+\lstinline!/my/non-dynamic/files!.
 
-The next word, StaticR, gives the resource name. The next two words
-are what specify that we are using a subsite. Static is the name of
-the subsite foundation datatype, and getStatic is a function that gets
-a Static value from a value of your master foundation datatype.
+Следующее слово, \lstinline!StaticR!, задаёт наименование
+ресурса. Следующие два слова указывают на то, что мы используем
+подсайт. \lstinline!Static!~--- это имя типа-основания подсайта, а
+\lstinline!getStatic!~--- функция, которая получает значение типа
+\lstinline!Static! из значения типа-основания вашего основного сайта.
 
-Let's not get too caught up in the details of subsites now. We will
-look more closely at the static subsite in the scaffolded site
-chapter.
+Давайте здесь не будем вдаваться в детали о подсайтах. Мы рассмотрим
+подробнее статический подсайт в главе о каркасе
+сайта.\marginpar{вставить ссылку на главу}
 
 %FIXME: уточнить перевод для dispatch
 \section{Отправка}
@@ -421,9 +435,11 @@ Sends a redirect response to the user (a 303 response). If you want to
 use a different response code (e.g., a permanent 301 redirect), you
 can use redirectWith.
 
+\fbox{\begin{minipage}[!h]{.9\linewidth}
 Yesod uses a 303 response for HTTP/1.1 clients, and a 302 response for
 HTTP/1.0 clients. You can read up on this sordid saga in the HTTP
 spec.
+\end{minipage}}
 
 notFound
 
