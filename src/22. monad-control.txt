@@ -11,14 +11,14 @@ We have the core monad- also known as the innermost or bottom monad. On top of t
 newtype ErrorT e m a = ErrorT { runErrorT :: m (Either e a) }
 type MyStack = ErrorT MyError IO
 
-Now  pay close attention here: ErrorT is just a simple newtype around an Either wrapped in a monad. Getting rid of the newtype, we have:
+Now pay close attention here: ErrorT is just a simple newtype around an Either wrapped in a monad. Getting rid of the newtype, we have:
 
 type ErrorTUnwrapped e m a = m (Either e a)
 
 At some point, we'll need to actually perform some IO inside our MyStack. If we went with the unwrapped approach, it would be trivial, since there would be no ErrorT constructor in the way. However, we need that newtype wrapper for a whole bunch of type reasons I won't go into here (this isn't a monad transformer tutorial after all). So the solution is the MonadTrans typeclass:
 
 class MonadTrans t where
-  lift :: Monad m => m a -> t m a
+    lift :: Monad m => m a -> t m a
 
 I'll admit, the first time I saw that type signature, my response was stunned confusion, and incredulity that it actually meant anything. But looking at an instance helps a bit:
 
@@ -26,7 +26,7 @@ instance (Error e) => MonadTrans (ErrorT e) where
     lift m = ErrorT $ do
         a <- m
         return (Right a)
-        
+
 All we're doing is wrapping the inside of the IO with a Right value, and then applying our newtype wrapper. This allows us to take an action that lives in IO, and "lift" it to the outer/upper monad.
 
 But now to the point at hand. This works very well for simple functions. For example:
@@ -60,10 +60,10 @@ We would like to write a function that combines withMyFile and sayHiError. Unfor
 useMyFileErrorBad :: ErrorT MyError IO ()
 useMyFileErrorBad = withMyFile sayHiError
 
-Couldn't match expected type `ErrorT MyError IO ()'
-    with actual type `IO ()'
+    Couldn't match expected type `ErrorT MyError IO ()'
+                with actual type `IO ()'
 
-Why  does this happen, and how can we work around it?
+Why does this happen, and how can we work around it?
 
 Intuition
 
@@ -75,8 +75,7 @@ Let's take another example: the Reader monad. A Reader has access to some extra 
 
 But now let's try and go in the opposite direction: I have something in a Reader, and I'd like to run it in the base monad (e.g., IO). Well... that's not going to work, is it? I need that extra piece of information, I'm relying on it, and it's not there. There's simply no way to go in the opposite direction without providing that extra value.
 
-Or is there? If you remember, we'd pointed out earlier that ErrorT is just a simple wrapper around the inner monad. In other words, if I have errorValue :: ErrorT MyError IO MyValue, I can apply runErrorT and get a value of type IO (Either MyError MyValue).
-The looks quite a bit like bi-directional translation, doesn't it?
+Or is there? If you remember, we'd pointed out earlier that ErrorT is just a simple wrapper around the inner monad. In other words, if I have errorValue :: ErrorT MyError IO MyValue, I can apply runErrorT and get a value of type IO (Either MyError MyValue). The looks quite a bit like bi-directional translation, doesn't it?
 
 Well, not quite. We originally had an ErrorT MyError IO monad, with a value of type MyValue. Now we have a monad of type IO with a value of type Either MyError MyValue. So this process has in fact changed the value, while the lifting process leaves it the same.
 
@@ -158,7 +157,7 @@ First we apply run to that value. Like we'd discussed before, the result is that
 
 The last step took me a long time to understand correctly. Remember how we said that we reconstruct the original transformer? Well, so we do: by plopping it right on top of everything else we have. So our end result is the previous type- IO (ErrorT MyError m ())- with a ErrorT MyError stuck on the front.
 
-Well, that seems just about utterly worthless, right? Well, almost. But don't forget, that "m"can be any monad, including IO. If we treat it that way, we get ErrorT MyError IO (ErrorT MyError IO ()). That looks a lot like m (m a), and we want just plain old m a. Fortunately, now we're in luck:
+Well, that seems just about utterly worthless, right? Well, almost. But don't forget, that "m" can be any monad, including IO. If we treat it that way, we get ErrorT MyError IO (ErrorT MyError IO ()). That looks a lot like m (m a), and we want just plain old m a. Fortunately, now we're in luck:
 
 useMyFileError4 :: ErrorT MyError IO ()
 useMyFileError4 = join useMyFileError3
@@ -223,7 +222,7 @@ Real Life Examples
 
 Let's solve some real-life problems with this code. Probably the biggest motivating use case is exception handling in a transformer stack. For example, let's say that we want to automatically run some cleanup code when an exception is thrown. If this were normal IO code, we'd use:
 
-onException :: IO a -> IO b -> IO a
+onException :: IO a -> IO b -> IO a
 
 But if we're in the ErrorT monad, we can't pass in either the action or the cleanup. In comes controlIO to the rescue:
 
@@ -233,9 +232,10 @@ onExceptionError :: ErrorT MyError IO a
 onExceptionError action after = controlIO $ \run ->
     run action `onException` run after
 
-Let's say we need to allocate some memory to store a Double in. In the IO monad, we could just use the alloca function. Once again, our solution is
+Let's say we need to allocate some memory to store a Double in. In the IO monad, we could just use the alloca function. Once again, our solution is simple:
 
-simple:allocaError :: (Ptr Double -> ErrorT MyError IO b) -> ErrorT MyError IO b
+allocaError :: (Ptr Double -> ErrorT MyError IO b)
+            -> ErrorT MyError IO b
 allocaError f = controlIO $ \run -> alloca $ run . f
 
 Lost State
@@ -244,7 +244,7 @@ Let's rewind a bit to our onExceptionError. It uses onException under the surfac
 
 And the answer is that, yes, this does happen with monad-control. Certain functions will drop some of the monadic side effects. This is put best by Bas, in the comments on the relevant functions:
 
-Note, any monadic side effects in m of the "release" computation will be discarded; it is run only for its side effects in IO.
+Note, any monadic side effects in m of the "release" computation will be discarded; it is run only for its side effects in IO.
 
 In practice, monad-control will usually be doing the right thing for you, but you need to be aware that some side effects may disappear.
 
@@ -252,7 +252,7 @@ More Complicated Cases
 
 In order to make our tricks work so far, we've needed to have functions that give us full access to play around with their values. Sometimes, this isn't the case. Take, for instance:
 
-addMVarFinalizer :: MVar a -> IO () -> IO ()
+addMVarFinalizer :: MVar a -> IO () -> IO ()
 
 In this case, we are required to have no value inside our finalizer function. Intuitively, the first thing we should notice is that there will be no way to capture our monadic side effects. So how do we get something like this to compile? Well, we need to explicitly tell it to drop all of its state-holding information:
 
@@ -262,17 +262,16 @@ addMVarFinalizerError mvar f = controlIO $ \run ->
 
 Another case from the same module is:
 
-modifyMVar :: MVar a -> (a -> IO (a, b)) -> IO b
+modifyMVar :: MVar a -> (a -> IO (a, b)) -> IO b
 
 Here, we have a restriction on the return type in the second argument: it must be a tuple of the value passed to that function and the final return value. Unfortunately, I can't see a way of writing a little wrapper around modifyMVar to make it work for ErrorT. Instead, in this case, I copied the definition of modifyMVar and modified it:
 
 modifyMVar :: MVar a
-   -> (a -> ErrorT MyError IO (a, b))
-   -> ErrorT MyError IO b
+           -> (a -> ErrorT MyError IO (a, b))
+           -> ErrorT MyError IO b
 modifyMVar m io =
   Control.Exception.Control.mask $ \restore -> do
     a      <- liftIO $ takeMVar m
     (a',b) <- restore (io a) `onExceptionError` liftIO (putMVar m a)
     liftIO $ putMVar m a'
     return b
- 
