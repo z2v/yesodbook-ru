@@ -1,0 +1,93 @@
+\chapter {Вебсервис JSON}\label{chap:json_web_service}
+
+% FIXME \hyperref[chap:http_conduit]{http-conduit}
+Давайте создадим простой вебсервис: он будет принимать запрос в формате JSON и отдавать ответ в формате JSON. Мы напишем сервер на WAI/Warp, а клиента с помощью {http-conduit}. Мы будем использовать \footnotehref{http://hackage.haskell.org/package/aeson}{aeson} для разбора JSON и его отображения. Мы также могли бы написать сервер и на  Yesod, но для такого простого примера дополнительные возможности Yesod не особенно помогают.
+
+\section {Сервер}
+
+WAI использует пакет \footnotehref{http://hackage.haskell.org/package/conduit}{conduit} для того, чтобы обрабатывать тела запросов в потоке, и эффективно формирует ответы при помощи \footnotehref{http://hackage.haskell.org/package/blaze-builder}{blaze-builder}. \footnotehref{http://hackage.haskell.org/package/aeson}{aeson} использует \footnotehref{http://hackage.haskell.org/package/attoparser}{attoparsec} для разбора текста; используя \footnotehref{http://hackage.haskell.org/package/attoparsec-conduit}{attoparsec-conduit} мы получаем простое взаимодействие с WAI. В итоге код выглядит следующим образом:
+
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import Network.Wai (Response, responseLBS, Application, requestBody)
+import Network.HTTP.Types (status200, status400)
+import Network.Wai.Handler.Warp (run)
+import Data.Aeson.Parser (json)
+import Data.Conduit.Attoparsec (sinkParser)
+import Control.Monad.IO.Class (liftIO)
+import Data.Aeson (Value, encode, object, (.=))
+import Control.Exception (SomeException)
+import Data.ByteString (ByteString)
+import Data.Conduit (ResourceT, ($$))
+import Control.Exception.Lifted (handle)
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app req = handle invalidJson $ do
+    value <- requestBody req $$ sinkParser json
+    newValue <- liftIO $ modValue value
+    return $ responseLBS
+        status200
+        [("Content-Type", "application/json")]
+        $ encode newValue
+
+invalidJson :: SomeException -> ResourceT IO Response
+invalidJson ex = return $ responseLBS
+    status400
+    [("Content-Type", "application/json")]
+    $ encode $ object
+        [ ("message" .= show ex)
+        ]
+
+-- Бизнес-логика будет находиться в этой функции
+modValue :: Value -> IO Value
+modValue = return
+\end{lstlisting}%$
+
+\section {Клиент}
+
+\footnotehref{http://hackage.haskell.org/package/http-conduit}{http-conduit} был написан как спутник WAI. Он также использует \lstinline!conduit! и \lstinline!blaze-builder! повсеместно, что означает, что мы также получаем простое взаимодействие с \lstinline!aeson!. Несколько комментариев для тех, кто ещё не знаком с \lstinline!http-conduit!:
+
+\begin{itemize}
+  \item \lstinline!Manager! управляет открытыми соединениями таким образом, что повторные запросы к тому же серверу используют то же самое соединение. Чаще всего вам потребуется использовать функцию \lstinline!withManager! для создания и очистки \lstinline!Manager!, потому как она безопасна по отношению к исключениям.
+  \item Нам необходимо знать размер тела запроса, который мы не можем определить напрямую из \lstinline!Builder!. Вместо этого мы преобразуем \lstinline!Builder! к ленивому \lstinline!ByteString! и получаем размер оттуда.
+  \item Есть несколько различных функций для инициализаци запроса. Мы используем \lstinline!http!, которая позваляет нам получать прямой доступ к потоку данных. Есть и другие, более высокоуровневые функции (такие как \lstinline!httpLbs!), которые позволяют игнорировать вопросы с источниками и дают возможность оплучить напрямую тело целиком.
+\end{itemize}
+
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import Network.HTTP.Conduit
+    ( http, parseUrl, withManager, RequestBody (RequestBodyLBS)
+    , requestBody, method, Response (..)
+    )
+import Data.Aeson (Value (Object, String))
+import Data.Aeson.Parser (json)
+import Data.Conduit (($$))
+import Data.Conduit.Attoparsec (sinkParser)
+import Control.Monad.IO.Class (liftIO)
+import Data.Aeson (encode, (.=), object)
+
+main :: IO ()
+main = withManager $ \manager -> do
+    value <- liftIO makeValue
+    -- Нам надо знать размер тела запроса, поэтому преобразуем его к
+    -- ByteString
+    let valueBS = encode value
+    req' <- liftIO $ parseUrl "http://localhost:3000/"
+    let req = req' { method = "POST", requestBody = RequestBodyLBS valueBS }
+    Response status version headers body <- http req manager
+    resValue <- body $$ sinkParser json
+    liftIO $ handleResponse resValue
+
+-- Фунция бизнес-логики приложения, создающая значение для запроса
+makeValue :: IO Value
+makeValue = return $ object
+    [ ("foo" .= ("bar" :: String))
+    ]
+
+-- Функция бизнес-логики приложения, обрабатывающая ответ от сервера
+handleResponse :: Value -> IO ()
+handleResponse = print
+\end{lstlisting}
