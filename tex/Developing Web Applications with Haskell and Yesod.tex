@@ -34,6 +34,7 @@
 
 \usepackage{color}
 
+
 % for JSON
 \lstdefinelanguage{JavaScript}{
   keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
@@ -84,6 +85,8 @@
 % use long spaces to remove overfull a la Word
 \sloppy
 
+% helper for making hyperrefs with footnote
+\newcommand{\foothref}[2]{\href{#1}{#2}\footnote{\href{#2}{\texttt{#2}}}}
 \begin{document}
 
 \input "S1. Basics.tex"
