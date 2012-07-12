@@ -81,21 +81,21 @@ useMyFileErrorBad = withMyFile sayHiError
 
 Почему это происходит и как мы можем это обойти?
 
-Intuition
+Интуиция
 
-Let's try and develop an external intuition of what's happening here. The ErrorT monad transformer adds extra functionality to the IO monad. We've defined a way to "tack on" that extra functionality to normal IO actions: we add that Right constructor and wrap it all in ErrorT. Wrapping in Right is our way of saying "it went OK," there wasn't anything wrong with this action.
+Давайте попробуем интуитивно понять, что здесь происходит. Трансформатор монады ErrorT добавляет дополнительную функциональность к монаде IO. Мы добавляем эту новую функциональность к обычним действиям IO таким образом: используем конструктор Right и оборачиваем всё в ErrorT. Используя Right мы обозначаем, что всё прошло успешно, и не было никаких ошибок.
 
-Now this intuitively makes sense: since the IO monad doesn't have the concept of returning a MyError when something goes wrong, it will always succeed in the lifting phase. (Note: This has nothing to do with runtime exceptions, don't even think about them.) What we have is a guaranteed one-directional translation up the monad stack.
+Это интуитивно имеет смысл: поскольку монада IO не имеет концепции возврата MyError, когда что-то идет не так, она всегда будет успешна в фазе протягивания. (Примечание: Это не имеет ничего общего с исключениями времени исполнения, даже не думайте о них). То что у нас есть, это гарантированное однонаправленное преобразование вверх по стеку монад.
 
-Let's take another example: the Reader monad. A Reader has access to some extra piece of data floating around. Whatever is running in the inner monad doesn't know about that extra piece of information. So how would you do a lift? You just ignore that extra information. The Writer monad? Don't write anything. State? Don't change anything. I'm seeing a pattern here.
+Давайте возьмём другой пример: монаду Reader. Reader имеет доступ к некоторой информации находящейся вокруг. Всё что исполняется во внутренней монаде ничего не знает об этой дополнительной информации. Так как вы будете протягивать? Всего навсего игнорируйте эту информацию. А монада Writer? Ничего не пишите. Монада State? Ничего не меняйте. Я вижу здесь  закономерность. 
 
-But now let's try and go in the opposite direction: I have something in a Reader, and I'd like to run it in the base monad (e.g., IO). Well... that's not going to work, is it? I need that extra piece of information, I'm relying on it, and it's not there. There's simply no way to go in the opposite direction without providing that extra value.
+А теперь давайте попробуем пойти в обратном направлении: допустим у меня что-то в монаде Reader, и я хотел бы исполнять это в основной монаде (например IO). Ну... это не будет работать, не так ли? Мне нужна эта дополнительная информация, я завишу от неё, а она не доступна. В общем нет способа пройти в обратном направлении не предоставляя этого дополнительного значения.
 
-Or is there? If you remember, we'd pointed out earlier that ErrorT is just a simple wrapper around the inner monad. In other words, if I have errorValue :: ErrorT MyError IO MyValue, I can apply runErrorT and get a value of type IO (Either MyError MyValue). The looks quite a bit like bi-directional translation, doesn't it?
+Или есть? Если вы помните, ранее мы специально обратили внимание на то что ErrorT всего лишь обёртка вокруг внутренней монады. Другими словами, если у меня есть errorValue :: ErrorT MyError IO MyValue, я могу применить runErrorT и получить значение типа IO (Either MyError MyValue). Это вполне выглядит как двунаправленное преобразование, не так ли?
 
-Well, not quite. We originally had an ErrorT MyError IO monad, with a value of type MyValue. Now we have a monad of type IO with a value of type Either MyError MyValue. So this process has in fact changed the value, while the lifting process leaves it the same.
+Честно, не вполне. Изначально у нас была монада ErrorT MyError IO, с типом значения MyValue. А сейчас у нас монада IO с типом значения Either MyError MyValue. Таким образом, этот процесс на самом деле изменил значение, в то время как протягивание оставляет его тем же.
 
-But still, with a little fancy footwork we can unwrap the ErrorT, do some processing, and then wrap it back up again.
+Но тем не менее, со небольшим чудным манёвром мы можем развернуть ErrorT, обработать данные,  обернуть его снова.
 
 \begin{lstlisting}
 useMyFileError1 :: ErrorT MyError IO ()
@@ -109,9 +109,9 @@ useMyFileError1 =
      in rewrapped
 \end{lstlisting}
 
-This is the crucial point of this whole article, so look closely. We first unwrap our monad. This means that, to the outside world, it's now just a plain old IO value. Internally, we've stored all the information from our ErrorT transformer. Now that we have a plain old IO, we can easily pass it off to withMyFile. withMyFile takes in the internal state and passes it back out unchanged. Finally, we wrap everything back up into our original ErrorT.
+Это ключевой момент всей этой статьи, так что смотрите внимательно. Сначала мы разворачиваем нашу монаду. Это означает, что для внешнего мира, это теперь старое доброе значение IO. Внутри мы храним всю информацию про наш трансформатор ErrorT. Теперь когда у нас есть просто IO, мы можем легко передать его withMyFile. withMyFile принимает внутреннее состояние и возвращает его обратно без изменений. В заключение, мы оборачиваем всё обратно в наш оригинальный ErrorT.
 
-This is the entire pattern of monad-control: we embed the extra features of our monad transformer inside the value. Once in the value, the type system ignores it and focuses on the inner monad. When we're done playing around with that inner monad, we can pull our state back out and reconstruct our original monad stack.
+Вот весь принцип monad-control: мы вкладываем дополнительные возможности нашего трансформатора монады в значение. Попав в значение, система типов игнорирует его и сосредотачивается на внутренней монаде. Как только мы закончили работать с внутренней монадой, мы можем вытащить наше состояние обратно и восстановить наш исходный стек монад.
 
 Types
 
