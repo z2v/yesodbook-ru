@@ -151,9 +151,7 @@ main = warpDebug 3000 Fibs
 случайно не создадим некорректное значение \lstinline!Natural! внутри
 нашего приложения. Для этого, мы могли бы использовать подход
 наподобие умных конструкторов
-(\href{http://www.haskell.org/haskellwiki/Smart\_constructors}
-{\texttt{smart constructors}}
-\footnote{http://www.haskell.org/haskellwiki/Smart\_constructors}).
+(\footnotehref{http://www.haskell.org/haskellwiki/Smart\_constructors}{smart constructors}.
 Для целей примера, мы оставили код простым.
 \end{minipage}}
 
@@ -362,10 +360,8 @@ main = warpDebug 3000 Args
   ресурсы.
 \item Под <<псевдо>>, я имею в виду, что вы не можете использовать
   стандартную функцию \lstinline!lift!, предоставляемую пакетом
-  \href{http://hackage.haskell.org/package/transformers}
-       {\texttt{transformers}}
-  \footnote{http://hackage.haskell.org/package/transformers}, вы
-  должны использовать замещающую функцию из \lstinline!Yesod! (как и в
+  \footnotehref{http://hackage.haskell.org/package/transformers}{transformers},
+  вы должны использовать замещающую функцию из \lstinline!Yesod! (как и в
   случае с виджетами).
 \item \lstinline!Handler!~--- это просто синоним типа для
   \lstinline!GHandler!. \lstinline!GHandler! позволяет вам точно
