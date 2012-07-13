@@ -132,7 +132,7 @@ fibs = 1 : 1 : zipWith (+) fibs (tail fibs)
 getFibsR :: Natural -> GHandler Fibs Fibs RepPlain
 getFibsR (Natural i) = return $ RepPlain $ toContent $ show $ fibs !! (i - 1)
 main = warpDebug 3000 Fibs
-\end{lstlisting}
+\end{lstlisting}%$
 
 В строке 1 мы определяем для \lstinline!Int! изоморфный тип, который
 защитит нас от некорректного ввода. Мы можем увидеть, что
@@ -167,7 +167,7 @@ instance PathMultiPiece Page where
     fromPathMultiPiece (x:y:z) = Just $ Page x y z
     fromPathMultiPiece _ = Nothing
 main = return ()
-\end{lstlisting}
+\end{lstlisting}%$
 
 \subsection{Наименование ресурса}
 Каждый шаблон ресурса имеет имя, связанное с ним. Это имя становится
@@ -337,7 +337,7 @@ getWikiR = return . RepPlain . toContent . T.unwords
 
 instance Yesod Args
 main = warpDebug 3000 Args
-\end{lstlisting}
+\end{lstlisting}%$
 
 Аргументы имеют типы динамических участков каждого маршрута, в порядке
 указания. Также обратите внимание, как мы можем использовать и
