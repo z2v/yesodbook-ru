@@ -113,29 +113,29 @@ useMyFileError1 =
 
 Вот весь принцип monad-control: мы вкладываем дополнительные возможности нашего трансформатора монады в значение. Попав в значение, система типов игнорирует его и сосредотачивается на внутренней монаде. Как только мы закончили работать с внутренней монадой, мы можем вытащить наше состояние обратно и восстановить наш исходный стек монад.
 
-Types
+Типы
 
-I purposely started with the ErrorT transformer, as it is one of the simplest for this inversion mechanism. Unfortunately, others are a bit more complicated. Take for instance ReaderT. It is defined as newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a }. If we apply runReaderT to it, we get a function that returns a monadic value. So we're going to need some extra machinery to deal with all that stuff. And this is when we leave Kansas behind.
+Я нарочно начал с трансформатора ErrorT, так как он один из самых простых для этого механизма инверсии. К сожалению, другие немного сложнее. Возьмём, к примеру ReaderT. Он определяется как newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a }. Если мы к нему применим runReaderT, мы получим функцию которая возвращает монадическое значение. Так что нам понадобятся дополнительные механизмы что бы с этим справиться. И здесь мы попадаем в Волшебную страну.
 
-There are a few approaches to solving these problems. In the past, I implemented a solution using type families in the neither package. Anders Kaseorg implemented a much more straight-forward solution in monad-peel. And for efficiency, in monad-control, Bas van Dijk uses CPS (continuation passing style) and existential types.
+Есть несколько подходов к решению этих проблем. В прошлом я реализовал решение используя семейство типов в пакете neither. Anders Kaseorg реализовал намного более простое решение в пакете monad-peel. А для эффективности, в monad-control, Bas van Dijk использует стиль передачи продолжения (Continuation Passing Style, сокращённо CPS) и екзистенциальные типы.
 
-The code taken from monad-control actually applies to version 0.2. 0.3 changed things just a bit, by making the state explicit with an associated type, and generalizing MonadControlIO to MonadBaseControl, but the concepts are still the same.
+Код взятый из monad-control на самом деле относиться к версии 0.2. В версии 0.3 некоторые вещи немного поменялись, состояние сделали явным с ассоциированым типом, а MonadControlIO обобщили до MonadBaseControl, но концепция всё ещё таже.
 
-The first type we're going to look at is:
+Первым типом который мы рассмотрим будет:
 
 \begin{lstlisting}
 type Run t = forall n o b. (Monad n, Monad o, Monad (t o)) => t n b -> n (t o b)
 \end{lstlisting}
 
-That's incredibly dense, let's talk it out. The only "input" datatype to this thing is t, a monad transformer. A Run is a function that will then work with any combination of types n, o and b (that's what the forall means). n and o are both monads, while b is a simple value contained by them.
+Это определение невероятно туманно, давайте его разберём. Единственным "входным" параметром типа является t, трансформатор монады. Run это функция которая будет работать для любой комбинации типов n, o и b (это то что означает forall). Типы n и o оба являються монадами, а b это просто значение которое содержиться в них.
 
-The left hand side of the Run function, t n b, is our monad transformer wrapped around the n monad and holding a b value. So for example, that could be a MyTrans FirstMonad MyValue. It then returns a value with the transformer "popped" inside, with a brand new monad at its core. In other words, FirstMonad (MyTrans NewMonad MyValue).
+Левая часть функции Run, t n b, это наш трансформатор монады обёрнутый вокруг монады n и содержащий значение b. К примеру, это может быть MyTrans FirstMonad MyValue. А возвращает она значение, в котором трансформатор "проглочен" всередину, с совсем новой центральной монадой. Другими словами, FirstMonad (MyTrans NewMonad MyValue). 
 
-That might sound pretty scary at first, but it actually isn't as foreign as you'd think: this is essentially what we did with ErrorT. We started with ErrorT on the outside, wrapping around IO, and ended up with an IO by itself containing an Either. Well guess what: another way to represent an Either is ErrorT MyError Identity. So essentially, we pulled the IO to the outside and plunked an Identity in its place. We're doing the same thing in a Run: pulling the FirstMonad outside and replacing it with a NewMonad.
+По началу это может выглядеть устрашающе, но на самом деле это не так уж незнакомо как вы могли б подумать: это по сути то что мы делали с ErrorT. Мы начали с ErrorT снаружи, оборачивающем IO, а закончили с самим IO содержащим Either. Знаете что, другой способ представить ErrorT это ErrorT MyError Identity. Так что по существу мы вытянули IO наружу и поместили на её место Identity. Тоже самое мы делаем в Run: вытягиваем первую монаду наружу замещая её новой монадой.
 
-Now might be a good time to get a beer.
+Возможно сейчас хорошее время для глотка пива.
 
-Alright, now we're getting somewhere. If we had access to one of those Run functions, we could use it to peel off the ErrorT on our sayHiError function and pass it to withMyFile. With the magic of undefined, we can play such a game:
+Хорошо, сейчас мы уже куда-то приблизились. Если бы у нас был доступ к одной из этих функций Run, мы могли бы использовать её для снятия ErrorT с результата нашей функции sayHiError, и передачи его в withMyFile. С помощью магии undefined мы можем сыграть в эту игру:
 
 \begin{lstlisting}
 errorRun :: Run (ErrorT MyError)
@@ -150,7 +150,7 @@ useMyFileError2 =
      in applied
 \end{lstlisting}
 
-This looks eerily similar to our previous example. In fact, errorRun is acting almost identically to runErrorT. However, we're still left with two problems: we don't know where to get that errorRun value from, and we still need to restructure the original ErrorT after we're done.
+Это выглядит очень похоже на предыдущий пример. Фактически, errorRun ведёт себя почти так же как и runErrorT. Однако, у нас всё ещё есть две проблеммы: мы не знаем где взять значение errorRun, и кроме того нам надо восстановить оригинальный ErrorT после того как мы закончим.
 
 MonadTransControl
 
