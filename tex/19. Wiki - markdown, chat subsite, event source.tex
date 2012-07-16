@@ -1,0 +1,387 @@
+
+\chapter{Wiki: разметка, подсайт чата, источник событий}
+\label{}
+
+Этот пример свяжет воедино несколько различных идей. Мы начнем с подсайта чата, подзволяющего разместить виджет чата на любой странице. Мы используем API источника событий HTML 5 для организации отправки событий клиенту с сервера.
+
+\begin{lstlisting}
+-- @Chat.hs
+{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
+             TemplateHaskell, FlexibleInstances, MultiParamTypeClasses,
+             FlexibleContexts
+  #-}
+-- % FIXME: chat box == элемент управления с чатом
+-- | Эти модули определяют подсайт, который позволяет вам вставить элемент управления
+-- с чатом на любую страницу вашего сайта. Он использует eventsource для отправки
+-- сообщений браузеру с сервера.
+module Chat where
+
+import Yesod
+import Control.Concurrent.Chan (Chan, dupChan, writeChan)
+import Data.Text (Text)
+import Network.Wai.EventSource (ServerEvent (..), eventSourceAppChan)
+import Language.Haskell.TH.Syntax (Type (VarT), Pred (ClassP), mkName)
+import Blaze.ByteString.Builder.Char.Utf8 (fromText)
+import Data.Monoid (mappend)
+
+-- | Основа нашего подсайта. Мы храним канал событий, разделяемый всеми подключениями.
+data Chat = Chat (Chan ServerEvent)
+
+-- | We need to know how to check if a user is logged in and how to get
+-- his/her username (for printing messages).
+-- | Нам нужно знать, как убедиться, что пользователь выполнил вход, и как получить
+-- его имя (для вывода сообщений).
+class (Yesod master, RenderMessage master FormMessage)
+        => YesodChat master where
+    getUserName :: GHandler sub master Text
+    isLoggedIn :: GHandler sub master Bool
+
+-- Now we set up our subsite. The first argument is the subsite, very similar
+-- to how we've used mkYesod in the past. The second argument is specific to
+-- subsites. What it means here is "the master site must be an instance of
+-- YesodChat".
+--
+-- We define two routes: a route for sending messages from the client to the
+-- server, and one for opening up the event stream to receive messages from
+-- the server.
+-- Теперь мы устанавливаем наш подсайт. Первый аргумент - это подсайт, что
+-- очень похоже на то, как мы раньше использовали mkYesod. Второй аргумент специфичен для подсайта. В данном случае он означает "главный сайт должен быть экземпляром YesodChat".
+--
+-- Мы определяем два маршрута: маршрут отправки сообщений от клиента серверу и маршрут открытия потока событий для приема сообщений от сервера.
+mkYesodSub "Chat"
+    [ ClassP ''YesodChat [VarT $ mkName "master"]
+    ] [parseRoutes|
+/send SendR POST
+/recv ReceiveR GET
+|]
+
+-- | Get a message from the user and send it to all listeners.
+-- | Получить сообщение от пользователя и отправить его всем подписчикам.
+postSendR :: YesodChat master => GHandler Chat master ()
+postSendR = do
+    from <- getUserName
+
+    -- Note that we're using GET parameters for simplicity of the Ajax code.
+    -- This could easily be switched to POST. Nonetheless, our overall
+    -- approach is still RESTful since this route can only be accessed via a
+    -- POST request.
+    -- Обратите внимание, что мы используем параметры GET для упрощения кода Ajax. Можно легко переключиться на POST. Тем не менее, наш общий подход все же является RESTful, так как доступ к этому маршруту можно получить только через POST-запрос.
+    body <- runInputGet $ ireq textField "message"
+
+    -- Get the channel
+    -- Получить канал
+    Chat chan <- getYesodSub
+
+    -- Send an event to all listeners with the user's name and message.
+    -- Отправить событие с именем пользователя и сообщением всем подписчикам.
+    liftIO $ writeChan chan $ ServerEvent Nothing Nothing $ return $
+        fromText from `mappend` fromText ": " `mappend` fromText body
+
+-- | Send an eventstream response with all messages streamed in.
+-- FIXME: this is BAD
+-- | Отправить eventstream ответ, в который помещены все сообщения.
+getReceiveR :: GHandler Chat master ()
+getReceiveR = do
+    -- First we get the main channel
+    -- Сначала мы получаем главный канал
+    Chat chan0 <- getYesodSub
+
+    -- We duplicated the channel, which allows us to create broadcast
+    -- channels.
+    -- Мы сделали копию канала, что позволяет нам создавать широковещательные каналы.
+    chan <- liftIO $ dupChan chan0
+
+    -- Now we use the event source API. eventSourceAppChan takes two parameters:
+    -- the channel of events to read from, and the WAI request. It returns a
+    -- WAI response, which we can return with sendWaiResponse.
+    -- Теперь мы используем API источника событий. eventSourceAppChan принимает два параметра: канал событий, из которого выполнять чтение, и запрос WAI. Он возвращает отклик WAI, который мы можем возвратить с помощью sendWaiResponse.
+    req <- waiRequest
+    res <- lift $ eventSourceAppChan chan req
+    sendWaiResponse res
+
+-- | Provide a widget that the master site can embed on any page.
+-- | Предоставить виджет, который главный сайт сможет включить в любую страницу.
+chatWidget :: YesodChat master
+           => (Route Chat -> Route master)
+           -> GWidget sub master ()
+-- This toMaster argument tells us how to convert a Route Chat into a master
+-- route. You might think this is redundant information, but taking this
+-- approach means we can have multiple chat subsites in a single site.
+-- FIXME: master route == маршрут главного сайта?
+-- Этот аргумент toMaster сообщает нам, как преобразовать Route Chat в маршрут главного сайта. Вы можете подумать, что эта информация избыточна, но использование этого подхода означает, что у нас может быть несколько подсайтов с чатом в пределах одного сайта.
+chatWidget toMaster = do
+    -- Get some unique identifiers to help in creating our HTML/CSS. Remember,
+    -- we have no idea what the master site's HTML will look like, so we
+    -- should not assume we can make up identifiers that won't be reused.
+    -- Also, it's possible that multiple chatWidgets could be embedded in the
+    -- same page.
+    -- Получить некоторые уникальные идентификаторы, которые помогут в создании нашего HTML/CSS. Вспомним, что мы не имеем представления о том, как выглядит HTML главного сайта, поэтому мы не можем предполагать, что можем придумать идентификаторы, которые не будут использоваться повторно. Кроме того, несколько chatWidget могут быть внедрены в одну и ту же страницу.
+    chat <- lift newIdent   -- обрамляющий div
+    output <- lift newIdent -- элемент, где отображаются сообщения
+    input <- lift newIdent  -- поле пользовательского ввода
+
+    ili <- lift isLoggedIn  -- проверить, не выполнили ли мы вход
+    if ili
+        then do
+            -- Logged in: show the widget
+            -- Вход выполнен: показать виджет
+            [whamlet|
+<div ##{chat}>
+    <h2>Chat
+    <div ##{output}>
+    <input ##{input} type=text placeholder="Введите сообщение">
+|]
+            -- Немного CSS
+            toWidget [lucius|
+##{chat} {
+    position: absolute;
+    top: 2em;
+    right: 2em;
+}
+##{output} {
+    width: 200px;
+    height: 300px;
+    border: 1px solid #999;
+    overflow: auto;
+}
+|]
+            -- And now that Javascript
+            -- И еще вот такой JavaScript
+            toWidgetBody [julius|
+// Set up the receiving end
+// Настроим принимающую сторону
+var output = document.getElementById("#{output}");
+var src = new EventSource("@{toMaster ReceiveR}");
+src.onmessage = function(msg) {
+    // This function will be called for each new message.
+    // Эта функция вызывается для каждого нового сообщения
+    var p = document.createElement("p");
+    p.appendChild(document.createTextNode(msg.data));
+    output.appendChild(p);
+
+    // And now scroll down within the output div so the most recent message
+    // is displayed.
+    // А теперь прокрутим вниз в обрамляющем div так, чтобы было видно самое последнее сообщение.
+    output.scrollTop = output.scrollHeight;
+};
+
+// Set up the sending end: send a message via Ajax whenever the user hits
+// enter.
+// Настроим отправляющую сторону: отправлять сообщение через Ajax, когда пользователь нажимает Enter.
+var input = document.getElementById("#{input}");
+input.onkeyup = function(event) {
+    var keycode = (event.keyCode ? event.keyCode : event.which);
+    if (keycode == '13') {
+        var xhr = new XMLHttpRequest();
+        var val = input.value;
+        input.value = "";
+        var params = "?message=" + encodeURI(val);
+        xhr.open("POST", "@{toMaster SendR}" + params);
+        xhr.send(null);
+    }
+}
+|]
+        else do
+            -- User isn't logged in, give a not-logged-in message.
+            -- Пользователь не выполнил вход, выдать об этом сообщение.
+            master <- lift getYesod
+            [whamlet|
+<p>
+    Вы должны #
+    $maybe ar <- authRoute master
+        <a href=@{ar}>выполнить вход
+    $nothing
+        выполнить вход
+    \ чтобы воспользоваться чатом.
+|]
+
+This module stands on its own, and can be used in any application. Next we'll provide such a driver application: a wiki. Our wiki will have a hard-coded homepage, and then a wiki section of the site. We'll be using multiple dynamic pieces to allow an arbitrary hierarchy of pages within the Wiki.
+Этот модуль является вещью в себе и может использоваться в любом приложении. Далее мы создадим такое приложение --- wiki. Наша wiki будем иметь жестко заданную домашнюю страницу и wiki-раздел сайта. Мы будем использовать множество динамических фрагментов, чтобы иметь возможность строить произвольную иерархию страниц в Wiki.
+
+For storage, we'll just use a mutable reference to a Map. For a production application, this should be replaced with a proper database. The content will be stored and served as Markdown. yesod-auth's dummy plugin will provide us with (fake) authentication.
+В качестве способа хранения мы просто используем изменяемую ссылку на Map. Для реального приложения нужно заменить ее на подходящуюю базу данных. Содержимое будет храниться и предоставляться как Markdown. Плагин-пустышка yesod-auth предоставит нам способ выполнять (поддельную) аутентификацию.
+
+{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
+             TemplateHaskell, FlexibleInstances, MultiParamTypeClasses,
+             FlexibleContexts
+  #-}
+import Yesod
+import Yesod.Auth
+import Yesod.Auth.Dummy (authDummy)
+import Chat
+import Control.Concurrent.Chan (Chan, newChan)
+import Network.Wai.Handler.Warp (run)
+import Data.Text (Text)
+import qualified Data.Text.Lazy as TL
+import qualified Data.IORef as I
+import qualified Data.Map as Map
+
+-- This package is not yet available on Hackage.
+-- You can get the source code from:
+-- https://github.com/snoyberg/markdown
+-- Этот пакет пока отсутствует на Hackage.
+-- Вы можете скачать его исходный код с https://github.com/snoyberg/markdown
+import Text.Markdown (markdown, def)
+
+-- | Our foundation type has both the chat subsite and a mutable reference to
+-- a map of all our wiki contents. Note that the key is a list of Texts, since
+-- a wiki can have an arbitrary hierarchy.
+-- | Наш тип-основа включает и подсайт чата, и изменяемую ссылку на карту содержимого wiki. Обратите внимание, что ключом в этой карте является список Text, так как wiki может иметь произвольную иерархию.
+--
+-- In a real application, we would want to store this information in a
+-- database of some sort.
+-- В реальном приложении мы бы захотели хранить эту информацию в какой-нибудь базе данных.
+data Wiki = Wiki
+    { getChat :: Chat
+    , wikiContent :: I.IORef (Map.Map [Text] Text)
+    }
+
+-- Set up our routes as usual.
+-- Настраиваем маршруты, как обычно.
+mkYesod "Wiki" [parseRoutes|
+-- домашняя страница
+/ RootR GET                 -- the homepage
+-- обратите внимание на multipiece для иерархии wiki
+/wiki/*Texts WikiR GET POST -- note the multipiece for the wiki hierarchy
+-- подсайт чата
+/chat ChatR Chat getChat    -- the chat subsite
+-- подсайт аутентификации
+/auth AuthR Auth getAuth    -- the auth subsite
+|]
+
+instance Yesod Wiki where
+    -- получим работающую ссылку на вход
+    authRoute _ = Just $ AuthR LoginR -- get a working login link
+
+    -- Our custom defaultLayout will add the chat widget to every page.
+    -- We'll also add login and logout links to the top.
+    -- Наш особый defaultLayout добавит виджет чата на каждую страницу.
+    -- Он также добавит ссылки на вход и на выход вверху страниц.
+    defaultLayout widget = do
+        pc <- widgetToPageContent $ widget >> chatWidget ChatR
+        mmsg <- getMessage
+        hamletToRepHtml [hamlet|
+$doctype 5
+<html>
+    <head>
+        <title>#{pageTitle pc}
+        ^{pageHead pc}
+    <body>
+        $maybe msg <- mmsg
+            <div .message>#{msg}
+        <nav>
+            <a href=@{AuthR LoginR}>Login
+            \ | #
+            <a href=@{AuthR LogoutR}>Logout
+        ^{pageBody pc}
+|]
+
+-- Fairly standard YesodAuth instance. We'll use the dummy plugin so that you
+-- can create any name you want, and store the login name as the AuthId.
+-- Довольно стандартный экземпляр YesodAuth. Мы будем использовать плагин-пустышку, чтобы вы могли создать любое имя, какое пожелаете, и хранить имя пользователя как AuthId.
+instance YesodAuth Wiki where
+    type AuthId Wiki = Text
+    authPlugins _ = [authDummy]
+    loginDest _ = RootR
+    logoutDest _ = RootR
+    getAuthId = return . Just . credsIdent
+    -- не используется в authDummy
+    authHttpManager = error "authHttpManager" -- not used by authDummy
+
+-- Just implement authentication based on our yesod-auth usage.
+-- Просто реализуем аутентификацию на основе использования нашего yesod-auth.
+instance YesodChat Wiki where
+    getUserName = requireAuthId
+    isLoggedIn = do
+        ma <- maybeAuthId
+        return $ maybe False (const True) ma
+
+instance RenderMessage Wiki FormMessage where
+    renderMessage _ _ = defaultFormMessage
+
+-- Nothing special here, just giving a link to the root of the wiki.
+-- Здесь ничего особенного, просто даем ссылку на корень wiki.
+getRootR :: Handler RepHtml
+getRootR = defaultLayout [whamlet|
+<p>Добро пожаловать в Wiki!
+<p>
+    <a href=@{wikiRoot}>Корень wiki
+|]
+  where
+    wikiRoot = WikiR []
+
+-- A form for getting wiki content
+-- Форма для получения wiki-содержимого
+wikiForm mtext = renderDivs $ areq textareaField "Содержимое страницы" mtext
+
+-- Show a wiki page and an edit form
+-- Отобразить страницу wiki и форму для редактирования
+getWikiR :: [Text] -> Handler RepHtml
+getWikiR page = do
+    -- Get the reference to the contents map
+    -- Получим ссылку на карту содержимого
+    icontent <- fmap wikiContent getYesod
+
+    -- And read the map from inside the reference
+    -- И прочтем карту изнутри ссылки
+    content <- liftIO $ I.readIORef icontent
+
+    -- Lookup the contents of the current page, if available
+    -- Найдем содержимое текущей страницы, если оно доступно
+    let mtext = Map.lookup page content
+
+    -- Generate a form with the current contents as the default value.
+    -- Note that we use the Textarea wrapper to get a <textarea>.
+    -- Сгенерируем форму с текущим содержимым в качестве значения по умолчанию.
+    -- Обратите внимание, что мы используем обертку Textarea, чтобы получить <textarea>.
+    (form, _) <- generateFormPost $ wikiForm $ fmap Textarea mtext
+    defaultLayout $ do
+        case mtext of
+            -- We're treating the input as markdown. The markdown package
+            -- automatically handles XSS protection for us.
+            -- Трактуем ввод как разметку. Пакет markdown автоматически выполняет для нас защиту от XSS.
+            Just text -> toWidget $ markdown def $ TL.fromStrict text
+            Nothing -> [whamlet|<p>Страница не существует|]
+        [whamlet|
+<h2>Редактировать страницу
+<form method=post>
+    ^{form}
+    <div>
+        <input type=submit>
+|]
+
+-- Get a submitted wiki page and updated the contents.
+-- Получим отправленную wiki-страницу и обновим содержимое.
+postWikiR :: [Text] -> Handler RepHtml
+postWikiR page = do
+    icontent <- fmap wikiContent getYesod
+    content <- liftIO $ I.readIORef icontent
+    let mtext = Map.lookup page content
+    ((res, form), _) <- runFormPost $ wikiForm $ fmap Textarea mtext
+    case res of
+        FormSuccess (Textarea t) -> do
+            liftIO $ I.atomicModifyIORef icontent $
+                \m -> (Map.insert page t m, ())
+            setMessage "Страница обновлена"
+            redirect $ WikiR page
+        _ -> defaultLayout [whamlet|
+<form method=post>
+    ^{form}
+    <div>
+        <input type=submit>
+|]
+
+main :: IO ()
+main = do
+    -- Create our server event channel
+    -- Создадим канал событий нашего сервера
+    chan <- newChan
+
+    -- Initially have a blank database of wiki pages
+    -- Изначально будем иметь пустую базу данных wiki-страниц.
+    icontent <- I.newIORef Map.empty
+
+    -- Run our app
+    -- Запустим наше приложение
+    warpDebug 3000 $ Wiki (Chat chan) icontent
+\end{lstlisting}
