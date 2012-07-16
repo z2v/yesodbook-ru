@@ -122,11 +122,13 @@ buildExcerpts takes four parameters: the configuration options, the textual cont
 
 Similarly, the result from Sphinx is a list of lazy ByteStrings. But of course, we'd rather have Html. So we concat that list into a single lazy ByteString, decode it to a lazy text (ignoring invalid UTF-8 character sequences), and use preEscapedToMarkup to make sure that the tags inserted for matches are not escaped. A sample of this HTML is:
 
+\begin{lstlisting}[language=HTML]
 &#8230; Departments.  The President shall have <span class='match'>Power</span> to fill up all Vacancies
 &#8230;  people. Amendment 11 The Judicial <span class='match'>power</span> of the United States shall
 &#8230; jurisdiction. 2. Congress shall have <span class='match'>power</span> to enforce this article by
 &#8230; 5. The Congress shall have <span class='match'>power</span> to enforce, by appropriate legislation
 &#8230;
+\end{lstlisting}
 
 \section{Streaming xmlpipe output} % FIXME: перевести
 
@@ -211,9 +213,9 @@ But what we really want is to stream those events directly from the database. Fo
 \begin{lstlisting}
 docSource :: Connection -> C.Source (C.ResourceT IO) X.Event
 docSource conn = selectSourceConn conn [] [] C.$= CL.concatMap entityToEvents
-\end{lstlisting}
+\end{lstlisting}%$
 
-The $= operator joins together a source and a conduit into a new source. Now that we have our Event source, all we need to do is surround it with the document start and end events. With Source's Monoid instance, this is a piece of cake:
+The \$= operator joins together a source and a conduit into a new source. Now that we have our Event source, all we need to do is surround it with the document start and end events. With Source's Monoid instance, this is a piece of cake:
 
 \begin{lstlisting}
 fullDocSource :: Connection -> C.Source (C.ResourceT IO) X.Event
