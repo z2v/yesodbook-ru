@@ -1,6 +1,8 @@
 \chapter{Учимся на примерах: полнотекстовый поиск с использованием Sphinx} % Case Study: Sphinx-based Search
 
-% FIXME: вставить картинку
+% FIXME: вставить картинку (см строку 66)
+% FIXME: перевести исходники
+% FIXME: в 21-4.hs помимо обработчика поискового запроса дофига другого кода, может выпилить его?
 
 Sphinx --- это сервер полнотекстового поиска, благодаря которому реализован поиск на многих сайтах, включая сайт самого Yesod. Код, необходимый для интеграции Sphinx и Yesod, является довольно коротким. Тем не менее, он содержит несколько непростых моментов, а потому является прекрасной иллюстрацией к использованию некоторых деталей внутреннего устройства Yesod. % a great case study in how to play with some of the under-the-surface details of Yesod.
 
@@ -44,25 +46,27 @@ index searcher
 
 \section{Базовая настройка Yesod} % Basic Yesod Setup
 
-Let's get our basic Yesod setup going. We're going to have a single table in the database for holding documents, which consist of a title and content. We'll store this in a SQLite database, and provide routes for searching, adding documents, viewing documents and providing the xmlpipe file to Sphinx.
+% FIXME: Let's get our basic Yesod setup going
+
+Создадим новое Yesod-приложение. Нам понадобится одна таблица в базе данных для хранения документов, которые будут состоять из заголовка и текста. Эту таблицу мы будем хранить в базе данных SQLite. Также мы создадим маршруты для поиска, добавления и просмотра документов, а также для генерации xmlpipe-файла для Sphinx.
 
 \lstinputlisting{../hs/21-1.hs}
 
-Hopefully all of this looks pretty familiar by now. Next we'll define some forms: one for creating documents, and one for searching:
+К счастью, на данный момент все это уже кажется знакомым. Далее мы определим две формы --- одну для создания документов и одну для поиска:
 
 \lstinputlisting{../hs/21-2.hs}
 
-The True parameter to searchField makes the field auto-focus on page load. Finally, we have some standard handlers for the homepage (shows the add document form and the search form), the document display, and adding a document.
+Передача параметра True в функцию searchField обеспечивает автоматическую установку фокуса на поле при загрузке страницы. Наконец, объявляем обработчики для главной страницы (на ней отображаются формы добавления и поиска документов), отображения и добавления документа.
 
 \lstinputlisting{../hs/21-3.hs}
 
 \section{Поиск} % Searching
 
-Now that we've got the boring stuff out of the way, let's jump into the actual searching. We're going to need three pieces of information for displaying a result: the document ID it comes from, the title of that document, and the excerpts. Excerpts are the highlighted portions of the document which contain the search term.
+Теперь, когда мы разобрались со всякой рутиной, займемся непосредственно поиском. В результатах поиска нам понадобится отображать три вещи --- идентификатор документа, его заголовок, а также выдержки. Выдержки представляют собой выделенные отрывки документа, содержащие искомое выражение.
 
-Search Result (picture)
+Результаты поиска (картинка)
 
-So let's start off by defining a Result datatype:
+Давайте начнем с определения типа данных Result:
 
 \begin{lstlisting}
 data Result = Result
@@ -72,11 +76,13 @@ data Result = Result
     }
 \end{lstlisting}
 
-Next we'll look at the search handler:
+Теперь взглянем на обработчик поискового запроса:
 
 \lstinputlisting{../hs/21-4.hs}
 
-Nothing magical here, we're just relying on the searchForm defined above, and the getResults function which hasn't been defined yet. This function just takes a search string, and returns a list of results. This is where we first interact with the Sphinx API. We'll be using two functions: query will return a list of matches, and buildExcerpts will return the highlighted excerpts. Let's first look at query:
+% FIXME: мы просто полагаемся на функцию ...
+
+Ничего волшебного здесь не происходит, мы просто полагаемся на функции searchForm, объявленную выше, и еще не объявленную getResults. Эта функция просто принимает строку с поисковым запросом и возвращает список результатов. Здесь мы впервые взаимодейтсвуем с API сервера Sphinx. Мы будем использовать две функции --- query будет возвращать список совпадений, а buildExcerpts --- выделенные отрывки. Взгляним на запрос: % Let's first look at query:
 
 \lstinputlisting{../hs/21-5.hs}
 
