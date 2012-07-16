@@ -2,19 +2,19 @@
 
 % FIXME: вставить картинку
 
-Sphinx is a search server, and powers the search feature on many sites, including Yesod's own site. While the actual code necessary to integrate Yesod with Sphinx is relatively short, it touches on a number of complicated topics, and is therefore a great case study in how to play with some of the under-the-surface details of Yesod.
+Sphinx --- это сервер полнотекстового поиска, благодаря которому реализован поиск на многих сайтах, включая сайт самого Yesod. Код, необходимый для интеграции Sphinx и Yesod, является довольно коротким. Тем не менее, он содержит несколько непростых моментов, а потому является прекрасной иллюстрацией к использованию некоторых деталей внутреннего устройства Yesod. % a great case study in how to play with some of the under-the-surface details of Yesod.
 
-There are essentially three different pieces at play here:
+По существу мы будем использовать три вещи: % There are essentially three different pieces at play here:
 
 \begin{itemize}
-  \item Storing the content we wish to search. This is fairly straight-forward Persistent code, and we won't dwell on it much in this chapter.
-  \item Accessing Sphinx search results from inside Yesod. Thanks to the sphinx package, this is actually very easy.
-  \item Providing the document content to Sphinx. This is where the interesting stuff happens, and will show how to deal with streaming content from a database directly to XML, which gets sent directly over the wire to the client.
+  \item Сохранение данных, которые мы хотели бы искать. В действительности, тут непосредственно используется Persistent-код, и мы не будем подробно останавливаться на этом. % This is fairly straight-forward Persistent code, and we won't dwell on it much in this chapter.
+  \item Доступ из Yesod к результатам поиска Sphinx. На самом деле, благодаря пакету sphinx, это довольно просто.
+  \item Предоставление содержимого документов серверу Sphinx. Вот, где происходят интересные вещи, и где будет показано, как напрямую преобразовывать поточный контент из базы данных напрямую в XML, который затем по проводам передается клиенту. % This is where the interesting stuff happens, and will show how to deal with streaming content from a database directly to XML, which gets sent directly over the wire to the client.
 \end{itemize}
 
 \section{Установка Sphinx} % Sphinx Setup
 
-Unlike many of our other examples, to start with here we'll need to actually configure and run our external Sphinx server. I'm not going to go into all the details of Sphinx, partly because it's not relevant to our point here, and mostly because I'm not an expert on Sphinx.
+В отличии от многих других примеров, чтобы начать, здесь нам действительно потребуется настроить и запустить внешний сервер Sphinx. I'm not going to go into all the details of Sphinx, partly because it's not relevant to our point here, and mostly because I'm not an expert on Sphinx.
 
 Sphinx provides three main command line utilities: searchd is the actual search daemon that receives requests from the client (in this case, our web app) and returns the search results. indexer parses the set of documents and creates the search index. search is a debugging utility that will run simple queries against Sphinx.
 
