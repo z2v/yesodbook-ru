@@ -18,11 +18,11 @@ Sphinx --- это сервер полнотекстового поиска, бл
 
 Sphinx предоставляет три основных консольных утилиты: Демон searchd непосредственно принимает запросы от клиента (в данном случае --- нашего веб-приложения) и возвращает результат поиска. Программа indexer обрабатывает документы и создает индекс поиска. Утилита search предназначена для отладки, она посылает простые поисковые запросы серверу Sphinx.
 
-There are two important settings: the source and the index. The source tells Sphinx where to read document information from. It has direct support for MySQL and PostgreSQL, as well as a more general XML format known as xmlpipe2. We're going to use the last one. This not only will give us more flexibility with choosing Persistent backends, but will also demonstrate some more powerful Yesod concepts.
+Настройки Sphinx содержат два важных параметра --- источник (source) и индекс (index). Параметр source говорит Sphinx, откуда ему следует считывать информацию о документах. Поддерживается как чтение из MySQL и PostgreSQL напрямую, так и более общий XML-формат, известный, как xmlpipe2. Его мы и собираемся использовать. Это не только даст нам гибкость в плане выбора Persistent-бэкендов, но и продемонстрирует некоторые более мощные концепции Yesod.
 
-The second setting is the index. Sphinx can handle multiple indices simultaneously, which allows it to provide search for multiple services at once. Each index will have a source it pulls from.
+Второй важный параметр --- это index. Sphinx может поддерживать несколько индексов одновременно, что позволяет организовать поиск для нескольких служб с помощью одного сервера. Каждому параметру index соответствует параметр source, указывающий на то, откуда брать данные.
 
-In our case, we're going to provide a URL from our application (/search/xmlpipe) that provides the XML file required by Sphinx, and then pipe that through to the indexer. So we'll add the following to our Sphinx config file:
+Наше приложение будет предоставлять специальный URL (/search/xmlpipe), с помощью которого XML-файл, требуемый Sphinx, будет передаваться в indexer. В конфигурационный файл Sphinx следует прописать следующее:
 
 \begin{lstlisting}
 source searcher_src
@@ -40,7 +40,7 @@ index searcher
 }
 \end{lstlisting}
 
-In order to build your search index, you would run indexer searcher. Obviously this won't work until you have your web app running. For a production site, it would make sense to run this command via a crontab script so the index is regularly updated.
+Чтобы построить индекс, необходимо запусить indexer. Очевидно, это не будет работать до тех пор, пока мы не запустим наше приложение.  В окончательной версии сайта, indexer следует запускать периодически с помощью crontab, чтобы индекс регулярно обновлялся.
 
 \section{Базовая настройка Yesod} % Basic Yesod Setup
 
