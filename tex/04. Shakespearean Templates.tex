@@ -1,0 +1,134 @@
+\chapter{Шекспировские шаблоны}\label{ch:shakespeare}
+%FIXME: Shakespearean Templates -> Шекспировские шаблоны
+
+Yesod использует Шекспировское семейство шаблонных языков как стандартный 
+подход к созданию HTML, CSS и Javascript. Это семейство языков имеет похожий 
+синтаксис и общепринятые принципы: 
+
+\begin{itemize}
+%FIXME: as well as overarching princeples -> и общепринятые принципы
+\item Как можно меньшее вмешательство в язык, на которых шаблонные языки 
+основываются, но в то же время использование преимуществ этого языка.
+%FIXME: тавтология
+\item Гарантии корректности контента обеспечиваются компилятором.
+%XXX:compile-time guarantees on well-formed content -> Гарантии корректности контента обеспечиваются компилятором.
+\item Предоставляемая статической типизацией безопасность, которая также 
+предотвращает \texttt{XSS} (cross-site scripting) атаки.
+\item Автоматическая проверка валидности URL-ов, где это возможно, с помощью 
+типобезопасных URL-ов.
+%FIXME:type-safe URLs -> типобезопасных URL-ов
+\end{itemize}
+
+По сути, ничего не связывает Yesod с этими языками, другими словами, и языки, 
+и Yesod можно использовать по-отдельности. Данная глава будет рассматривать 
+эти шаблонные языки сами по себе, в то время как оставшаяся часть книги 
+будет их использовать для разработки приложений для Yesod.
+%FIXME: to enhance Yesod application development -> для разработки приложений на Yesod
+
+\section{Краткий обзор}
+%FIXME: Synopsis -> Краткий обзор
+
+Всего в игре 4 основных языка: Hamlet - это шаблонный язык HTML, 
+Julius - для Javascript, Cassius и Lucius - оба для CSS. Hamlet и Cassius - 
+%FIXME: Hamlet and Cassius are both whitespace sensitive formats -> два языка, чувствительные к форматированию
+два языка, чувствительные к форматированию, использующие отступы для 
+%XXX: use indentation to denote nesting -> использовать отступы для обозначения вложенных блоков
+обозначения вложенных блоков. Lucius же, являясь подмножеством CSS, использует
+%XXX: Lucius is a superset of CSS -> Lucius является подмножеством CSS
+фигурные скобки для обозначения вложенных блоков. 
+Julius - это простой однопроходный язык, который служит для 
+%FIXME: simple passthrough language -> простой однопроходный язык
+генерирования Javascript; единственная добавочная функциональность - это 
+интерполяция переменных.
+%XXX: variable interpolation -> интерполяция переменных
+
+\subsection{Hamlet (HTML)}
+
+\begin{lstlisting}
+$doctype 5
+<html>
+    <head>
+        <title>#{pageTitle} - My Site
+        <link rel=stylesheet href=@{Stylesheet}>
+    <body>
+        <h1 .page-title>#{pageTitle}
+        <p>Here is a list of your friends:
+        $if null friends
+            <p>Sorry, I lied, you don't have any friends.
+        $else
+            <ul>
+                $forall Friend name age <- friends
+                    <li>#{name} (#{age} years old)
+        <footer>^{copyright}
+\end{lstlisting}
+
+\subsection{Cassius (CSS)}
+
+\begin{lstlisting}
+#myid
+    color: #{red}
+    font-size: #{bodyFontSize}
+foo bar baz
+    background-image: url(@{MyBackgroundR})
+\end{lstlisting}
+
+\subsection{Lucius (CSS)}
+
+\begin{lstlisting}
+section.blog {
+    padding: 1em;
+    border: 1px solid #000;
+    h1 {
+        color: #{headingColor};
+    }
+}
+\end{lstlisting}
+
+\subsection{Julius (Javascript)}
+
+\begin{lstlisting}
+$(function(){
+    $("section.#{sectionClass}").hide();
+    $("#mybutton").click(function(){document.location = "@{SomeRouteR}";});
+    ^{addBling}
+});
+\end{lstlisting}
+%FIXME: что-то с форматированием lstlisting в vim (мешает $)
+
+\section{Types}
+
+Прежде чем мы перейдем к синтаксису давайте взглянем на различные используемые 
+типы данных. Мы уже обсуждали~\ref{ch:introduction} во вступлении, что типы 
+помогают нам защищаться от \texttt{XSS} атак. К примеру, скажем, 
+у нас есть HTML шаблон, который должен отображать чьë-то имя. Он может выглядеть
+как-то так:
+
+\begin{lstlisting}
+<p>Hello, my name is #{name}
+\end{lstlisting}
+
+
+\lstinline'#{...}' - это способ интерполяции переменных в Shakespeare.
+
+Что должно произойти с имененем, и какого оно должно быть типа данных?
+Самое простое решение - использовать \textt{Text} переменную, и вставлять 
+еë значение в код.  
+%FIXME: naive approach - самое простое решение
+%FIXME: use Text value and insert it verbatim  - использовать Text переменную и вставлять ее значение в код
+Но это вызовет ряд проблем для 
+\lstinline!name="<script src='http://nefarious.com/evil.js'></script>"!.
+Что мы хотим - это иметь возможность кодировать имя, так что 
+%FIXME: entity-encode - кодировать
+\lstinline'<' становится \lstinline'&lt;'.
+
+Таким же на наивным решением было бы просто кодировать каждый кусок текста,
+который 
+
+
+
+
+
+%TODO: for WORD in HTML, CSS, Javascript, Yesod, Hamlet, Julius, Casius, Lucius, Shakespeare: 
+%TODO:       WORD -> \texttt{WORD}
+%TODO: йо -> ë
+
