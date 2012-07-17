@@ -23,7 +23,7 @@ import Language.Haskell.TH.Syntax (Type (VarT), Pred (ClassP), mkName)
 import Blaze.ByteString.Builder.Char.Utf8 (fromText)
 import Data.Monoid (mappend)
 
--- | Тип-основание нашего подсайта. Мы поддерживаем канал событий,
+-- | Тип-основа нашего подсайта. Мы поддерживаем канал событий,
 -- который будет разделяться между всеми подключениями.
 data Chat = Chat (Chan ServerEvent)
 
@@ -92,14 +92,9 @@ chatWidget :: YesodChat master
 -- этого подхода означает, что у нас может быть несколько подсайтов с чатом
 -- в пределах одного сайта.
 chatWidget toMaster = do
-    -- Get some unique identifiers to help in creating our HTML/CSS. Remember,
-    -- we have no idea what the master site's HTML will look like, so we
-    -- should not assume we can make up identifiers that won't be reused.
-    -- Also, it's possible that multiple chatWidgets could be embedded in the
-    -- same page.
     -- Получим некоторые уникальные идентификаторы, помогающие в создании
     -- наших HTML/CSS. Вспомним, что мы не имеем представления о том, как
-    -- выглядит HTML главного сайта, поэтому мы не можем предполагать, что можем
+    -- выглядит HTML главного сайта, поэтому мы не можем предполагать, что способны
     -- придумать идентификаторы, которые не будут использоваться повторно.
     -- Кроме того, несколько chatWidget могут быть внедрены в одну и ту же страницу.
     chat <- lift newIdent   -- обрамляющий div
@@ -175,10 +170,10 @@ input.onkeyup = function(event) {
 |]
 
 This module stands on its own, and can be used in any application. Next we'll provide such a driver application: a wiki. Our wiki will have a hard-coded homepage, and then a wiki section of the site. We'll be using multiple dynamic pieces to allow an arbitrary hierarchy of pages within the Wiki.
-Этот модуль является вещью в себе и может использоваться в любом приложении. Далее мы создадим такое приложение --- wiki. Наша wiki будем иметь жестко заданную домашнюю страницу и wiki-раздел сайта. Мы будем использовать множество динамических фрагментов, чтобы иметь возможность строить произвольную иерархию страниц в Wiki.
+Этот модуль является независимым и может использоваться в любом приложении. Далее мы создадим такое приложение-драйвер~--- wiki. У нашей wiki будет жестко заданная домашняя страница и wiki-раздел сайта. Мы будем использовать множество динамических фрагментов, позволяющее строить произвольную иерархию страниц в Wiki.
 
 For storage, we'll just use a mutable reference to a Map. For a production application, this should be replaced with a proper database. The content will be stored and served as Markdown. yesod-auth's dummy plugin will provide us with (fake) authentication.
-В качестве способа хранения мы просто используем изменяемую ссылку на Map. Для реального приложения нужно заменить ее на подходящуюю базу данных. Содержимое будет храниться и предоставляться как Markdown. Плагин-пустышка yesod-auth предоставит нам способ выполнять (поддельную) аутентификацию.
+В качестве способа хранения мы просто используем изменяемую ссылку на Map. Для реального приложения нужно заменить ее на подходящуюю базу данных. Содержимое будет храниться и предоставляться как Markdown. Плагин-пустышка yesod-auth предоставит нам способ выполнять (фальшивую) аутентификацию.
 
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, FlexibleInstances, MultiParamTypeClasses,
