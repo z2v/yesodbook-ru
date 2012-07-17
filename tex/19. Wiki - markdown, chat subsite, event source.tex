@@ -2,7 +2,7 @@
 \chapter{Wiki: разметка, подсайт чата, источник событий}
 \label{}
 
-Этот пример свяжет воедино несколько различных идей. Мы начнем с подсайта чата, подзволяющего разместить виджет чата на любой странице. Мы используем API источника событий HTML 5 для организации отправки событий клиенту с сервера.
+Этот пример свяжет воедино несколько различных идей. Мы начнем с подсайта чата, позволяющего разместить виджет чата на любой странице. Для организации отправки событий клиенту с сервера мы будем использовать API источника событий HTML 5.
 
 \begin{lstlisting}
 -- @Chat.hs
@@ -10,10 +10,9 @@
              TemplateHaskell, FlexibleInstances, MultiParamTypeClasses,
              FlexibleContexts
   #-}
--- % FIXME: chat box == элемент управления с чатом
--- | Эти модули определяют подсайт, который позволяет вам вставить элемент управления
--- с чатом на любую страницу вашего сайта. Он использует eventsource для отправки
--- сообщений браузеру с сервера.
+-- | Этот модуль определяют подсайт, который позволяет вам вставлять
+-- элемент управления с чатом на любую страницу вашего сайта. Он использует
+-- eventsource для отправки сообщений браузеру с сервера.
 module Chat where
 
 import Yesod
@@ -24,30 +23,24 @@ import Language.Haskell.TH.Syntax (Type (VarT), Pred (ClassP), mkName)
 import Blaze.ByteString.Builder.Char.Utf8 (fromText)
 import Data.Monoid (mappend)
 
--- | Основа нашего подсайта. Мы храним канал событий, разделяемый всеми подключениями.
+-- | Тип-основание нашего подсайта. Мы поддерживаем канал событий,
+-- который будет разделяться между всеми подключениями.
 data Chat = Chat (Chan ServerEvent)
 
--- | We need to know how to check if a user is logged in and how to get
--- his/her username (for printing messages).
--- | Нам нужно знать, как убедиться, что пользователь выполнил вход, и как получить
--- его имя (для вывода сообщений).
+-- | Нам нужно иметь возможность проверять, что пользователь выполнил вход,
+-- и получать его имя (для вывода сообщений).
 class (Yesod master, RenderMessage master FormMessage)
         => YesodChat master where
     getUserName :: GHandler sub master Text
     isLoggedIn :: GHandler sub master Bool
 
--- Now we set up our subsite. The first argument is the subsite, very similar
--- to how we've used mkYesod in the past. The second argument is specific to
--- subsites. What it means here is "the master site must be an instance of
--- YesodChat".
+-- Теперь мы настраиваем наш подсайт. Первый аргумент - это подсайт, что
+-- очень напоминает то, как мы раньше использовали mkYesod. Второй аргумент
+-- характерен для создания подсайта. В данном случае он означает "главный сайт
+-- должен быть экземпляром YesodChat".
 --
--- We define two routes: a route for sending messages from the client to the
--- server, and one for opening up the event stream to receive messages from
--- the server.
--- Теперь мы устанавливаем наш подсайт. Первый аргумент - это подсайт, что
--- очень похоже на то, как мы раньше использовали mkYesod. Второй аргумент специфичен для подсайта. В данном случае он означает "главный сайт должен быть экземпляром YesodChat".
---
--- Мы определяем два маршрута: маршрут отправки сообщений от клиента серверу и маршрут открытия потока событий для приема сообщений от сервера.
+-- Мы определяем два маршрута: маршрут отправки сообщений от клиента серверу
+-- и маршрут открытия потока событий для приема сообщений от сервера.
 mkYesodSub "Chat"
     [ ClassP ''YesodChat [VarT $ mkName "master"]
     ] [parseRoutes|
@@ -55,24 +48,20 @@ mkYesodSub "Chat"
 /recv ReceiveR GET
 |]
 
--- | Get a message from the user and send it to all listeners.
 -- | Получить сообщение от пользователя и отправить его всем подписчикам.
 postSendR :: YesodChat master => GHandler Chat master ()
 postSendR = do
     from <- getUserName
 
-    -- Note that we're using GET parameters for simplicity of the Ajax code.
-    -- This could easily be switched to POST. Nonetheless, our overall
-    -- approach is still RESTful since this route can only be accessed via a
-    -- POST request.
-    -- Обратите внимание, что мы используем параметры GET для упрощения кода Ajax. Можно легко переключиться на POST. Тем не менее, наш общий подход все же является RESTful, так как доступ к этому маршруту можно получить только через POST-запрос.
+    -- Обратите внимание, что мы используем параметры GET для упрощения
+    -- кода Ajax. Можно легко переключиться на POST. Тем не менее, общий 
+    -- наш подход все же является RESTful, так как доступ к этому маршруту
+    -- можно получить только через POST-запрос.
     body <- runInputGet $ ireq textField "message"
 
-    -- Get the channel
     -- Получить канал
     Chat chan <- getYesodSub
 
-    -- Send an event to all listeners with the user's name and message.
     -- Отправить событие с именем пользователя и сообщением всем подписчикам.
     liftIO $ writeChan chan $ ServerEvent Nothing Nothing $ return $
         fromText from `mappend` fromText ": " `mappend` fromText body
