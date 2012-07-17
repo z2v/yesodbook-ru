@@ -3,6 +3,7 @@
 % FIXME: вставить картинку (см строку 66)
 % FIXME: перевести исходники
 % FIXME: в 21-4.hs помимо обработчика поискового запроса дофига другого кода, может выпилить его?
+% FIXME: (?) перевести пример HTML (см строку 132)
 
 Sphinx --- это сервер полнотекстового поиска, благодаря которому реализован поиск на многих сайтах, включая сайт самого Yesod. Код, необходимый для интеграции Sphinx и Yesod, является довольно коротким. Тем не менее, он содержит несколько непростых моментов, а потому является прекрасной иллюстрацией к использованию некоторых деталей внутреннего устройства Yesod. % a great case study in how to play with some of the under-the-surface details of Yesod.
 
@@ -42,7 +43,7 @@ index searcher
 }
 \end{lstlisting}
 
-Чтобы построить индекс, необходимо запусить indexer. Очевидно, это не будет работать до тех пор, пока мы не запустим наше приложение.  В окончательной версии сайта, indexer следует запускать периодически с помощью crontab, чтобы индекс регулярно обновлялся.
+Чтобы построить индекс, необходимо запусить \lstinline'indexer'. Очевидно, это не будет работать до тех пор, пока мы не запустим наше приложение.  В окончательной версии сайта, \lstinline'indexer' следует запускать периодически с помощью crontab, чтобы индекс регулярно обновлялся.
 
 \section{Базовая настройка Yesod} % Basic Yesod Setup
 
@@ -56,7 +57,7 @@ index searcher
 
 \lstinputlisting{../hs/21-2.hs}
 
-Передача параметра True в функцию searchField обеспечивает автоматическую установку фокуса на поле при загрузке страницы. Наконец, объявляем обработчики для главной страницы (на ней отображаются формы добавления и поиска документов), отображения и добавления документа.
+Передача параметра \lstinline'True' в функцию \lstinline'searchField' обеспечивает автоматическую установку фокуса на поле при загрузке страницы. Наконец, объявляем обработчики для главной страницы (на ней отображаются формы добавления и поиска документов), отображения и добавления документа.
 
 \lstinputlisting{../hs/21-3.hs}
 
@@ -82,17 +83,17 @@ data Result = Result
 
 % FIXME: мы просто полагаемся на функцию ...
 
-Ничего волшебного здесь не происходит, мы просто полагаемся на функции searchForm, объявленную выше, и еще не объявленную getResults. Эта функция просто принимает строку с поисковым запросом и возвращает список результатов. Здесь мы впервые взаимодейтсвуем с API сервера Sphinx. Мы будем использовать две функции --- query будет возвращать список совпадений, а buildExcerpts --- выделенные отрывки. Взгляним на запрос: % Let's first look at query:
+Ничего волшебного здесь не происходит, мы просто полагаемся на функции \lstinline'searchForm', объявленную выше, и еще не объявленную \lstinline'getResults'. Эта функция просто принимает строку с поисковым запросом и возвращает список результатов. Здесь мы впервые взаимодейтсвуем с API сервера Sphinx. Мы будем использовать две функции --- \lstinline'query' будет возвращать список совпадений, а \lstinline'buildExcerpts' --- выделенные отрывки. Взгляним на функцию query:
 
 \lstinputlisting{../hs/21-5.hs}
 
-query takes three parameters: the configuration options, the index to search against (searcher in this case) and the search string. It returns a list of document IDs that contain the search string. The tricky bit here is that those documents are returned as Int64 values, whereas we need DocIds. We're taking advantage of the fact that the SQL Persistent backends use a PersistInt64 constructor for their IDs, and simply wrap up the values appropriately.
+Она принимает три аргумента --- параметры конфигурации, строку с именем индекса, по которому будет производиться поиск, и поисковый запрос. Функция возвращает список идентификаторов документов, содержащих поисковый запрос. Здесь есть небольшая хитрость, связанная с тем, что возвращаемые идентификаторы имеют тип \lstinline'Int64', когда нам нужен \lstinline'DocId'. Мы воспользуемся тем, что SQL-бэкенды \lstinline'Persistent' используют конструктор \lstinline'PersistInt64' для этих идентификаторов, после чего сможем получить требуемые значения. % and simply wrap up the values appropriately.
 
-If you're dealing with a backend that has non-numeric IDs, like MongoDB, you'll need to work out something a bit more clever than this.
+Если вы работаете с бэкендом, использующим нечисловые идентификаторы, например \lstinline'MongoDB', вам придется разработать какой-нибудь более изощренный способ.
 
-We then loop over the resulting IDs to get a [Maybe Result] value, and use catMaybes to turn it into a [Result]. In the where clause, we define our local settings, which override the default port and set up the search to work when any term matches the document.
+Затем мы проходимся в цикле по этим идентификатором, получая список \lstinline'[Maybe Result]', после чего используем функцию \lstinline'catMaybes' для преобразования этого списка в \lstinline'[Result]'. В where-клозе мы определяем локальные настройки, которые замещают номер порта, используемый по умолчанию, а также изменяют режим поиска на такой, в котором возвращаются все документы, содержащие хотя бы одно слово из поискового запроса. % "set up the search to work when any term matches the document" + в исходниках S.mode = ST.Any + см http://sphinxsearch.com/docs/1.10/matching-modes.html
 
-Let's finally look at the getResult function:
+Наконец, взглянем на функцию \lstinline'getResult':
 
 \begin{lstlisting}
 getResult :: DocId -> Doc -> Text -> IO Result
@@ -124,11 +125,11 @@ escape =
     escapeChar c   = T.singleton c
 \end{lstlisting}
 
-buildExcerpts takes four parameters: the configuration options, the textual contents of the document, the search index and the search term. The interesting bit is that we entity escape the text content. Sphinx won't automatically escape these for us, so we must do it explicitly.
+Функция \lstinline'buildExcerpts' принимает четыре аргумента --- параметры конфигурации, содержимое документа, строку с именем индекса и поисковый запрос. Обратите внимание на эранирование специальных символов в документе. Sphinx его не производит, потому этим приходится заниматься нам самим.
 
-Similarly, the result from Sphinx is a list of lazy ByteStrings. But of course, we'd rather have Html. So we concat that list into a single lazy ByteString, decode it to a lazy text (ignoring invalid UTF-8 character sequences), and use preEscapedToMarkup to make sure that the tags inserted for matches are not escaped. A sample of this HTML is:
+Аналогично, результат поиска, который мы получаем от Sphinx, представляет собой список ленивых \lstinline`ByteString'ов`. Но мы, само собой разумеется, предпочли бы получить \lstinline'Html'. Потому мы конкатенируем элементы списка в одну ленивую \lstinline'ByteString', декодируем ее в ленивый текст (игнорируя некорректные последовательности символов UTF-8), а затем используем функцию \lstinline'preEscapedToMarkup' для того, чтобы тэги, используемые для выделения найденных совпадений, не экранировались. Вот пример полученного в итоге HTML-кода:
 
-\begin{lstlisting}[language=HTML]
+\begin{lstlisting}[language=HTML] % TODO: перевести?
 &#8230; Departments.  The President shall have <span class='match'>Power</span> to fill up all Vacancies
 &#8230;  people. Amendment 11 The Judicial <span class='match'>power</span> of the United States shall
 &#8230; jurisdiction. 2. Congress shall have <span class='match'>power</span> to enforce this article by
@@ -136,28 +137,27 @@ Similarly, the result from Sphinx is a list of lazy ByteStrings. But of course, 
 &#8230;
 \end{lstlisting}
 
-\section{Streaming xmlpipe output} % FIXME: перевести
+\section{Генерируем xmlpipe} % Streaming xmlpipe output
 
-We've saved the best for last. For the majority of Yesod handlers, the recommended approach is to load up the database results into memory and then produce the output document based on that. It's simpler to work with, but more importantly it's more resilient to exceptions. If there's a problem loading the data from the database, the user will get a proper 500 response code.
+Лучшее мы приберегли напоследок. Для большинства обработчиков в Yesod рекомендуемый подход заключается в загрузке данных из базы в оперативную память и генерации вывода, освнованного на этих данных. Так проще, но намного важнее то, что такой подход более устойчив к ошибкам.  Если возникнет проблема во время загрузки данных из базы, пользователь получит должный код ответа 500.
 
-What do I mean by "proper 500 response code?" If you start streaming a response to a client, and encounter an exception halfway through, there's no way to change the status code; the user will see a 200 response that simply stops in the middle. Not only can this partial content be confusing, but it's an invalid usage of the HTTP spec.
-However, generating the xmlpipe output is a perfect example of the alternative. There are potentially a huge number of documents (the yesodweb.com code handles tens of thousands of these), and documents could easily be several hundred kilobytes. If we take a non-streaming approach, this can lead to huge memory usage and slow response times.
+Что я имею ввиду, говоря "должный код ответа 500"? Если вы начнете передавать данные клиенту и в середине процесса наткнетесь на исключение, у вас не будет возможности изменить код ответа. Пользователь получит ответ с кодом 200, просто передача данных прервется посередине. Помимо того, что частично сгенерированная страница сама по себе сбивает с толку, такое поведение еще и не соответсвтует спецификации протокола HTTP.
 
-So how exactly do we create a streaming response? As we cover in the WAI chapter, we have a ResponseSource constructor that uses a stream of blaze-builder Builders. From the Yesod side, we can avoid the normal Yesod response procedure and send a WAI response directly using the sendWaiResponse function. So there are at least two of the pieces of this puzzle.
+Однако генерация xmlpipe-вывода является прекрасным примером, где следует использовать альтернативный подход. У нас может быть огромное количество документов (код сайта yesodweb.com оперирует десятками тысяч документов), а документы могут иметь размер порядка нескольких сотен килобайт. Если мы не воспользуемся поточным подходом, это может привести к использованию огромного количества оперативной памяти и большому времени ответа.
 
-Now we know we want to create a stream of Builders from some XML content. Fortunately, the xml-conduit package provides this interface directly. xml-conduit provides some high-level interfaces for dealing with documents as a whole, but in our case, we're going to need to use the low-level Event interface to ensure minimal memory impact. So the function we're interested in is:
+Так каким именно образом мы можем сгенерировать поточный ответ (streaming response)? Как мы рассмотрим в главе, посвященной WAI\footnote{Web Application Interface, см главу 24 --- прим. пер.}, у нас есть конструктор ResponseSource который использует поток из элементов типа Builder из библиотеки \lstinline'blaze-builder'. Со стороны Yesod вместо того, чтобы генерировать ответ, как обычно, мы можем послать WAI-ответ напрямую с помощью функции \lstinline'sendWaiResponse'. Таким образом имеется по крайней мере две части головоломки. % So there are at least two of the pieces of this puzzle.
+
+Теперь нам известно, что из неких XML-данных требуется создать поток \lstinline`Builder'ов`. К счастью, пакет \lstinline'xml-conduit' предоставляет непосредственный интерфейс для этого. В целом пакет \lstinline'xml-conduit' предоставляет высокоуровневый интерфейс для работы с документами в целом, однако в нашем случае понадобится низкоуровневый интерфейс Event, дабы обеспечить минимальное использование памяти. Вот функция, которая нам нужна:
 
 \begin{lstlisting}
 renderBuilder :: Resource m => RenderSettings -> Conduit Event m Builder b
 \end{lstlisting}
 
-In plain English, that means renderBuilder takes some settings (we'll just use the defaults), and will then convert a stream of Events to a stream of Builders. This is looking pretty good, all we need now is a stream of Events.
+В переводе на русский это означает, что renderBuilder принимает некие настройки (мы воспользуемся настройками по умолчанию), и преобразует поток \lstinline`Event'ов` в поток \lstinline`Builder'ов`. Выглядит неплохо. Все, что нам нужно --- это поток \lstinline`Event'ов`.
 
-Speaking of which, what should our XML document actually look like? It's pretty simple, we have a sphinx:docset root element, a sphinx:schema element containing a single sphinx:field (which defines the content field), and then a sphinx:document for each document in our database. That last element will have an id attribute and a child content element.
+Кстати говоря, а как должен выглядеть наш XML-документ? Он довольно прост, имеется дочерний элемент \lstinline'sphinx:docset', элемент \lstinline'sphinx:schema', содержащий одиночный элемент \lstinline'sphinx:field' (который определяет элемент с содержимым документа), а затем по одному элементу \lstinline'sphinx:document' для каждого документа в базе данных. Эти элементы будут содержать атрибут id и дочерний элемент \lstinline'content'.
 
-\section{Sample xmlpipe document} % FIXME: перевести
-
-\begin{lstlisting}[language=XML]
+\begin{lstlisting}[language=XML] % Пример xmlpipe-документа / Sample xmlpipe document
 <sphinx:docset xmlns:sphinx="http://sphinxsearch.com/">
     <sphinx:schema>
         <sphinx:field name="content"/>
