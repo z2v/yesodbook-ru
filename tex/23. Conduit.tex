@@ -194,3 +194,150 @@ main = do
     copyFile "fibs.txt" "fibs2.txt"
 \end{verbatim}
 
+Структура главы.
+
+Остаток этой главы освещает следующие темы.
+\begin{itemize}
+ \item ResourceT --- техника, которая позволяет управлять освобождением ресурсов.
+ \item Источники --- наши генераторы данных
+ \item Sinks --- потребители данных
+ \item Кондуиты --- преобразователи данных
+ \item Буферизация --- техника борьбы с инверсией управления.
+\end{itemize}
+
+Трансформер монады Resource
+
+Трансформер монады Resource (ResourceT) играет существенную роль в управлении ресурсами в
+проектах, использующих кондуиты. Он поставляется вместе с библиотекй \verb=conduit=. Мы
+будем рассматривать ResourceT самого по себе. Хотя некоторые решения в его дизайне
+основаны на кондуитах, ResourceT можно использовато самого по себе.
+
+Назначение
+
+Что не так с этим кодом?
+\begin{verbatim}
+import System.IO
+
+main = do
+    output <- openFile "output.txt" WriteMode
+    input  <- openFile "input.txt"  ReadMode
+    hGetContents input <<= hPutStr output
+    hClose input
+    hClose output
+\end{verbatim}
+
+Если файл input.txt отсутствует, бросится исключение при попытке его открыть. В
+результате hClose output никогда не будет вызвано и мы получим утечку важного ресурса
+(дескриптора файлов). В небольшой программе это не критично, но очевидно, что мы не
+сможем себе этого позволить в высоко нагруженном процессе сервера с большим аптаймом
+
+К счастью проблема решается довольно просто:
+\begin{verbatim}
+import System.IO
+
+main =
+    withFile "output.txt" WriteMode $ \output ->
+    withFile "input.txt" ReadMode $ \input ->
+    hGetContents input <<= hPutStr output
+\end{verbatim}
+
+Использование withFile гшарантирует, что дескриптор будет закрыт, даже в случае
+исключений. Оно также поддерживает асинхронные исключения. Вообще говоря, это прекрасный
+подход для случаев, когда вы можете его использовать. Хотя withFile просто использовать,
+часто он влечет переписывание всей программы. А это переписывание может быть очень
+скучным и сильно неэффективным.
+
+Возьмем, например, енумераторы. Если вы заглянете в документацию, то найдете функцию
+enumFile для чте ния содержимого файла, но не найдете функции iterFile для записи
+содержимого в файл. Так сделано потому, что поток управления итератов не позволяет
+правильно управлять дескрипторами. Взамен, чтобо записать в файл вам надо создавать
+дескриптор до запуска итерата, т.е.: 
+
+\begin{verbatim}
+import System.IO
+import Data.Enumerator
+import Data.Enumerator.Binary
+
+main =
+    withFile "output.txt" WriteMode $ \output -<
+    run_ $ enumFile "input.txt" $$ iterHandle output
+\end{verbatim}
+
+Этот код работает хорошо, но представьте, что вместо простой передачи данных в файл, нам
+надо провести длительное вычисление перед использование дескриптора. Мы будем иметь
+дескриптор задолго до того, как он нам понадобится, блокируя важный ресурс нашего
+приложения. Кроме этого, часто мы не можем открыть файл, так как мы поймем какой файл
+надо открывать только тогда, когда прочитаем все данные.
+
+Одна из заявленных целей кондуитов --- решить эту пролему с помощью ResourceT. Программа
+выше может быть переписана вот так:
+\begin{verbatim}
+{-# LANGUAGE OverloadedStrings #-}
+import Data.Conduit
+import Data.Conduit.Binary
+
+main = runResourceT $ sourceFile "input.txt" $$ sinkFile "output.txt"
+\end{verbatim}
+
+Как это работает
+
+There are essentially three base functions on ResourceT, and then a bunch of
+conveniences thrown on top. The first function is:
+\begin{verbatim}
+register :: IO () -> ResourceT IO ReleaseKey
+\end{verbatim}
+Полииморфность этой функции и остальных ниже не используется в полную силу, на самом деле
+они могут работать с другими монадами кроме IO. In fact, almost any transformer on top of
+IO, as well as any ST stacks, work. Мы разъясним детали познее.
+% FIXME: Я провтыкал что такое ST
+Эта функция региструет кусок кода, утверждения которого будут выполнены. Она также
+возвращает ReleaseKey, которое используется в следующей функции:
+\begin{verbatim}release :: ReleaseKey -< ResourceT IO ()
+\end{verbatim}
+Возоы функции \verb=release= от ReleaseKey немедленно выполняет действии, которое ыло
+зарегистрировано ранее. Мы можем вызывать \verb=release= от одной и той же ReleaseKey
+стольк раз, сколько пожелаем, при первом вызове регистрация действия отменяется. Это
+значит, что вы можете безопасно зарегистрировать действие освобождения памяти, не
+заботясь о том, что оно будет выполнено дважды.
+
+Со временем, мы можем захотеть освободить ресурс, ResourceT. Чтобы сделать это,
+воспользуемся:
+\begin{verbatim}
+runResourceT :: ResourceT IO a -> IO a
+\end{verbatim}
+В этой внешене невинной функции происходит вся магия. 
+ It runs through ("пронизывать") all of
+the
+registered cleanup actions and performs them. Она безопасна с точки зрения исключений, в
+том смысле, что освобождения ресурсов будут выполнены в случае и синхронных, и
+асинхронныъ исключений. И, как было упомянуто выше, вызов функции release отменит
+регистрацию действия. Таким образом нам не стоит беспокоиться о повторном освобождении
+ресурсов.
+
+Наконец, для удобства, мы приведем ещё одну функцию для выделения ресурса и регистрации
+действия по его освобождению:
+\begin{verbatim}
+with :: IO a -- ^ allocate
+     -> (a -> IO ()) -- ^ free resource
+     -> ResourceT IO (ReleaseKey, a)
+\end{verbatim}
+
+Теперь перепишем с использованием ResourceT первый некачественный пример:
+\begin{verbatim}
+import System.IO
+import Control.Monad.Trans.Resource
+import Control.Monad.Trans.Class (lift)
+
+main = runResourceT $ do
+    (releaseO, output) <- with (openFile "output.txt" WriteMode) hClose
+    (releaseI, input)  <- with (openFile "input.txt"  ReadMode)  hClose
+    lift $ hGetContents input <<= hPutStr output
+    release releaseI
+    release releaseO
+\end{verbatim}
+
+Сейчас мы можем не беспокоиться об исключениях, затрудняющих освобождение ресурсов. Мы
+можем опустить вызовы \verb=release= в таких маленьких программах как эта, это ни на что
+не повлияет. Но в больших приложениях, где мы продолжим обработку дальше, этот код
+гарантирует, что дескрипторы ресурсов освободятся как только это станет возможным, снижая
+потребление ресурсов до минимума.
