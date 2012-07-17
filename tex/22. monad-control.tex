@@ -154,16 +154,16 @@ useMyFileError2 =
 
 MonadTransControl
 
-Obviously in the specific case we have before us, we could use our knowledge of the ErrorT transformer to beat the types into submission and create our Run function manually. But what we really want is a general solution for many transformers. At this point, you know we need a typeclass.
+Очевидно что в данном случае мы могли бы использовать наши знания пр отрасформатор ErrorT, что бы положить систему типов на лопатки и написать функцию Run вручную. Но на самом деле нам необходимо решение общее для многих трансформаторов. В таком случае, ка вы знаете нам нужен класс типов.
 
-So let's review what we need: access to a Run function, and some way to restructure our original transformer after the fact. And thus was born MonadTransControl, with its single method liftControl:
+Итак, давайте повторим, что нам нужно: доступиться к функции Run, а затем каким-то образом восстановить наш оригинальный трансформатор. Так получился MonadTransControl, с одним методом liftControl:
 
 \begin{lstlisting}
 class MonadTrans t => MonadTransControl t where
     liftControl :: Monad m => (Run t -> m a) -> t m a
 \end{lstlisting}
 
-Let's look at this closely. liftControl takes a function (the one we'll be writing). That function is provided with a Run function, and must return a value in some monad (m). liftControl will then take the result of that function and reinstate the original transformer on top of everything.
+Давайте посмотрим на это внимательно. Метод liftControl принимает функцию (которую нам следует написать). Параметром этой функции является функция Run, а результатом значение в некоторой монаде (m). Затем liftControl возьмёт этот результат и восстановит оригинальный трансформатор на вершине всего.
 
 \begin{lstlisting}
 useMyFileError3 :: Monad m => ErrorT MyError IO (ErrorT MyError m ())
@@ -177,20 +177,20 @@ useMyFileError3 =
     helper run handle = run (sayHiError handle :: ErrorT MyError IO ())
 \end{lstlisting}
 
-Close, but not exactly what I had in mind. What's up with the double monads? Well, let's start at the end: sayHiError handle returns a value of type ErrorT MyError IO (). This we knew already, no surprises. What might be a little surprising (it got me, at least) is the next two steps.
+Близко, но не совсем то, что я имел в виду. Почему две монады? Ну, давайте начнем с конца: sayHiError handle возвращает значение типа ErrorT MyError IO (). Это мы уже знаем, никаких сюрпизов. Что может быть немного удивительно (по крайней мере для меня) это следующие два шага.
 
-First we apply run to that value. Like we'd discussed before, the result is that the IO inner monad is popped to the outside, to be replaced by some arbitrary monad (represented by m here). So we end up with an IO (ErrorT MyError m ()). Ok... We then get the same result after applying withMyFile. Not surprising.
+Сначала мы применяем run к этому значению. В результате чего, как мы уже обсуждали ранее, внутренняя монада IO извлекается наружу, что бы быть замененой некоторой произвольной монадой (представленной здесь как m). Таким образом, мы в конечном итоге получаем IO (ErrorT MyError m ()). Хорошо... Итак мы получим тот же результат после применения withMyFile. Не удивительно.
 
-The last step took me a long time to understand correctly. Remember how we said that we reconstruct the original transformer? Well, so we do: by plopping it right on top of everything else we have. So our end result is the previous type- IO (ErrorT MyError m ())- with a ErrorT MyError stuck on the front.
+У меня заняло много времени, что бы правильно понять последний шаг. Помните, как мы говорили, про восстановление исходного трансформатор? Ну, так мы и делаем: плюхая его  его прямо на все остальное. Таким образом, наш конечный результат будет предыдущего типа - IO (ErrorT MyError m ()) - с MyError ErrorT приклееным спереди.
 
-Well, that seems just about utterly worthless, right? Well, almost. But don't forget, that "m" can be any monad, including IO. If we treat it that way, we get ErrorT MyError IO (ErrorT MyError IO ()). That looks a lot like m (m a), and we want just plain old m a. Fortunately, now we're in luck:
+Кажется, почти бесполезно, верно? Ну, почти. Но не стоит забывать, что "m" может быть любой монадой, в том числе IO. Если рассматривать это таким образом, то мы получем ErrorT MyError IO (ErrorT MyError IO ()). Это похоже на m (m a), а мы хотим просто старую доброю m. К счастью, сейчас нам улыбнулась удача:
 
 \begin{lstlisting}
 useMyFileError4 :: ErrorT MyError IO ()
 useMyFileError4 = join useMyFileError3
 \end{lstlisting}
 
-And it turns out that this usage is so common, that Bas had mercy on us and defined a helper function:
+И оказывается, что это использование так часто, что Bas сжалился над нами и определил вспомогательную функцию:
 
 \begin{lstlisting}
 control :: (Monad m, Monad (t m), MonadTransControl t)
@@ -198,7 +198,7 @@ control :: (Monad m, Monad (t m), MonadTransControl t)
 control = join . liftControl
 \end{lstlisting}
 
-So all we need to write is:
+Так что всё что нам надо написать это:
 
 \begin{lstlisting}
 useMyFileError5 :: ErrorT MyError IO ()
@@ -212,7 +212,7 @@ useMyFileError5 =
     helper run handle = run (sayHiError handle :: ErrorT MyError IO ())
 \end{lstlisting}
 
-And just to make it a little shorter:
+Или же немного короче:
 
 \begin{lstlisting}
 useMyFileError6 :: ErrorT MyError IO ()
