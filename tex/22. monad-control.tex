@@ -264,15 +264,15 @@ useMyFileCrazy :: ReaderT Int (StateT Double (ErrorT MyError IO)) ()
 useMyFileCrazy = controlIO $ \run -> withMyFile $ run . sayHiCrazy
 \end{lstlisting}
 
-Real Life Examples
+Примеры из реальной жизни
 
-Let's solve some real-life problems with this code. Probably the biggest motivating use case is exception handling in a transformer stack. For example, let's say that we want to automatically run some cleanup code when an exception is thrown. If this were normal IO code, we'd use:
+Давайте используя этот код решим несколько задач из реальной жизни. Наверное, самый мотивирующий вариант использования это обработка исключений в стеке трансформатора. Например, предположим, что мы хотим автоматически исполнять некоторый код освобождения ресурсов, когда брошено исключение. Если бы это был обычный IO код, мы бы использовали:
 
 \begin{lstlisting}
 onException :: IO a -> IO b -> IO a
 \end{lstlisting}
 
-But if we're in the ErrorT monad, we can't pass in either the action or the cleanup. In comes controlIO to the rescue:
+Но если мы в монаде ErrorT, мы не можем передать либо действие либо очистка. На помощь приходит controlIO:
 
 \begin{lstlisting}
 onExceptionError :: ErrorT MyError IO a
@@ -282,7 +282,7 @@ onExceptionError action after = controlIO $ \run ->
     run action `onException` run after
 \end{lstlisting}
 
-Let's say we need to allocate some memory to store a Double in. In the IO monad, we could just use the alloca function. Once again, our solution is simple:
+Допустим нам надо выделить некоторый объем памяти для хранения Double. В монаде IO, мы могли бы просто использовать функцию alloca. И опять наше решение очень простое:
 
 \begin{lstlisting}
 allocaError :: (Ptr Double -> ErrorT MyError IO b)
@@ -290,25 +290,25 @@ allocaError :: (Ptr Double -> ErrorT MyError IO b)
 allocaError f = controlIO $ \run -> alloca $ run . f
 \end{lstlisting}
 
-Lost State
+Потерянное состояние
 
-Let's rewind a bit to our onExceptionError. It uses onException under the surface, which has a type signature: IO a -> IO b -> IO a. Let me ask you something: what happened to the b in the output? Well, it was thoroughly ignored. But that seems to cause us a bit of a problem. After all, we store our transformer state information in the value of the inner monad. If we ignore it, we're essentially ignoring the monadic side effects as well!
+Давайте вернёмся к onExceptionError. Под поверхностью она использует OnException которая имеет сигнатур типа: IO a -> IO b -> IO a. Позвольте мне спросить вас: а что случилось с b в резльтате? Хорошо, оно было совершенно проигнорировано. Но это, кажется, вызывает у нас небольшую проблему. Ведь в конце концов, мы сохраняем информацию о состоянии нашего трансформатора в значении внутренней монады. А если мы игнорируем это, мы по существу также игнорируем монадические побочные эффекты!
 
-And the answer is that, yes, this does happen with monad-control. Certain functions will drop some of the monadic side effects. This is put best by Bas, in the comments on the relevant functions:
+А ответ в том, что, да, так это происходит в monad-control. Некоторые функции будут терять некоторые из монадических побочных эффектов. Лучше всего это описал Bas, в комментариях к соответствующей функции:
 
-Note, any monadic side effects in m of the "release" computation will be discarded; it is run only for its side effects in IO.
+Обратите внимание, что любые монадические побочные эффекты в m в коде "освобождения ресурсов" будут отброшены, он будет исполнен только ради его побочных эффектов в IO.
 
-In practice, monad-control will usually be doing the right thing for you, but you need to be aware that some side effects may disappear.
+На практике, monad-control будет, как правило, делать то что надо для вас, но вы должны быть осведомлены, что некоторые побочные эффекты могут исчезать.
 
-More Complicated Cases
+Более сложные случаи
 
-In order to make our tricks work so far, we've needed to have functions that give us full access to play around with their values. Sometimes, this isn't the case. Take, for instance:
+До сих пор, для того, чтобы наши трюки работали, мы должны были иметь функции, которые дают нам полный доступ к своим значениями. Иногда это не тот случай. Возьмем, к примеру:
 
 \begin{lstlisting}
 addMVarFinalizer :: MVar a -> IO () -> IO ()
 \end{lstlisting}
 
-In this case, we are required to have no value inside our finalizer function. Intuitively, the first thing we should notice is that there will be no way to capture our monadic side effects. So how do we get something like this to compile? Well, we need to explicitly tell it to drop all of its state-holding information:
+В этом случае, от нас требуеться не иметь никакого значения в нашей функци завершения. Интуитивно понятно, что первым делом мы должны заметить, что не будет никакого способа, чтобы захватить наши монадические побочные эффекты. Так как же мы сможем что-то вроде такого заставить компилироватья? Хорошо, нам необходимо явно указать отказаться от всей своей информации сохраняющей состояние:
 
 \begin{lstlisting}
 addMVarFinalizerError :: MVar a -> ErrorT MyError IO () -> ErrorT MyError IO ()
@@ -316,13 +316,13 @@ addMVarFinalizerError mvar f = controlIO $ \run ->
     return $ liftIO $ addMVarFinalizer mvar (run f >> return ())
 \end{lstlisting}
 
-Another case from the same module is:
+Другой случай из той же модуля:
 
 \begin{lstlisting}
 modifyMVar :: MVar a -> (a -> IO (a, b)) -> IO b
 \end{lstlisting}
 
-Here, we have a restriction on the return type in the second argument: it must be a tuple of the value passed to that function and the final return value. Unfortunately, I can't see a way of writing a little wrapper around modifyMVar to make it work for ErrorT. Instead, in this case, I copied the definition of modifyMVar and modified it:
+Здесь, у нас есть ограничения на тип возвращаемого значения во втором аргументе: это должен быть кортеж со значением, переданным в функцию и окончательным возвратным значением. К сожалению, я не вижу способ написания небольшой обертки вокруг modifyMVar что бы заставить ее работать с ErrorT. Вместо этого, в данном случае я скопировал определение modifyMVar и изменил его:
 
 \begin{lstlisting}
 modifyMVar :: MVar a
