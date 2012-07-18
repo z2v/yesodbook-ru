@@ -180,70 +180,100 @@ server {
 \end{lstlisting}
 %
 %Server Process
+\subsection{Серверный процесс}
+
 %
 %Many people are familiar with an Apache/mod_php or Lighttpd/FastCGI kind of setup, where the web server automatically spawns the web application. With nginx, either for reverse proxying or FastCGI, this is not the case: you are responsible to run your own process. I strongly recommend a monitoring utility which will automatically restart your application in case it crashes. There are many great options out there, such as angel or daemontools.
 %
+Многие хнакомы с конфигурациями типа Apache/mod_php или Lighttpd/FastCGI, в которых веб сервер автоматически запускает веб приложение. При использовании nginx, как в режиме обратного прокси так и в режиме FastCGI, это не так: вы сами ответственны за запуск вашего процесса. Я настоятельно рекомендую использовать тот или иной инструмент мониторинга, который будет автоматически перезапускать ваше приложение в случае падений. Существует множество подобных инструментов, как например, angel или daemontools.
 %To give a concrete example, here is an Upstart config file. The file must be placed in /etc/init/mysite.conf:
-%
-%description "My awesome Yesod application"
-%start on runlevel [2345];
-%stop on runlevel [!2345];
-%respawn
-%chdir /home/michael/sites/mysite
-%exec /home/michael/sites/mysite/dist/build/mysite/mysite
+
+В качестве конкретного примера ниже приведён файл конфигурации Upstart. Он должен располгаться в /etc/init/mysite.conf:
+\begin{lstlisting}
+description "My awesome Yesod application"
+start on runlevel [2345];
+stop on runlevel [!2345];
+respawn
+chdir /home/michael/sites/mysite
+exec /home/michael/sites/mysite/dist/build/mysite/mysite
+\end{lstlisting}
 %
 %Once this is in place, bringing up your application is as simple as sudo start mysite.
+Как только этот файл на месте, запуск вашего приложения потребует всего лишь одной команды \lstinline{sudo start mysite}.
 %
 %FastCGI
+\subsection{FastCGI}
 %
 %Some people may prefer using FastCGI for deployment. In this case, you'll need to add an extra tool to the mix. FastCGI works by receiving new connection from a file descriptor. The C library assumes that this file descriptor will be 0 (standard input), so you need to use the spawn-fcgi program to bind your application's standard input to the correct socket.
 %
+Некоторые могут предпочитать использовать FastCGI для развёртывания своих приложений. В этом слчае вам потребуется ещё один инструмент. FastCGI работает принимая новые соединения из файлового дескриптора. Стандартная библиотека C предполагает, что этот файловый дескриптор будет равен 0 (стандартый поток ввода), а значит, надо использовать специальную программу spawn-fcgi, которая привяжет стандратный поток ввода вашего приложения с правильным сокетом.
+
 %It can be very convenient to use Unix named sockets for this instead of binding to a port, especially when hosting multiple applications on a single host. A possible script to load up your app could be:
-%
-%spawn-fcgi \
-%    -d /home/michael/sites/mysite \
-%    -s /tmp/mysite.socket \
-%    -n \
-%    -M 511 \
-%    -u michael \
-%    -- /home/michael/sites/mysite/dist/build/mysite-fastcgi/mysite-fastcgi
+
+Может оказаться очень удобным использовать для этих целей именованные Unix сокеты вместо привязки к порту, особенно если вы собираетесь запускать несколько приложений на одном физическом сервере. Возможный сценарий для запуска вашего приложения может выглядеть следующим образом:
+
+\begin{lstlisting}
+spawn-fcgi \
+    -d /home/michael/sites/mysite \
+    -s /tmp/mysite.socket \
+    -n \
+    -M 511 \
+    -u michael \
+    -- /home/michael/sites/mysite/dist/build/mysite-fastcgi/mysite-fastcgi
+\end{lstlisting}
 %
 %You will also need to configure your frontend server to speak to your app over FastCGI. This is relatively painless in Nginx:
+Вам так же потребуется сконфигурировать ваш frontend сервер для общения с вашим приложением с использованием FastCGI. В случае с Nginx это относительно просто:
 %
-%server {
-%    listen 80;
-%    server_name www.myserver.com;
-%    location / {
-%        fastcgi_pass unix:/tmp/mysite.socket;
-%    }
-%}
+\begin{lstlisting}
+server {
+    listen 80;
+    server_name www.myserver.com;
+    location / {
+        fastcgi_pass unix:/tmp/mysite.socket;
+    }
+}
+\end{lstlisting}
 %
 %That should look pretty familiar from above. The only last trick is that, with Nginx, you need to manually specify all of the FastCGI variables. It is recommended to store these in a separate file (say, fastcgi.conf) and then add include fastcgi.conf; to the end of your http block. The contents of the file, to work with WAI, should be:
-%
-%fastcgi_param  QUERY_STRING       $query_string;
-%fastcgi_param  REQUEST_METHOD     $request_method;
-%fastcgi_param  CONTENT_TYPE       $content_type;
-%fastcgi_param  CONTENT_LENGTH     $content_length;
-%fastcgi_param  PATH_INFO          $fastcgi_script_name;
-%fastcgi_param  SERVER_PROTOCOL    $server_protocol;
-%fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
-%fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
-%fastcgi_param  REMOTE_ADDR        $remote_addr;
-%fastcgi_param  SERVER_ADDR        $server_addr;
-%fastcgi_param  SERVER_PORT        $server_port;
-%fastcgi_param  SERVER_NAME        $server_name;
+
+Этот пример должен выгядеть знакомым, учитывая описанные ранее варианты. Последний трюк состоит в том, что с Nginx вам необходимо вручную задать все переменные FastCGI. Рекомендуется хранить эти переменные в отдельном файле (скажем, fastcgi.conf), и добавлять \lstinline{include fastcgi.conf;} в конец блока \lstinline{http}. Сожержимое этого файла, настроенного для работы через WAI, должно быть следующим:
+
+\begin{lstlisting}
+fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
+fastcgi_param  PATH_INFO          $fastcgi_script_name;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  SERVER_PORT        $server_port;
+fastcgi_param  SERVER_NAME        $server_name;
+\end{lstlisting}
 %
 %Desktop
+\subsection{Desktop} %TODO: как бы это перевести в данном контексте?
 %
 %Another nifty backend is wai-handler-webkit. This backend combines Warp and QtWebkit to create an executable that a user simply double-clicks. This can be a convenient way to provide an offline version of your application.
+
+Другой замечательный способ запускать ваше приложение -- wai-handler-webkit. Он объединяет Warp и QtWebkit для создания исполняемого файла, который может быть запущен при помощи простого двойного целчка мышью. Это может быть удобным способом сделать оффлайн версию вашего приложения.
 %
 %One of the very nice conveniences of Yesod for this is that your templates are all compiled into the executable, and thus do not need to be distributed with your application. Static files do, however.
+
+Одно из удобств Yesod в данном случае состоит в том, что все ваши шаблоны страниц компилируются в исполняемый файл, избавляя вас от необходимости распространять их отдельно. В случае со статическими файлами это, однако, не так.
 %
 %There's actually support for embedding your static files directly in the executable as well, see the yesod-static docs for more details.
+
+На самом деле, поддержка включения статических файлов прямо в приложение существует, обращайтесь в документации на yesod-static за подробностями.
 %
 %A similar approach, without requiring the QtWebkit library, is wai-handler-launch, which launches a Warp server and then opens up the user's default web browser. There's a little trickery involved here: in order to know that the user is still using the site, wai-handler-launch inserts a "ping" Javascript snippet to every HTML page it serves. It wai-handler-launch doesn't receive a ping for two minutes, it shuts down.
+
+Аналогичный подход wai-handler-launch, который не требует библиотеки QtWebkit, запускает Warp сервер и затем открывает пользовательский браузер по-умолчанию. Следует отметить небольшой трюк: для того, чтобы понять, что пользователь всё ещё пользуется сайтом, wai-handler-launch вставляет небольшой отрывок Javascript сценария на каждую HTML страницу, которую раздаёт, который периодически посылает пустые запросы на сервер. Если wai-handler-launch не получает ответа на такой пустой запрос в течение двух минут, он останавливается.
 %
-%CGI on Apache
+CGI on Apache
 %
 %CGI and FastCGI work almost identically on Apache, so it should be fairly straight-forward to port this configuration. You essentially need to accomplish two goals:
 %
