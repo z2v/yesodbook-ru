@@ -2,7 +2,7 @@
 \chapter{Wiki: разметка, подсайт чата, источник событий}
 \label{}
 
-Этот пример свяжет воедино несколько различных идей. Мы начнем с подсайта чата, позволяющего разместить виджет чата на любой странице. Для организации отправки событий клиенту с сервера мы будем использовать API источника событий HTML 5.
+Этот пример свяжет воедино несколько различных идей. Мы начнем с подсайта чата, позволяющего внедрить виджет чата в любую страницу. Для организации отправки событий клиенту с сервера будем использовать API источника событий HTML 5.
 
 \begin{lstlisting}
 -- @Chat.hs
@@ -10,7 +10,7 @@
              TemplateHaskell, FlexibleInstances, MultiParamTypeClasses,
              FlexibleContexts
   #-}
--- | Этот модуль определяют подсайт, который позволяет вам вставлять
+-- | Этот модуль определяет подсайт, который позволяет вам вставлять
 -- элемент управления с чатом на любую страницу вашего сайта. Он использует
 -- eventsource для отправки сообщений браузеру с сервера.
 module Chat where
@@ -23,7 +23,7 @@ import Language.Haskell.TH.Syntax (Type (VarT), Pred (ClassP), mkName)
 import Blaze.ByteString.Builder.Char.Utf8 (fromText)
 import Data.Monoid (mappend)
 
--- | Тип-основа нашего подсайта. Мы поддерживаем канал событий,
+-- | Тип-основание нашего подсайта. Мы поддерживаем канал событий,
 -- который будет разделяться между всеми подключениями.
 data Chat = Chat (Chan ServerEvent)
 
@@ -34,7 +34,7 @@ class (Yesod master, RenderMessage master FormMessage)
     getUserName :: GHandler sub master Text
     isLoggedIn :: GHandler sub master Bool
 
--- Теперь мы настраиваем наш подсайт. Первый аргумент - это подсайт, что
+-- Теперь создадим наш подсайт. Первый аргумент - это подсайт, что
 -- очень напоминает то, как мы раньше использовали mkYesod. Второй аргумент
 -- характерен для создания подсайта. В данном случае он означает "главный сайт
 -- должен быть экземпляром YesodChat".
@@ -48,7 +48,7 @@ mkYesodSub "Chat"
 /recv ReceiveR GET
 |]
 
--- | Получить сообщение от пользователя и отправить его всем подписчикам.
+-- | Получить сообщение от пользователя и отправить его всем слушателям.
 postSendR :: YesodChat master => GHandler Chat master ()
 postSendR = do
     from <- getUserName
@@ -62,7 +62,7 @@ postSendR = do
     -- Получить канал
     Chat chan <- getYesodSub
 
-    -- Отправить событие с именем пользователя и сообщением всем подписчикам.
+    -- Отправить событие с именем пользователя и сообщением всем слушателям.
     liftIO $ writeChan chan $ ServerEvent Nothing Nothing $ return $
         fromText from `mappend` fromText ": " `mappend` fromText body
 
@@ -75,7 +75,7 @@ getReceiveR = do
     -- Мы сделали копию канала, что позволяет нам создавать широковещательные каналы.
     chan <- liftIO $ dupChan chan0
 
-    -- Теперь мы используем API источника событий. eventSourceAppChan
+    -- Теперь воспользуемся API источника событий. eventSourceAppChan
     -- принимает два параметра: канал событий, из которого выполнять чтение,
     -- и запрос WAI. Он возвращает отклик WAI, который мы можем возвратить
     -- с помощью sendWaiResponse.
@@ -89,12 +89,12 @@ chatWidget :: YesodChat master
            -> GWidget sub master ()
 -- Аргумент toMaster говорит нам, как преобразовывать Route Chat в маршрут
 -- главного сайта. Вы можете счесть эту информация избыточной, но использование
--- этого подхода означает, что у нас может быть несколько подсайтов с чатом
--- в пределах одного сайта.
+-- такого подхода дает нам возможность иметь несколько подсайтов с чатом в пределах
+-- одного сайта.
 chatWidget toMaster = do
     -- Получим некоторые уникальные идентификаторы, помогающие в создании
-    -- наших HTML/CSS. Вспомним, что мы не имеем представления о том, как
-    -- выглядит HTML главного сайта, поэтому мы не можем предполагать, что способны
+    -- наших HTML/CSS. Вспомним, что у нас нет представления о том, как
+    -- выглядит HTML главного сайта. Поэтому мы не можем предполагать, что способны
     -- придумать идентификаторы, которые не будут использоваться повторно.
     -- Кроме того, несколько chatWidget могут быть внедрены в одну и ту же страницу.
     chat <- lift newIdent   -- обрамляющий div
@@ -169,10 +169,8 @@ input.onkeyup = function(event) {
     \ чтобы воспользоваться чатом.
 |]
 
-This module stands on its own, and can be used in any application. Next we'll provide such a driver application: a wiki. Our wiki will have a hard-coded homepage, and then a wiki section of the site. We'll be using multiple dynamic pieces to allow an arbitrary hierarchy of pages within the Wiki.
-Этот модуль является независимым и может использоваться в любом приложении. Далее мы создадим такое приложение-драйвер~--- wiki. У нашей wiki будет жестко заданная домашняя страница и wiki-раздел сайта. Мы будем использовать множество динамических фрагментов, позволяющее строить произвольную иерархию страниц в Wiki.
+Этот модуль является независимым и может использоваться в любом приложении. Далее мы создадим такое приложение-драйвер~--- wiki. У нашей wiki будет жестко заданная домашняя страница, а затем и wiki-раздел сайта. Мы будем использовать множество динамических фрагментов, позволяющих строить произвольную иерархию страниц в рамках Wiki.
 
-For storage, we'll just use a mutable reference to a Map. For a production application, this should be replaced with a proper database. The content will be stored and served as Markdown. yesod-auth's dummy plugin will provide us with (fake) authentication.
 В качестве способа хранения мы просто используем изменяемую ссылку на Map. Для реального приложения нужно заменить ее на подходящуюю базу данных. Содержимое будет храниться и предоставляться как Markdown. Плагин-пустышка yesod-auth предоставит нам способ выполнять (фальшивую) аутентификацию.
 
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
@@ -190,36 +188,27 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.IORef as I
 import qualified Data.Map as Map
 
--- This package is not yet available on Hackage.
--- You can get the source code from:
--- https://github.com/snoyberg/markdown
 -- Этот пакет пока отсутствует на Hackage.
 -- Вы можете скачать его исходный код с https://github.com/snoyberg/markdown
 import Text.Markdown (markdown, def)
 
--- | Our foundation type has both the chat subsite and a mutable reference to
--- a map of all our wiki contents. Note that the key is a list of Texts, since
--- a wiki can have an arbitrary hierarchy.
--- | Наш тип-основа включает и подсайт чата, и изменяемую ссылку на карту содержимого wiki. Обратите внимание, что ключом в этой карте является список Text, так как wiki может иметь произвольную иерархию.
+-- | Наш тип-основание включает и подсайт чата, и изменяемую ссылку на карту
+-- содержимого wiki. Обратите внимание, что ключом в этой карте является список из Text,
+-- так как wiki может иметь произвольную иерархию.
 --
--- In a real application, we would want to store this information in a
--- database of some sort.
--- В реальном приложении мы бы захотели хранить эту информацию в какой-нибудь базе данных.
+-- В реальном приложении мы бы хотели хранить эту информацию в какой-нибудь базе данных.
 data Wiki = Wiki
     { getChat :: Chat
     , wikiContent :: I.IORef (Map.Map [Text] Text)
     }
 
--- Set up our routes as usual.
--- Настраиваем маршруты, как обычно.
+-- Настраиваем наши маршруты, как обычно.
 mkYesod "Wiki" [parseRoutes|
--- домашняя страница
-/ RootR GET                 -- the homepage
+/ RootR GET                 -- домашняя страница
+FIXME
 -- обратите внимание на multipiece для иерархии wiki
 /wiki/*Texts WikiR GET POST -- note the multipiece for the wiki hierarchy
--- подсайт чата
 /chat ChatR Chat getChat    -- the chat subsite
--- подсайт аутентификации
 /auth AuthR Auth getAuth    -- the auth subsite
 |]
 
