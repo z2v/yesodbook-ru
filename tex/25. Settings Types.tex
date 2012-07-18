@@ -1,14 +1,15 @@
-Settings Types
-
+\chapter{Settings Types}
 Let's say you're writing a webserver. You want the server to take a port to listen on, and an
 application to run. So you create the following function:
-
+\begin{lstlisting}
 run :: Int -> Application -> IO ()
+\end{lstlisting}
 
 But suddenly you realize that some people will want to customize their timeout durations. So
 you modify your API:
-
+\begin{lstlisting}
 run :: Int -> Int -> Application -> IO ()
+\end{lstlisting}
 
 So, which Int is the timeout, and which is the port? Well, you could create
 some type aliases, or comment your code. But there's another problem creeping into our code: this
@@ -17,39 +18,43 @@ parameter to indicate how exceptions should be handled, and then another one to 
 host to bind to, and so on.
 
 So a more extensible solution is to introduce a settings datatype:
-
+\begin{lstlisting}
 data Settings = Settings
     { settingsPort :: Int
     , settingsHost :: String
     , settingsTimeout :: Int
     }
+\end{lstlisting}
 And this makes the calling code almost self-documenting:
-
+\begin{lstlisting}
 run Settings
     { settingsPort = 8080
     , settingsHost = "127.0.0.1"
     , settingsTimeout = 30
     } myApp
+\end{lstlisting}
 
 Great, couldn't be clearer, right? True, but what happens when you have 50 settings to your
 webserver. Do you really want to have to specify all of those each time? Of course not. So
 instead, the webserver should provide a set of defaults:
-
+\begin{lstlisting}
 defaultSettings = Settings 3000 "127.0.0.1" 30
+\end{lstlisting}
 And now, instead of needing to write that long bit of code above, we can get away with:
-
+\begin{lstlisting}
 run defaultSettings { settingsPort = 8080 } myApp -- (1)
+\end{lstlisting}
 
 This is great, except for one minor hitch. Let's say we now decide to add an extra record to
 Settings. Any code out in the wild looking like this:
-
+\begin{lstlisting}
 run (Settings 8080 "127.0.0.1" 30) myApp -- (2)
-
+\end{lstlisting}
 will be broken, since the Settings constructor now takes 4 arguments. The proper
 thing to do would be to bump the major version number so that dependent packages don't get
 broken. But having to change major versions for every minor setting you add is a nuisance. The
 solution? Don't export the Settings constructor:
-
+\begin{lstlisting}
 module MyServer
     ( Settings
     , settingsPort
@@ -58,6 +63,7 @@ module MyServer
     , run
     , defaultSettings
     ) where
+\end{lstlisting}
 
 With this approach, no one can write code like (2), so you can freely add new records without
 any fear of code breaking.
