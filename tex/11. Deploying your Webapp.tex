@@ -85,7 +85,7 @@ cabal clean && cabal configure && cabal build
   \item Вы можете использовать Nginx как балансировщик нагрузки или SSL прокси. (Хотя, используя warp-tls вполне можно запускать https сайт на одном только Warp).
 \end{itemize}
 
-Таким образом, моя финальная рекомендация: использовать Nginx как обратный прокси для Warp.
+Итак, моя финальная рекомендация: использовать Nginx как обратный прокси для Warp.
 
 %A number of people in the Yesod community disagree with me here, and believe that the increased performance and decreased complexity of skipping the Nginx step make standalone Warp a better choice. Feel free to follow either approach, they are both perfectly valid.
 
@@ -97,54 +97,87 @@ cabal clean && cabal configure && cabal build
 %
 %In general, Nginx will listen on port 80 and your Yesod/Warp app will listen on some unprivileged port (lets say 4321). You will then need to provide a nginx.conf file, such as:
 %
-%daemon off; # Don't run nginx in the background, good for monitoring apps
-%events {
-%    worker_connections 4096;
-%}
+В общем случае, Nginx будет ожидать соединений на 80 порту, а ваше Yesod/Warp приложение будет слушать какой-нибудь другой, не системный порт (скажем, 4321). В таком случае ваш nginx.conf файл будет выглядеть примерно так:
+
+% Оригинальные комментарии в конфиг файле
 %
-%http {
-%    server {
-%        listen 80; # Incoming port for Nginx
-%        server_name www.myserver.com;
-%        location / {
-%            proxy_pass http://127.0.0.1:4321; # Reverse proxy to your Yesod app
-%        }
-%    }
-%}
+% daemon off; # Don't run nginx in the background, good for monitoring apps
+% listen 80; # Incoming port for Nginx
+% proxy_pass http://127.0.0.1:4321; # Reverse proxy to your Yesod app
+%
+\begin{lstlisting}
+daemon off; # НЕ запускайте nginx в фоновом режиме, что очень удобно для мониторинга приложений
+events {
+    worker_connections 4096;
+}
+
+http {
+    server {
+        listen 80; # Порт для входящих соединений Nginx
+        server_name www.myserver.com;
+        location / {
+            proxy_pass http://127.0.0.1:4321; # Порт обратного прокси для вашего Yesod приложения
+        }
+    }
+}
+\end{lstlisting}
 %
 %You can add as many server blocks as you like. A common addition is to ensure users always access your pages with the www prefix on the domain name, ensuring the RESTful principle of canonical URLs. (You could just as easily do the opposite and always strip the www, just make sure that your choice is reflected in both the nginx config and the approot of your site.) In this case, we would add the block:
-%
-%server {
-%    listen 80;
-%    server_name myserver.com;
-%    rewrite ^/(.*) http://www.myserver.com/$1 permanent;
-%}
+
+Вы можете добавлять сколько угодно блоков \lstinline{server}. Общая практика -- добавлять блок, который гарантирует, что выши пользователи всегда будут получать ваши страницы с префиксом \lstinline{www} в имени домена, соблюдая, таким образом, RESTful принцип канонических URLов. (Вы можете с тем же успехом делать обратное и всегда удалять префикс \lstinline{www}. Главное -- не забудьте отразить это и в файле конфигурации nginx и в approot вашего сайта).
+\begin{lstlisting}
+server {
+    listen 80;
+    server_name myserver.com;
+    rewrite ^/(.*) http://www.myserver.com/$1 permanent;
+}
+\end{lstlisting}
 %
 %A highly recommended optimization is to serve static files from a separate domain name, therefore bypassing the cookie transfer overhead. Assuming that our static files are stored in the static folder within our site folder, and the site folder is located at /home/michael/sites/mysite, this would look like:
 %
-%server {
-%    listen 80;
-%    server_name static.myserver.com;
-%    root /home/michael/sites/mysite/static;
+
+Крайне рекомендуется в качестве оптимизации раздавать статические файлы с отдельного домена, избегая таким образом ненужной передачи файлов-cookie.
+
+% Оригинальный коментарий
 %    # Since yesod-static appends a content hash in the query string,
 %    # we are free to set expiration dates far in the future without
 %    # concerns of stale content.
-%    expires max;
-%}
+%
+\begin{lstlisting}
+server {
+    listen 80;
+    server_name static.myserver.com;
+    root /home/michael/sites/mysite/static;
+    # Так как yesod-static добавляет хэш содержимого к строке запроса,
+    # мы можем свободно выставлять дату истечения срока действия на далёкое будущее
+    # без опасений получить устаревшее содержимое.
+    expires max;
+}
+\end{lstlisting}
 %
 %In order for this to work, your site must properly rewrite static URLs to this alternate domain name. The scaffolded site is set up to make this fairly simple via the Settings.staticRoot function and the definition of urlRenderOverride. However, if you just want to get the benefit of nginx's faster static file serving without dealing with separate domain names, you can instead modify your original server block like so:
+
+Для того, чтобы это заработало, ваш сайт должен корректно изменять статические URLы так, чтобы они указывали на этот альтернативный домен. Сайт-каркас настроен таким образом, чтобы упростить эту задачу используя функцию Settings.staticRoot и определение urlRenderOverride. Однако, если вам надо всего лишь использовать преимущества Nginx при раздаче статических файлов без использования отдельных доменных имён, вы можете просто модифицировать исходный блок \lstinline{server} следующим образом:
 %
-%server {
-%    listen 80; # Incoming port for Nginx
-%    server_name www.myserver.com;
-%    location / {
-%        proxy_pass http://127.0.0.1:4321; # Reverse proxy to your Yesod app
-%    }
-%    location /static {
-%        root /home/michael/sites/mysite; # Notice that we do *not* include /static
-%        expires max;
-%    }
-%}
+% Оригинальные коментарии из конфига
+%
+% listen 80; # Incoming port for Nginx
+% proxy_pass http://127.0.0.1:4321; # Reverse proxy to your Yesod app
+% root /home/michael/sites/mysite; # Notice that we do *not* include /static
+ 
+\begin{lstlisting}
+server {
+    listen 80; # Порт для входящих соединений Nginx
+    server_name www.myserver.com;
+    location / {
+        proxy_pass http://127.0.0.1:4321; # Порт обратного прокси для вашего Yesod приложения
+    }
+    location /static {
+        root /home/michael/sites/mysite; # Обратите внимание, что мы *НЕ* включаем /static
+        expires max;
+    }
+}
+\end{lstlisting}
 %
 %Server Process
 %
