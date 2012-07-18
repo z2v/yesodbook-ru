@@ -221,40 +221,40 @@ useMyFileError6 = control $ \run -> withMyFile $ run . sayHiError
 
 MonadControlIO
 
-The MonadTrans class provides the lift method, which allows you to lift an action one level in the stack. There is also the MonadIO class that provides liftIO, which lifts an IO action as far in the stack as desired. We have the same breakdown in monad-control. But first, we need a corrolary to Run:
+Класс MonadTrans предоставляет метод lift, который позволяет протягивать действие на один уровень по стеку монад. Также существует класс MonadIO предоставляющий метод liftIO, который протягивает действие IO так далеко по стеку как хочется. У нас такая же схема организации в monad-control. Но сперва, нам нужно следствие Run:
 
 \begin{lstlisting}
 type RunInBase m base = forall b. m b -> base (m b)
 \end{lstlisting}
 
-Instead of dealing with a transformer, we're dealing with two monads. base is the underlying monad, and m is a stack built on top of it. RunInBase is a function that takes a value of the entire stack, pops out that base, and puts in on the outside. Unlike in the Run type, we don't replace it with an arbitrary monad, but with the original one. To use some more concrete types:
+Вместо того что бы иметь дело с трансформатором мы работаем с двумя монадами. Монада base это основная монада, а m это стек построеный на ней. Фнкция RunInBase берёт значение всего стека, вытягивает base, и размещает её снаружи. В отличии от типа Run, мы не замещали её произвольной монадой, а использовали исходную. Используя конкретные типы:
 
 \begin{lstlisting}
 RunInBase (ErrorT MyError IO) IO = forall b. ErrorT MyError IO b -> IO (ErrorT MyError IO b)
 \end{lstlisting}
 
-This should look fairly similar to what we've been looking at so far, the only difference is that we want to deal with a specific inner monad. Our MonadControlIO class is really just an extension of MonadControlTrans using this RunInBase.
+Это очень похоже на то, что мы рассматривали до сих пор, с той лишь разницей, что тут мы хотим иметь дело с конкретной внутренней монадой. На самом деле класс MonadControlIOэто просто расширение MonadControlTrans с помощью RunInBase.
 
 \begin{lstlisting}
 class MonadIO m => MonadControlIO m where
     liftControlIO :: (RunInBase m IO -> IO a) -> m a
 \end{lstlisting}
 
-Simply put, liftControlIO takes a function which receives a RunInBase. That RunInBase can be used to strip down our monad to just an IO, and then liftControlIO builds everything back up again. And like MonadControlTrans, it comes with a helper function
+Проще говоря, liftControlIO берёт функцию, которая получает RunInBase. Эта RunInBase может быть использована для разбора нашей монады до простой IO, а затем liftControlIO снова выстраивает всё назад. Так же, как и MonadControlTrans, она поставляется со вспомогательной функцией
 
 \begin{lstlisting}
 controlIO :: MonadControlIO m => (RunInBase m IO -> IO (m a)) -> m a
 controlIO = join . liftControlIO
 \end{lstlisting}
 
-We can easily rewrite our previous example with it:
+Используя её мы легко можем переписать наш предыдущий пример:
 
 \begin{lstlisting}
 useMyFileError7 :: ErrorT MyError IO ()
 useMyFileError7 = controlIO $ \run -> withMyFile $ run . sayHiError
 \end{lstlisting}
 
-And as an advantage, it easily scales to multiple transformers:
+И, как преимущество, она легко масштабируется на несколько трансформаторов:
 
 \begin{lstlisting}
 sayHiCrazy :: Handle -> ReaderT Int (StateT Double (ErrorT MyError IO)) ()
