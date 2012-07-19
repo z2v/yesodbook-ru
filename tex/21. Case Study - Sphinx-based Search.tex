@@ -1,5 +1,7 @@
 \chapter{Учимся на примерах: полнотекстовый поиск с использованием Sphinx} % Case Study: Sphinx-based Search
 
+% TODO: еще раз перечитать и проверить орфографию.
+
 % FIXME: вставить картинку (см строку 66)
 % FIXME: перевести исходники
 % FIXME: в 21-4.hs помимо обработчика поискового запроса дофига другого кода, может выпилить его?
@@ -89,7 +91,7 @@ data Result = Result
 
 Она принимает три аргумента --- параметры конфигурации, строку с именем индекса, по которому будет производиться поиск, и поисковый запрос. Функция возвращает список идентификаторов документов, содержащих поисковый запрос. Здесь есть небольшая хитрость, связанная с тем, что возвращаемые идентификаторы имеют тип \lstinline'Int64', когда нам нужен \lstinline'DocId'. Мы воспользуемся тем, что SQL-бэкенды \lstinline'Persistent' используют конструктор \lstinline'PersistInt64' для этих идентификаторов, после чего сможем получить требуемые значения. % and simply wrap up the values appropriately.
 
-Если вы работаете с бэкендом, использующим нечисловые идентификаторы, например \lstinline'MongoDB', вам придется разработать какой-нибудь более изощренный способ.
+Если вы работаете с бэкендом, использующим нечисловые идентификаторы, например MongoDB, вам придется разработать какой-нибудь более изощренный способ.
 
 Затем мы проходимся в цикле по этим идентификатором, получая список \lstinline'[Maybe Result]', после чего используем функцию \lstinline'catMaybes' для преобразования этого списка в \lstinline'[Result]'. В where-клозе мы определяем локальные настройки, которые замещают номер порта, используемый по умолчанию, а также изменяют режим поиска на такой, в котором возвращаются все документы, содержащие хотя бы одно слово из поискового запроса. % "set up the search to work when any term matches the document" + в исходниках S.mode = ST.Any + см http://sphinxsearch.com/docs/1.10/matching-modes.html
 
@@ -127,7 +129,7 @@ escape =
 
 Функция \lstinline'buildExcerpts' принимает четыре аргумента --- параметры конфигурации, содержимое документа, строку с именем индекса и поисковый запрос. Обратите внимание на эранирование специальных символов в документе. Sphinx его не производит, потому этим приходится заниматься нам самим.
 
-Аналогично, результат поиска, который мы получаем от Sphinx, представляет собой список ленивых \lstinline`ByteString'ов`. Но мы, само собой разумеется, предпочли бы получить \lstinline'Html'. Потому мы конкатенируем элементы списка в одну ленивую \lstinline'ByteString', декодируем ее в ленивый текст (игнорируя некорректные последовательности символов UTF-8), а затем используем функцию \lstinline'preEscapedToMarkup' для того, чтобы тэги, используемые для выделения найденных совпадений, не экранировались. Вот пример полученного в итоге HTML-кода:
+Аналогично, результат поиска, который мы получаем от Sphinx, представляет собой список ленивых ByteString'ов. Но мы, само собой разумеется, предпочли бы получить \lstinline'Html'. Потому мы конкатенируем элементы списка в одну ленивую \lstinline'ByteString', декодируем ее в ленивый текст (игнорируя некорректные последовательности символов UTF-8), а затем используем функцию \lstinline'preEscapedToMarkup' для того, чтобы тэги, используемые для выделения найденных совпадений, не экранировались. Вот пример полученного в итоге HTML-кода:
 
 \begin{lstlisting}[language=HTML] % TODO: перевести?
 &#8230; Departments.  The President shall have <span class='match'>Power</span> to fill up all Vacancies
@@ -147,13 +149,13 @@ escape =
 
 Так каким именно образом мы можем сгенерировать поточный ответ (streaming response)? Как мы рассмотрим в главе, посвященной WAI\footnote{Web Application Interface, см главу 24 --- прим. пер.}, у нас есть конструктор ResponseSource который использует поток из элементов типа Builder из библиотеки \lstinline'blaze-builder'. Со стороны Yesod вместо того, чтобы генерировать ответ, как обычно, мы можем послать WAI-ответ напрямую с помощью функции \lstinline'sendWaiResponse'. Таким образом имеется по крайней мере две части головоломки. % So there are at least two of the pieces of this puzzle.
 
-Теперь нам известно, что из неких XML-данных требуется создать поток \lstinline`Builder'ов`. К счастью, пакет \lstinline'xml-conduit' предоставляет непосредственный интерфейс для этого. В целом пакет \lstinline'xml-conduit' предоставляет высокоуровневый интерфейс для работы с документами в целом, однако в нашем случае понадобится низкоуровневый интерфейс Event, дабы обеспечить минимальное использование памяти. Вот функция, которая нам нужна:
+Теперь нам известно, что из неких XML-данных требуется создать поток Builder'ов. К счастью, пакет \lstinline'xml-conduit' предоставляет непосредственный интерфейс для этого. В целом пакет \lstinline'xml-conduit' предоставляет высокоуровневый интерфейс для работы с документами в целом, однако в нашем случае понадобится низкоуровневый интерфейс Event, дабы обеспечить минимальное использование памяти. Вот функция, которая нам нужна:
 
 \begin{lstlisting}
 renderBuilder :: Resource m => RenderSettings -> Conduit Event m Builder b
 \end{lstlisting}
 
-В переводе на русский это означает, что renderBuilder принимает некие настройки (мы воспользуемся настройками по умолчанию), и преобразует поток \lstinline`Event'ов` в поток \lstinline`Builder'ов`. Выглядит неплохо. Все, что нам нужно --- это поток \lstinline`Event'ов`.
+В переводе на русский это означает, что renderBuilder принимает некие настройки (мы воспользуемся настройками по умолчанию), и преобразует поток Event'ов в поток Builder'ов. Выглядит неплохо. Все, что нам нужно --- это поток Event'ов.
 
 Кстати говоря, а как должен выглядеть наш XML-документ? Он довольно прост, имеется дочерний элемент \lstinline'sphinx:docset', элемент \lstinline'sphinx:schema', содержащий одиночный элемент \lstinline'sphinx:field' (который определяет элемент с содержимым документа), а затем по одному элементу \lstinline'sphinx:document' для каждого документа в базе данных. Эти элементы будут содержать атрибут id и дочерний элемент \lstinline'content'.
 
@@ -171,7 +173,7 @@ renderBuilder :: Resource m => RenderSettings -> Conduit Event m Builder b
 </sphinx:docset>
 \end{lstlisting}
 
-Every document is going to start off with the same events (start the docset, start the schema, etc) and end with the same event (end the docset). We'll start off by defining those:
+Каждый XML-документ будет начинатся с одинаковых событий (начать docset, начать schema и т.д.) и заканчиваться одним и тем же событием (закончить docset). Вот соответствующий код: % We'll start off by defining those:
 
 \begin{lstlisting}
 toName :: Text -> X.Name
@@ -199,7 +201,7 @@ endEvents =
     ]
 \end{lstlisting}
 
-Now that we have the shell of our document, we need to get the Events for each individual document. This is actually a fairly simple function:
+Теперь, когда у нас есть оболочка нашего документа, нам нужно достать Event'ы для каждого конкретного документа. Это можно сделать при помощи довольно простой функции:
 
 \begin{lstlisting}
 entityToEvents :: (Entity Doc) -> [X.Event]
@@ -212,16 +214,16 @@ entityToEvents (Entity docid doc) =
     ]
 \end{lstlisting}
 
-We start the document element with an id attribute, start the content, insert the content, and then close both elements. We use toPathPiece to convert a DocId into a Text value. Next, we need to be able to convert a stream of these entities into a stream of events. For this, we can use the built-in concatMap function from Data.Conduit.List: CL.concatMap entityToEvents.
+Мы начинаем с элемента document, имеющего атрибут id, заем начинаем элемент content, вставляем содержимое документа, после чего закрываем оба элемента. Для преобразования DocId в значение типа Text мы используем функцию toPathPiece. Теперь нам нужно как-то преобразовать поток этих сущностей в поток событий. Для этого воспользуемся функцией concatMap из модуля Data.Conduit.List: \lstinline`CL.concatMap entityToEvents`.
 
-But what we really want is to stream those events directly from the database. For most of this book, we've used the selectList function, but Persistent also provides the (more powerful) selectSourceConn function. So we end up with the function:
+Но что мы действительно хотим, это создать поток этих событий непосредственно из базы данных. На протяжении большей части этой книги, мы использовали функцию selectList, однако Persistent также предоставляет (более мощную) функцию selectSourceConn. С ее помощью мы получаем окончательный результат: % So we end up with the function:
 
 \begin{lstlisting}
 docSource :: Connection -> C.Source (C.ResourceT IO) X.Event
 docSource conn = selectSourceConn conn [] [] C.$= CL.concatMap entityToEvents
 \end{lstlisting}%$
 
-The \$= operator joins together a source and a conduit into a new source. Now that we have our Event source, all we need to do is surround it with the document start and end events. With Source's Monoid instance, this is a piece of cake:
+Оператор \$= соединяет источник с каналом, возвращая новый источник. Теперь, когда у нас есть источник Event'ов, все, что нам нужно --- это окружить его событиями начала и конца документа. Благодаря тому, что Source является экземпляром класса Monoid, это проще простого:
 
 \begin{lstlisting}
 fullDocSource :: Connection -> C.Source (C.ResourceT IO) X.Event
@@ -232,11 +234,11 @@ fullDocSource conn = mconcat
     ]
 \end{lstlisting}
 
-We're almost there, now we just need to tie it together in getXmlpipeR. We need to get a database connection to be used. Normally, database connections are taken and returned automatically via the runDB function. In our case, we want to check out a connection and keep it available until the response body is completely sent. To do this, we use the takeResource function, which registers a cleanup action with the ResourceT monad.
+Мы почти закончили, осталось только применить все это в функции getXmlpipeR. Нам необходимо установить соединение с базой данных. Обычно соединения с БД берутся и автоматически возвращаются с помощью функции runDB. В нашем случае требуется получить соединение и иметь к нему доступ до тех пор, пока тело ответа не будет передано полностью. Для этого воспользуемся функцией takeResource, а также регистрацией и очисткой, реализованными в монаде ResourceT.
 
-All WAI applications live in a ResourceT transformer. You can get more information on ResourceT in the conduit appendix.
+Все WAI-приложения живут в трансформаторе монады ResourceT. Вы можете получить больше информации о монаде ResourceT в приложении, посвященном потокам (conduit).
 
-By default, a resource will not be returned to the pool. This has to do with proper exception handling, but is not relevant for our use case. Therefore, we need to force the connection to be returned to the pool.
+По умолчанию ресурс не возвращается в пул. Это связано с правильной обработкой ошибок, что, впрочем, не относится к нашему случаю. Поэтому мы должны заставить соединение возвращаться в пул.
 
 \begin{lstlisting}
 getXmlpipeR :: Handler RepXml
@@ -249,7 +251,7 @@ getXmlpipeR = do
     sendWaiResponse $ ResponseSource status200 headers source
 \end{lstlisting}
 
-We get our connection pool from the foundation variable, then send a WAI response. We use the ResponseSource constructor, and provide it the status code, response headers, and body.
+Мы получаем пул соединений из базовой переменной, после чего шлем WAI-ответ. Мы используем конструктор ResponseSource, передавая ему код ответа, а также заголовки и тело ответа.
 
 \section{Весь код} % Full code
 
