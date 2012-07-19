@@ -185,7 +185,7 @@ server {
 %
 %Many people are familiar with an Apache/mod_php or Lighttpd/FastCGI kind of setup, where the web server automatically spawns the web application. With nginx, either for reverse proxying or FastCGI, this is not the case: you are responsible to run your own process. I strongly recommend a monitoring utility which will automatically restart your application in case it crashes. There are many great options out there, such as angel or daemontools.
 %
-Многие хнакомы с конфигурациями типа Apache/mod_php или Lighttpd/FastCGI, в которых веб сервер автоматически запускает веб приложение. При использовании nginx, как в режиме обратного прокси так и в режиме FastCGI, это не так: вы сами ответственны за запуск вашего процесса. Я настоятельно рекомендую использовать тот или иной инструмент мониторинга, который будет автоматически перезапускать ваше приложение в случае падений. Существует множество подобных инструментов, как например, angel или daemontools.
+Многие хнакомы с конфигурациями типа Apache/mod\_php или Lighttpd/FastCGI, в которых веб сервер автоматически запускает веб приложение. При использовании nginx, как в режиме обратного прокси так и в режиме FastCGI, это не так: вы сами ответственны за запуск вашего процесса. Я настоятельно рекомендую использовать тот или иной инструмент мониторинга, который будет автоматически перезапускать ваше приложение в случае падений. Существует множество подобных инструментов, как например, angel или daemontools.
 %To give a concrete example, here is an Upstart config file. The file must be placed in /etc/init/mysite.conf:
 
 В качестве конкретного примера ниже приведён файл конфигурации Upstart. Он должен располгаться в /etc/init/mysite.conf:
