@@ -1,23 +1,27 @@
-\chapter{Settings Types}
-Let's say you're writing a webserver. You want the server to take a port to listen on, and an
-application to run. So you create the following function:
+\chapter{Типы для настроек}
+Представим, что вы пишете веб сервер. Вы хотите, чтобы вашему серверу
+передавали порт для прослушивания и приложение для запуска. И вы
+создаёте следующую функцию:
 \begin{lstlisting}
 run :: Int -> Application -> IO ()
 \end{lstlisting}
 
-But suddenly you realize that some people will want to customize their timeout durations. So
-you modify your API:
+Но внезапно вы понимаете, что некоторые люди захотят настроить
+продолжительность ожидания. И тогда вы меняете своё API:
 \begin{lstlisting}
 run :: Int -> Int -> Application -> IO ()
 \end{lstlisting}
 
-So, which Int is the timeout, and which is the port? Well, you could create
-some type aliases, or comment your code. But there's another problem creeping into our code: this
-run function is getting unmanageable. Soon we'll need to take an extra
-parameter to indicate how exceptions should be handled, and then another one to control which
-host to bind to, and so on.
+В итоге, какой \lstinline!Int! для времени ожидания, а какой для
+номера порта? Да, вы могли бы создать какие-нибудь синонимы для типов
+или прокомментировать ваш код. Но здесь есть ещё одна проблема,
+пробирающаяся в ваш код: такая функция \lstinline!run! становится
+неподдерживаемой. Скоро потребуется получать дополнительный параметр
+для обозначения, как следует обрабатывать исключения, а затем ещё один
+для управления, к какому хосту привязываться, и так далее.
 
-So a more extensible solution is to introduce a settings datatype:
+Поэтому более масштабируемое решение~--- ввести тип данных для
+настроек:
 \begin{lstlisting}
 data Settings = Settings
     { settingsPort :: Int
@@ -25,7 +29,7 @@ data Settings = Settings
     , settingsTimeout :: Int
     }
 \end{lstlisting}
-And this makes the calling code almost self-documenting:
+И это делает вызывающий код почти самодокументированным:
 \begin{lstlisting}
 run Settings
     { settingsPort = 8080
@@ -34,26 +38,31 @@ run Settings
     } myApp
 \end{lstlisting}
 
-Great, couldn't be clearer, right? True, but what happens when you have 50 settings to your
-webserver. Do you really want to have to specify all of those each time? Of course not. So
-instead, the webserver should provide a set of defaults:
+Великолепно, яснее быть не может, не так ли? Да так, но что случится, когда у вас
+будет 50 настроек для вашего веб сервера. Вы действительно хотите
+задавать их все каждый раз? Конечно, нет. Так что вместо этого, веб
+сервер должен предоставлять набор значений по умолчанию:
 \begin{lstlisting}
 defaultSettings = Settings 3000 "127.0.0.1" 30
 \end{lstlisting}
-And now, instead of needing to write that long bit of code above, we can get away with:
+И теперь, вместо необходимости писать длинный кусок кода как выше,
+мы можем отделаться лишь этим:
 \begin{lstlisting}
 run defaultSettings { settingsPort = 8080 } myApp -- (1)
 \end{lstlisting}
 
-This is great, except for one minor hitch. Let's say we now decide to add an extra record to
-Settings. Any code out in the wild looking like this:
+Это замечательно, за исключением одно маленького
+препятствия. Допустим, мы решаем добавить дополнительную запись в
+\lstinline!Settings!. Любой код во внешнем мире, выглядящий как
 \begin{lstlisting}
 run (Settings 8080 "127.0.0.1" 30) myApp -- (2)
 \end{lstlisting}
-will be broken, since the Settings constructor now takes 4 arguments. The proper
-thing to do would be to bump the major version number so that dependent packages don't get
-broken. But having to change major versions for every minor setting you add is a nuisance. The
-solution? Don't export the Settings constructor:
+станет нерабочим, так как теперь конструктор~\lstinline!Settings!
+принимает 4 аргумента. Правильной вещью стало бы увеличение номера
+основной версии (major version), чтобы не нарушить работоспособность
+зависимых пакетов. Но менять номер основной версии для каждого
+минимального изменения настроек~--- это неудобство. Решение? Не
+экспортировать конструктор~\lstinline!Settings!:
 \begin{lstlisting}
 module MyServer
     ( Settings
@@ -65,26 +74,28 @@ module MyServer
     ) where
 \end{lstlisting}
 
-With this approach, no one can write code like (2), so you can freely add new records without
-any fear of code breaking.
+С таким подходом, никто не сможет написать код наподобие (2), поэтому
+вы можете свободно добавлять новые настройки, не боясь поломать код.
 
-The one downside of this approach is that it's not immediately obvious from the Haddocks that
-you can actually change the settings via record syntax. That's the point of this chapter: to
-clarify what's going on in the libraries that use this technique.
+Единственный недостаток такого подхода~-- сразу неочевидно из
+документации Haddocks, что вы фактически можете менять настройки,
+используя синтаксис записей. Основная идея этой главы: прояснить, что
+происходит в библиотеках, использующих эту технику.
 
-I personally use this technique in a few places, feel free to have a look at the Haddocks to
-see what I mean.
+Я сам использую эту технику в нескольких местах, не стесняйтесь
+заглянуть в Haddocks, чтобы понять, что я имею в виду.
+\begin{itemize}
+\item Warp: Settings
+\item http-conduit: Request и ManagerSettings
+\item xml-conduit:
+  \begin{itemize}
+  \item Разбор: ParseSettings
+  \item Представление: RenderSettings
+  \end{itemize}
+\end{itemize}
 
-
-Warp:
-  warp:   Network.Wai.Handler.Warp:Settings
-  http-conduit: http-conduit:Network.HTTP.Conduit:Request and
-  http-conduit: Network.HTTP.Conduit:ManagerSettings
-  xml-conduit   Parsing: xml-conduit:Text.XML.Stream.Parse:ParseSettings
-Rendering:
-  xml-conduit:Text.XML.Stream.Render:RenderSettings
-
-As a tangential issue, http-conduit and xml-conduit actually
-create instances of the data-default:Data.Default:Default typeclass instead of
-declaring a brand new identifier. This means you can just type def instead of
-defaultParserSettings.
+Сопутствующее замечание (As a tangential issue - FIXME): http-conduit
+и xml-conduit фактически создают экземпляры класса
+типов~\lstinline!Default! из пакета Data.Default вместо объявления
+своего нового идентификатора. Это означает, что вы можете просто
+печатать \lstinline!def! вместо \lstinline!defaultParserSettings!.
