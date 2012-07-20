@@ -24,31 +24,31 @@ import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
 main = do
-    -- Simplest query: just download the information from the given URL as a
-    -- lazy ByteString.
+    -- Простейший запрос: просто загружаем информацию с указанного URL
+    -- как ленивую ByteString.
     simpleHttp "http://www.example.com/foo.txt" >>= L.writeFile "foo.txt"
 
-    -- Use the streaming interface instead. We need to run all of this inside a
-    -- ResourceT, to ensure that all our connections get properly cleaned up in
-    -- the case of an exception.
+    -- Теперь используем потоковый интерфейс. Нам необходимо запускать
+    -- всё внутри ResourceT, чтобы быть уверенными, что все наши
+    -- соединения корректно закрываются в случае возникновения исключения
     runResourceT $ do
-        -- We need a Manager, which keeps track of open connections. simpleHttp
-        -- creates a new manager on each run (i.e., it never reuses
-        -- connections).
+        -- Нам нужен Manager, который отслеживает открытые соединения.
+        -- simpleHttp создаёт нового менеджера соединений при каждом
+        -- запуске (т.е. он никогда повторно соединения не использует)
         manager <- liftIO $ newManager def
 
-        -- A more efficient version of the simpleHttp query above. First we
-        -- parse the URL to a request.
+        -- Более эффективная версия запроса с simpleHttp выше.
+        -- Сначала разбираем URL в запрос
         req <- liftIO $ parseUrl "http://www.example.com/foo.txt"
 
-        -- Now get the response
+        -- Теперь получаем ответ
         res <- http req manager
 
-        -- And finally stream the value to a file
+        -- И, наконец, сливаем результат в файл
         responseBody res $$ sinkFile "foo.txt"
 
-        -- Make it a POST request, don't follow redirects, and accept any
-        -- status code.
+        -- Сделаем это POST запросом, не следуем за перенаправлениями,
+        --  и принимаем любой код статуса ответа
         let req2 = req
                 { method = "POST"
                 , redirectCount = 0
@@ -99,11 +99,11 @@ main = do
     case args of
         [urlString] ->
             case parseUrl urlString of
-                Nothing -> putStrLn "Sorry, invalid URL"
+                Nothing -> putStrLn "Извините, некорректный URL"
                 Just req -> withManager $ \manager -> do
                     Response _ _ _ lbs <- httpLbs req manager
                     liftIO $ L.putStr lbs
-        _ -> putStrLn "Sorry, please provide exactly one URL"
+        _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"
 \end{lstlisting}
 
 The Request type is abstract so that http-conduit can add new settings
@@ -124,14 +124,14 @@ main = do
     case args of
         [urlString] ->
             case parseUrl urlString of
-                Nothing -> putStrLn "Sorry, invalid URL"
+                Nothing -> putStrLn "Извините, некорректный URL"
                 Just req -> withManager $ \manager -> do
                     let reqHead = req { method = "HEAD" }
                     Response status _ headers _ <- http reqHead manager
                     liftIO $ do
                         print status
                         mapM_ print headers
-        _ -> putStrLn "Sorry, please provide example one URL"
+        _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"
 \end{lstlisting} %$
 
 There are a number of different configuration settings in the API,
