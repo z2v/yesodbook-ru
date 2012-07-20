@@ -1,4 +1,4 @@
-http-conduit
+\chapter{http-conduit}
 
 Most of Yesod is about serving content over HTTP. But that's only half
 the story: someone has to receive it. And even when you're writing a
@@ -10,7 +10,7 @@ http-conduit.
 This chapter is not directly connected to Yesod, and will be generally
 useful for anyone wanting to make HTTP requests.
 
-Synopsis
+\section{Synopsis}
 
   {-# LANGUAGE OverloadedStrings #-}
 import Network.HTTP.Conduit -- the main module
@@ -57,7 +57,7 @@ main = do
         res2 &lt;- http req2 manager
         responseBody res2 $$ sinkFile "post-foo.txt"
 
-Concepts
+\section{Concepts}
 
 The simplest way to make a request in http-conduit is with the
 simpleHttp function. This function takes a String giving a URL and
@@ -78,7 +78,7 @@ any of the steps above (plus a few more) by explicitly creating a
 Request value, allocating your Manager manually, and using the http
 and httpLbs functions.
 
-Request
+\section{Request}
 
 The easiest way to creating a Request is with the parseUrl
 function. This function will return a value in any Failure monad, such
@@ -145,7 +145,7 @@ some noteworthy ones are:
       The request body to be sent. Be sure to also update the method. For the
       common case of url-encoded data, you can use the urlEncodedBody function.
 
-Manager
+\section{Manager}
 
 The connection manager allows you to reuse connections. When making
 multiple queries to a single server (e.g., accessing Amazon S3), this
@@ -175,7 +175,7 @@ One other thing to point out: you obviously don't want to create a new
 manager for each and every request; that would defeat the whole
 purpose. You should create your Manager early and then share it.
 
-Response
+\section{Response}
 
 The Response datatype has three pieces of information: the status
 code, the response headers, and the response body. The first two are
@@ -193,7 +193,7 @@ to read this value in lazily, but like any lazy I/O, it's a bit
 unsafe, and definitely non-deterministic. If you need it though, you
 can use it.
 
-http and httpLbs
+\section{http and httpLbs}
 
 So let's tie it together. The http function gives you access to the
 streaming interface (i.e., it returns a Response using a
