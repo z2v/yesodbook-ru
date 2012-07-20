@@ -11,7 +11,7 @@ This chapter is not directly connected to Yesod, and will be generally
 useful for anyone wanting to make HTTP requests.
 
 \section{Synopsis}
-
+\begin{lstlisting}
   {-# LANGUAGE OverloadedStrings #-}
 import Network.HTTP.Conduit -- the main module
 
@@ -26,7 +26,7 @@ main :: IO ()
 main = do
     -- Simplest query: just download the information from the given URL as a
     -- lazy ByteString.
-    simpleHttp "http://www.example.com/foo.txt" &gt;&gt;= L.writeFile "foo.txt"
+    simpleHttp "http://www.example.com/foo.txt" >>= L.writeFile "foo.txt"
 
     -- Use the streaming interface instead. We need to run all of this inside a
     -- ResourceT, to ensure that all our connections get properly cleaned up in
@@ -35,14 +35,14 @@ main = do
         -- We need a Manager, which keeps track of open connections. simpleHttp
         -- creates a new manager on each run (i.e., it never reuses
         -- connections).
-        manager &lt;- liftIO $ newManager def
+        manager <- liftIO $ newManager def
 
         -- A more efficient version of the simpleHttp query above. First we
         -- parse the URL to a request.
-        req &lt;- liftIO $ parseUrl "http://www.example.com/foo.txt"
+        req <- liftIO $ parseUrl "http://www.example.com/foo.txt"
 
         -- Now get the response
-        res &lt;- http req manager
+        res <- http req manager
 
         -- And finally stream the value to a file
         responseBody res $$ sinkFile "foo.txt"
@@ -52,10 +52,11 @@ main = do
         let req2 = req
                 { method = "POST"
                 , redirectCount = 0
-                , checkStatus = \_ _ -&gt; Nothing
+                , checkStatus = \_ _ -> Nothing
                 }
-        res2 &lt;- http req2 manager
+        res2 <- http req2 manager
         responseBody res2 $$ sinkFile "post-foo.txt"
+\end{lstlisting} %$
 
 \section{Concepts}
 
@@ -86,7 +87,7 @@ as Maybe or IO. The last of those is the most commonly used, and
 results in a runtime exception whenever an invalid URL is
 provided. However, you can use a different monad if, for example, you
 want to validate user input.
-
+\begin{lstlisting}
 import Network.HTTP.Conduit
 import System.Environment (getArgs)
 import qualified Data.ByteString.Lazy as L
@@ -94,22 +95,23 @@ import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
 main = do
-    args &lt;- getArgs
+    args <- getArgs
     case args of
-        [urlString] -&gt;
+        [urlString] ->
             case parseUrl urlString of
-                Nothing -&gt; putStrLn "Sorry, invalid URL"
-                Just req -&gt; withManager $ \manager -&gt; do
-                    Response _ _ _ lbs &lt;- httpLbs req manager
+                Nothing -> putStrLn "Sorry, invalid URL"
+                Just req -> withManager $ \manager -> do
+                    Response _ _ _ lbs <- httpLbs req manager
                     liftIO $ L.putStr lbs
-        _ -&gt; putStrLn "Sorry, please provide exactly one URL"
+        _ -> putStrLn "Sorry, please provide exactly one URL"
+\end{lstlisting}
 
 The Request type is abstract so that http-conduit can add new settings
 in the future without breaking the API (see the Settings Type chapter
 for more information). In order to make changes to individual records,
 you use record notation. For example, a modification to our program
 that issues HEAD requests and prints the response headers would be:
-
+\begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
 import Network.HTTP.Conduit
 import System.Environment (getArgs)
@@ -118,18 +120,19 @@ import Control.Monad.IO.Class (liftIO)
 
 main :: IO ()
 main = do
-    args &lt;- getArgs
+    args <- getArgs
     case args of
-        [urlString] -&gt;
+        [urlString] ->
             case parseUrl urlString of
-                Nothing -&gt; putStrLn "Sorry, invalid URL"
-                Just req -&gt; withManager $ \manager -&gt; do
+                Nothing -> putStrLn "Sorry, invalid URL"
+                Just req -> withManager $ \manager -> do
                     let reqHead = req { method = "HEAD" }
-                    Response status _ headers _ &lt;- http reqHead manager
+                    Response status _ headers _ <- http reqHead manager
                     liftIO $ do
                         print status
                         mapM_ print headers
-        _ -&gt; putStrLn "Sorry, please provide example one URL"
+        _ -> putStrLn "Sorry, please provide example one URL"
+\end{lstlisting} %$
 
 There are a number of different configuration settings in the API,
 some noteworthy ones are:
