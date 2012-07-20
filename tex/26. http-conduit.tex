@@ -64,15 +64,16 @@ The simplest way to make a request in http-conduit is with the
 simpleHttp function. This function takes a String giving a URL and
 returns a ByteString with the contents of that URL. But under the
 surface, there are a few more steps:
-
-- A new connection Manager is allocated.
-- The URL is parsed to a Request. If the URL is invalid, then an
+\begin{itemize}
+\item A new connection Manager is allocated.
+\item The URL is parsed to a Request. If the URL is invalid, then an
   exception is thrown.
-- The HTTP request is made, following any redirects from the server.
-- If the response has a status code outside the 200-range, an exception is thrown.
-- The response body is read into memory and returned.
-- runResourceT is called, which will free up any resources (e.g., the open
+\item The HTTP request is made, following any redirects from the server.
+\item If the response has a status code outside the 200-range, an exception is thrown.
+\item The response body is read into memory and returned.
+\item runResourceT is called, which will free up any resources (e.g., the open
   socket to the server).
+\end{itemize}
 
 If you want more control of what's going on, then you can configure
 any of the steps above (plus a few more) by explicitly creating a
@@ -136,17 +137,18 @@ main = do
 
 There are a number of different configuration settings in the API,
 some noteworthy ones are:
-
-    proxy
+\begin{description}
+\item[proxy] \hfill \\
       Allows you to pass the request through the given proxy server.
-    redirectCount
+\item[redirectCount] \hfill \\
       Indicate how many redirects to follow. Default is 10.
-    checkStatus
+\item[checkStatus] \hfill \\
       Check the status code of the return value. By default, gives an
       exception for any non-2XX response.
-    requestBody
+\item[requestBody] \hfill \\
       The request body to be sent. Be sure to also update the method. For the
       common case of url-encoded data, you can use the urlEncodedBody function.
+\end{description}
 
 \section{Manager}
 
