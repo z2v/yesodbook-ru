@@ -1,18 +1,26 @@
 Enumerator Package
 
-Due to the fact that Yesod has moved on to conduits, this chapter will no longer be included in the actual Yesod book.
+Due to the fact that Yesod has moved on to conduits, this chapter will no longer be included in the actual Yesod book. It is kept on the site as a reference for those who are still using it.
 
-It is kept on the site as a reference for those who are still using it.One of the upcoming patterns in Haskell is enumerators. They are designed to solve the problems of producing, modifying and consuming streams of data. Enumerators are considered a bit intimidating, possibly because:
+One of the upcoming patterns in Haskell is enumerators. They are designed to solve the problems of producing, modifying and consuming streams of data. Enumerators are considered a bit intimidating, possibly because:
 
-There are multiple implementations, all with slightly different approaches.Some of the implementations (in my opinion) use incredibly confusing naming.The tutorials that get written usually don't directly target an existing implementation, and work more on building up intuition than giving instructions on how to use the library.The Yesod framework uses enumerators behind the scenes in a number of places: in WAI/Warp for dealing with request and response bodies, in Persistent for receiving the results from a database query, and in various side packages like http-enumerator and xml-enumerator. We always use the enumerator package. That package is the topic of this chapter.
+* There are multiple implementations, all with slightly different approaches.
+* Some of the implementations (in my opinion) use incredibly confusing naming.
+* The tutorials that get written usually don't directly target an existing implementation, and work more on building up intuition than giving instructions on how to use the library.
+
+The Yesod framework uses enumerators behind the scenes in a number of places: in WAI/Warp for dealing with request and response bodies, in Persistent for receiving the results from a database query, and in various side packages like http-enumerator and xml-enumerator. We always use the enumerator package. That package is the topic of this chapter.
 
 This chapter is composed of three main sections, each dealing with one of the main concepts:
-We start with iteratees, which are consumers. They are fed data and do something with it.Next we cover enumerators which are producers. They feed data to an iteratee.Finally, we address enumeratees. These are pipes which are fed data from an enumerator and in turn feed data to an iteratee.You may be wondering why we bother with this, when most of these problems can be addressed by lazy I/O. The basic problem with lazy I/O is its non-determinism. For more information, it's best to go to the original source on this topic: Oleg.
+
+* We start with iteratees, which are consumers. They are fed data and do something with it.
+* Next we cover enumerators which are producers. They feed data to an iteratee.
+* Finally, we address enumeratees. These are pipes which are fed data from an enumerator and in turn feed data to an iteratee.
+
+You may be wondering why we bother with this, when most of these problems can be addressed by lazy I/O. The basic problem with lazy I/O is its non-determinism. For more information, it's best to go to the original source on this topic: Oleg.
 
 Iteratees
 
-An Iteratee is a data consumer. It is the core type of the enumerator package, on which
-the other types are based.
+An Iteratee is a data consumer. It is the core type of the enumerator package, on which the other types are based.
 
 Intuition
 
@@ -29,7 +37,10 @@ getNumber = do
     x <- readLine
     if x == "q"
         then return Nothing
-        else return $ Just $ read xWe could write our new sum function as:
+        else return $ Just $ read x
+
+We could write our new sum function as:
+
 sum2 :: IO Int
 sum2 = do
     maybeNum <- getNumber
@@ -65,7 +76,7 @@ sum3 = do
             let nums' = sum nums
             rest <- sum3
             return $ nums' + rest
-            
+
 Not that it's much better than sum2, but at least it shows how to use the Stream datatype. The problem here is that we still refer explicitly to the getNumber2 function, hard-coding the data source.
 
 One possible solution is to make the data source an argument to the sum function, ie:
@@ -86,10 +97,11 @@ The Step datatype
 
 So we need a new datatype that will represent the state of our summing operation. We're going to allow our operations to be in one of three states:
 
-  Waiting for more data. 
-  Already calculated a result.
+* Waiting for more data.
+* Already calculated a result.
+* For convenience, we also have an error state. This isn't strictly necessary (it could be modeled by choosing an EitherT kind of monad, for example), but it's simpler.
 
-For convenience, we also have an error state. This isn't strictly necessary (it could be modeled by choosing an EitherT kind of monad, for example), but it's simpler.As you could guess, these states will correspond to three constructors for the Step datatype. The error state is modeled by Error SomeException, building on top of Haskell's extensible exception system. The already calculated constructor is:
+As you could guess, these states will correspond to three constructors for the Step datatype. The error state is modeled by Error SomeException, building on top of Haskell's extensible exception system. The already calculated constructor is:
 
 Yield b (Stream a)
 
@@ -113,9 +125,7 @@ This is important: Iteratee is just a newtype wrapper around a Step inside a mon
 
 Continue (Stream a -> m (Step a m b))
 
-That's much easier to approach: that function takes some input data and 
-returns a new state of the iteratee. Let's see what our sum function would 
-look like using this Step datatype:
+That's much easier to approach: that function takes some input data and returns a new state of the iteratee. Let's see what our sum function would look like using this Step datatype:
 
 sum5 :: Monad m => Step Int m Int -- Int input, any monad, Int output
 sum5 =
@@ -131,11 +141,9 @@ sum5 =
     -- Produce the final result
     go runningSum EOF = Iteratee $ return $ Yield runningSum EOF
 
-In order to run this code, you can use run_ $ enumList 8 [1..10] sum5. 
-But this gets into some of the Enumerator black magic we won't discuss till later.
+In order to run this code, you can use run_ $ enumList 8 [1..10] sum5. But this gets into some of the Enumerator black magic we won't discuss till later.
 
-The first real line (Continue $ go 0) initializes our iteratee to its starting state. 
-Just like every other sum function, we need to explicitly state that we are starting from 0 somewhere. The real workhorse is the go function. Notice how we are really passing the state of the iteratee around as the first argument to go: this is also a very common pattern in iteratees.
+The first real line (Continue $ go 0) initializes our iteratee to its starting state. Just like every other sum function, we need to explicitly state that we are starting from 0 somewhere. The real workhorse is the go function. Notice how we are really passing the state of the iteratee around as the first argument to go: this is also a very common pattern in iteratees.
 
 We need to handle two different cases: when handed an EOF, the go function must Yield a value. (Well, it could also produce an Error value, but it definitely cannot Continue.) In that case, we simply yield the running sum and say there was no data left over. When we receive some input data via Chunks, we simply add it to the running sum and create a new Continue based on the same go function.
 
@@ -171,11 +179,7 @@ continue $ go runningSum'
 
 Monad instance for Iteratee
 
-This is all very nice: we now have an iteratee that can be fed numbers 
-from any monad and sum them. It can even take input from different sources 
-and sum them together. (By the way, I haven't actually shown you how to 
-feed those numbers in: that is in part 2 about enumerators.) But let's be
-honest: sum5 is an ugly function. Isn't there something easier?
+This is all very nice: we now have an iteratee that can be fed numbers from any monad and sum them. It can even take input from different sources and sum them together. (By the way, I haven't actually shown you how to feed those numbers in: that is in part 2 about enumerators.) But let's be honest: sum5 is an ugly function. Isn't there something easier?
 
 In fact, there is. Remember how I said Iteratee really just existed to facilitate typeclass instances? This includes a monad instance. Feel free to look at the code to see how that instance is defined, but here we'll just look at how to use it:
 
@@ -192,29 +196,23 @@ That head function is not from Prelude, it's from the Data.Enumerator module. It
 
 head :: Monad m => Iteratee a m (Maybe a)
 
-which basically means give me the next piece of input if it's there. 
-We'll look at this function in more depth in a bit.
+which basically means give me the next piece of input if it's there. We'll look at this function in more depth in a bit.
 
-Go compare the code for sum6 with sum2: they are amazingly similar. 
-You can often build up more complicated iteratees by using some simple 
-iteratees and the Monad instance of Iteratee.
+Go compare the code for sum6 with sum2: they are amazingly similar. You can often build up more complicated iteratees by using some simple iteratees and the Monad instance of Iteratee.
+
 Interleaved I/O
 
-Alright, let's look at a totally different problem. We want to be fed 
-some strings and print them to the screen one line at a time. 
-One approach would be to use lazy I/O:
+Alright, let's look at a totally different problem. We want to be fed some strings and print them to the screen one line at a time. One approach would be to use lazy I/O:
 
 lazyIO :: IO ()
 lazyIO = do
     s <- lines `fmap` getContents
     mapM_ putStrLn s
 
-But this has two drawbacks: 
+But this has two drawbacks:
 
-It's tied down to a single input source, stdin. This could be worked 
-around with an argument giving a datasource. But let's say the data 
-source is some scarce resource (think: file handles on a very busy web server).
-We have no guarantees with lazy I/O of when those file handles will be released.
+* It's tied down to a single input source, stdin. This could be worked around with an argument giving a datasource.
+* But let's say the data source is some scarce resource (think: file handles on a very busy web server). We have no guarantees with lazy I/O of when those file handles will be released.
 
 Let's look at how to write this in our new high-level monadic iteratee approach:
 
@@ -226,9 +224,12 @@ interleaved = do
         Just line -> do
             liftIO $ putStrLn line
             interleaved
+
 The liftIO function comes from the transformers package, and simply promotes an action in the IO monad to any arbitrary MonadIO action. Notice how we don't really track any state with this iteratee: we don't care about its result, only its side effects.
 
-Implementing headAs a last example, let's actually implement the head function.
+Implementing head
+
+As a last example, let's actually implement the head function.
 
 head' :: Monad m => Iteratee a m (Maybe a)
 head' =
@@ -237,45 +238,40 @@ head' =
     go (Chunks []) = continue go
     go (Chunks (x:xs)) = yield (Just x) (Chunks xs)
     go EOF = yield Nothing EOF
-    
+
 Like our sum6 function, this also wraps an inner "go" function with a continue. However, we now have three clauses for our go function. The first handles the case of Chunks []. To quote the enumerator docs:
+
 (Chunks []) is used to indicate that a stream is still active, but currently has no available data. Iteratees should ignore empty chunks.
+
 The second clause handles the case where we are given some data. In this case, we yield the first element in the list, and return the rest as leftover data. The third clause handles the end of input by returning Nothing.
 
 Exercises
 
-Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. 
-Its type signature should be Enumeratee Char Word8 m b.
-
-Write the opposite enumeratee, eg Enumeratee Word8 Char m b.
-
-Create a quickcheck property that ensures that these two functions work correctly.
+1. Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. Its type signature should be Enumeratee Char Word8 m b.
+2. Write the opposite enumeratee, eg Enumeratee Word8 Char m b.
+3. Create a quickcheck property that ensures that these two functions work correctly.
 
 Summary
 
-Enumeratees are the pipes connecting enumerators to iteratees.
-The strange type signature of an Enumeratee hides a lot of possible power. 
-Especially notice how similar their type signatures are to Enumerators.
-You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.
-Don't forget that you can use the Monad instance of Iteratee when 
-creating your own enumeratees.You can always compose multiple enumeratees 
-together, such as in http-enumerator.
+* Enumeratees are the pipes connecting enumerators to iteratees.
+* The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.
+* You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.
+* Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.
+* You can always compose multiple enumeratees together, such as in http-enumerator.
 
 Enumerators
 
-Whereas an Iteratee is a consumer, an Enumerator is a producer. At a high level, an
-Enumerator is in fact an Iteratee transformer, moving an Iteratee from one state
-to a new one. Let's look at how this works.
+Whereas an Iteratee is a consumer, an Enumerator is a producer. At a high level, an Enumerator is in fact an Iteratee transformer, moving an Iteratee from one state to a new one. Let's look at how this works.
 
-Extracting a valueSo far, we've written a few iteratees, but we still don't know how to extract values from them. To start, let's remember that Iteratee is just a newtype wrapper around Step:
+Extracting a value
+
+So far, we've written a few iteratees, but we still don't know how to extract values from them. To start, let's remember that Iteratee is just a newtype wrapper around Step:
 
 newtype Iteratee a m b = Iteratee { runIteratee :: m (Step a m b) }
 
 First we need to unwrap the Iteratee and deal with the Step value inside. Remember also that Step has three constructors: Continue, Yield and Error. We'll handle the Error constructor by returning our result in an Either. Yield already provides the data we're looking for.
 
-The tricky case is Continue: 
-
-here, we have an iteratee that is still expecting more data. This is where the EOF constructor comes in handy: it's our little way to tell the iteratee to finish what it's doing and get on with things. If you remember from above, I said a well-behaving iteratee will never return a Continue after receiving an EOF; now we'll see why:
+The tricky case is Continue: here, we have an iteratee that is still expecting more data. This is where the EOF constructor comes in handy: it's our little way to tell the iteratee to finish what it's doing and get on with things. If you remember from above, I said a well-behaving iteratee will never return a Continue after receiving an EOF; now we'll see why:
 
 extract :: Monad m => Iteratee a m b -> m (Either SomeException b)
 extract (Iteratee mstep) = do
@@ -289,25 +285,27 @@ extract (Iteratee mstep) = do
                 Yield b _ -> return $ Right b
                 Error e -> return $ Left e
         Yield b _ -> return $ Right b
-        Error e -> return $ Left eFortunately, you don't need to redefine this yourself: enumerator includes both a
-                run and run_ function. Let's go ahead and use it on
-            our sum6 function:
-run_ = return
-sum6 = 5 :: Int
--- START
+        Error e -> return $ Left e
+
+Fortunately, you don't need to redefine this yourself: enumerator includes both a run and run_ function. Let's go ahead and use it on our sum6 function:
+
 main = run_ sum6 >>= print
 
 If you run this, the result will be 0. This emphasizes an important point: an iteratee is not just how to process incoming data, it is the state of the processing. In this case, we haven't done anything to change the initial state of sum6, so we still have the initial value of 0.
 
 To give an analogy: think of an iteratee as a machine. When you feed it data, you modify the internal state but you can't see any of those changes on the outside. When you are done feeding the data, you press a button and it spits out the result. If you don't feed in any data, your result is the initial state.
-Adding dataLet's say that we actually want to sum some numbers. For example, the numbers 1 to 10. We need some way to feed that into our sum6 iteratee. In order to approach this, we'll once again need to unwrap our Iteratee and deal with the Step value directly.
+
+Adding data
+
+Let's say that we actually want to sum some numbers. For example, the numbers 1 to 10. We need some way to feed that into our sum6 iteratee. In order to approach this, we'll once again need to unwrap our Iteratee and deal with the Step value directly.
+
 In our case, we know with certainty that the Step constructor we used is Continue, so it's safe to write our function as:
 
 sum7 :: Monad m => Iteratee Int m Int
 sum7 = Iteratee $ do
     Continue k <- runIteratee sum6
     runIteratee $ k $ Chunks [1..10]
-    
+
 But in general, we won't know what constructor will be lying in wait for us. We need to properly deal with Continue, Yield and Error. We've seen what to do with Continue: feed it the data. With Yield and Error, the right action in general is to do nothing, since we've already arrived at our final result (either a successful Yield or an Error). So the "proper" way to write the above function is:
 
 sum8 :: Monad m => Iteratee Int m Int
@@ -317,7 +315,9 @@ sum8 = Iteratee $ do
         Continue k -> runIteratee $ k $ Chunks [1..10]
         _ -> return step
 
-Enumerator type synonymWhat we've done with sum7 and sum8 is perform a transformation on the Iteratee. But we've done this in a very limited way: we've hard-coded in the original Iteratee function (sum6). We could just make this an argument to the function:
+Enumerator type synonym
+
+What we've done with sum7 and sum8 is perform a transformation on the Iteratee. But we've done this in a very limited way: we've hard-coded in the original Iteratee function (sum6). We could just make this an argument to the function:
 
 sum9 :: Monad m => Iteratee Int m Int -> Iteratee Int m Int
 sum9 orig = Iteratee $ do
@@ -333,6 +333,7 @@ sum10 (Continue k) = k $ Chunks [1..10]
 sum10 step = returnI step
 
 This type signature (take a Step, return an Iteratee) turns out to be very common:
+
 type Enumerator a m b = Step a m b -> Iteratee a m b
 
 Meaning sum10's type signature could also be expressed as:
@@ -345,7 +346,7 @@ applyEnum :: Monad m => Enumerator a m b -> Iteratee a m b -> Iteratee a m b
 applyEnum enum iter = Iteratee $ do
     step <- runIteratee iter
     runIteratee $ enum step
-    
+
 Let me repeat the intuition here: the Enumerator is transforming the Iteratee from its initial state to a new state by feeding it more data. In order to use this function, we could write:
 
 run_ (applyEnum sum10 sum6) >>= print
@@ -360,14 +361,15 @@ Then we could simply apply both enumerators:
 
 run_ (applyEnum sum11 $ applyEnum sum10 sum6) >>= print
 
-And we would get the result 210. (Yes, (1 + 20) * 10 = 210.) But don't worry, you don't
-need to write this applyEnum function yourself: enumerator provides a $$ operator which does the same thing. Its
-type signature is a bit scarier, since it's a generalization of applyEnum, but it works
-the same, and even makes code more readable:
+And we would get the result 210. (Yes, (1 + 20) * 10 = 210.) But don't worry, you don't need to write this applyEnum function yourself: enumerator provides a $$ operator which does the same thing. Its type signature is a bit scarier, since it's a generalization of applyEnum, but it works the same, and even makes code more readable:
 
-run_ (sum11 $$ sum10 $$ sum6) >>= print$$ is a synonym for ==<<, which is simply flip >>==. I find $$ the most readable, but YMMV (YMMV).
+run_ (sum11 $$ sum10 $$ sum6) >>= print
 
-Some built-in enumeratorsOf course, writing a whole function just to pass some numbers to our sum function seems a bit tedious. We could easily make the list an argument to the function:
+$$ is a synonym for ==<<, which is simply flip >>==. I find $$ the most readable, but YMMV (YMMV).
+
+Some built-in enumerators
+
+Of course, writing a whole function just to pass some numbers to our sum function seems a bit tedious. We could easily make the list an argument to the function:
 
 sum12 :: Monad m => [Int] -> Enumerator Int m Int
 sum12 nums (Continue k) = k $ Chunks nums
@@ -379,16 +381,13 @@ genericSum12 :: Monad m => [a] -> Enumerator a m b
 genericSum12 nums (Continue k) = k $ Chunks nums
 genericSum12 _ step = returnI step
 
-And in fact, enumerator comes built in with the enumList function which does
-this. enumList also takes an Integer argument to indicate the maximum number
-of elements to stick in a chunk. For example, we could write:
+And in fact, enumerator comes built in with the enumList function which does this. enumList also takes an Integer argument to indicate the maximum number of elements to stick in a chunk. For example, we could write:
 
 run_ (enumList 5 [1..30] $$ sum6) >>= print
 
 (That produces 465 if you're counting.) The first argument to enumList should never affect the result, though it may have some performance impact.
-Data.Enumerator includes two other enumerators: enumEOF simply passes an EOF
-to the iteratee. concatEnums is slightly more
-interesting; it combines multiple enumerators together. For example:
+
+Data.Enumerator includes two other enumerators: enumEOF simply passes an EOF to the iteratee. concatEnums is slightly more interesting; it combines multiple enumerators together. For example:
 
 run_ (concatEnums
         [ enumList 1 [1..10]
@@ -396,7 +395,11 @@ run_ (concatEnums
         , enumList 1 [21..30]
         ] $$ sum6) >>= print
 
-This also produces 465. Some non-pure inputEnumerators are much more interesting when they aren't simply dealing with pure values. In the first part of this tutorial, we gave the example of the user entering numbers on the command line:
+This also produces 465.
+
+Some non-pure input
+
+Enumerators are much more interesting when they aren't simply dealing with pure values. In the first part of this tutorial, we gave the example of the user entering numbers on the command line:
 
 getNumber :: IO (Maybe Int)
 getNumber = do
@@ -421,13 +424,16 @@ getNumberEnum (Continue k) = do
     x <- liftIO getLine
     if x == "q"
         then continue k
-        else k (Chunks [read x]) >>== getNumberEnum 
+        else k (Chunks [read x]) >>== getNumberEnum
 getNumberEnum step = returnI step
 
 First, notice that we check which constructor was passed, and only perform any actions if it was Continue. If it was Continue, we get the line of input from the user. If the line is "q" (our indication to stop feeding in values), we do nothing. You might have thought that we should pass an EOF. But if we did that, we'd be preventing other data from being sent to this iteratee. Instead, we simply return the original Step value.
 
 If the line was not "q", we convert it to an Int via read, create a Stream value with the Chunks datatype, and pass it to k. (If we wanted to do things properly, we'd check if x is really an Int and use the Error constructor; I leave that as an exercise to the reader.) At this point, let's look at type signatures:
-k (Chunks [read x]) :: Iteratee Int m bIf we simply left off the rest of the line, our program would typecheck. However, it would only ever read one value from the command line; the >>== getNumberEnum causes our enumerator to loop.
+
+k (Chunks [read x]) :: Iteratee Int m b
+
+If we simply left off the rest of the line, our program would typecheck. However, it would only ever read one value from the command line; the >>== getNumberEnum causes our enumerator to loop.
 
 One last thing to note about our function: notice the b in our type signature.
 
@@ -436,18 +442,34 @@ getNumberEnum :: MonadIO m => Enumerator Int m b
 This is saying that our Enumerator can feed Ints to any Iteratee accepting Ints, and it doesn't matter what the final output type will be. This is in general the way enumerators work. This allows us to create drastically different iteratees that work with the same enumerators:
 
 intsToStrings :: (Show a, Monad m) => Iteratee a m String
-intsToStrings = (unlines . map show) `fmap` consumeAnd then both of these lines work:
+intsToStrings = (unlines . map show) `fmap` consume
+
+And then both of these lines work:
+
 run_ (getNumberEnum $$ sum6) >>= print
-run_ (getNumberEnum $$ intsToStrings) >>= printExercises
+run_ (getNumberEnum $$ intsToStrings) >>= print
 
-Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. Its type signature should be Enumeratee Char Word8 m b.Write the opposite enumeratee, eg Enumeratee Word8 Char m b.Create a quickcheck property that ensures that these two functions work correctly.SummaryEnumeratees are the pipes connecting enumerators to iteratees.The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.You can always compose multiple enumeratees together, such as in http-enumerator.Enumeratees
+Exercises
 
-The final piece in the puzzle is the Enumeratee. This is a combination of an Iteratee (it
-consumes some data) and an Enumerator (is passes it other data on). It can be thought of
-as a stream transformer, or as a pipe connecting an Enumerator to an
-Iteratee.
+1. Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. Its type signature should be Enumeratee Char Word8 m b.
+2. Write the opposite enumeratee, eg Enumeratee Word8 Char m b.
+3. Create a quickcheck property that ensures that these two functions work correctly.
 
-Generalizing getNumberEnumEarlier, we created a getNumberEnum function with a type signature:
+Summary
+
+* Enumeratees are the pipes connecting enumerators to iteratees.
+* The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.
+* You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.
+* Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.
+* You can always compose multiple enumeratees together, such as in http-enumerator.
+
+Enumeratees
+
+The final piece in the puzzle is the Enumeratee. This is a combination of an Iteratee (it consumes some data) and an Enumerator (is passes it other data on). It can be thought of as a stream transformer, or as a pipe connecting an Enumerator to an Iteratee.
+
+Generalizing getNumberEnum
+
+Earlier, we created a getNumberEnum function with a type signature:
 
 getNumberEnum :: MonadIO m => Enumerator Int m b
 
@@ -461,8 +483,13 @@ lineEnum (Continue k) = do
     if x == "q"
         then continue k
         else k (Chunks [x]) >>== lineEnum
-lineEnum step = returnI stepCool, let's plug this into our sumIter function (I've renamed the sum6 function from the previous two parts):
-lineEnum $$ sumIterActually, that doesn't type check: lineEnum produces Strings, and sumIter takes Ints. We need to modify one of them somehow.
+lineEnum step = returnI step
+
+Cool, let's plug this into our sumIter function (I've renamed the sum6 function from the previous two parts):
+
+lineEnum $$ sumIter
+
+Actually, that doesn't type check: lineEnum produces Strings, and sumIter takes Ints. We need to modify one of them somehow.
 
 sumIterString :: Monad m => Iteratee String m Int
 sumIterString = Iteratee $ do
@@ -478,7 +505,10 @@ sumIterString = Iteratee $ do
         return $ go step
 
 What we've done here is wrap around the original iteratee. As usual, we first need to unwrap the Iteratee constructor and the monad to get at the heart of the Step value. Once we have that innerStep value, we pass it to the go function, which simply transforms that values in the Stream value from Strings to Ints.
-Even more generalOf course, it would be nice if we could apply this transformation to *any* iteratee. To start with, let's just pass the inner iteratee and the mapping function as parameters.
+
+Even more general
+
+Of course, it would be nice if we could apply this transformation to *any* iteratee. To start with, let's just pass the inner iteratee and the mapping function as parameters.
 
 mapIter :: Monad m => (aOut -> aIn) -> Iteratee aIn m b -> Iteratee aOut m b
 mapIter f innerIter = Iteratee $ do
@@ -490,8 +520,11 @@ mapIter f innerIter = Iteratee $ do
     go (Continue k) = Continue $ \strings -> Iteratee $ do
         let ints = fmap f strings
         step <- runIteratee $ k ints
-        return $ go stepWe could call this like:
-        run_ (lineEnum $$ mapIter read sumIter) >>= print
+        return $ go step
+
+We could call this like:
+
+run_ (lineEnum $$ mapIter read sumIter) >>= print
 
 Nothing much to see here, it's basically identical to the previous version. What's funny is that enumerator comes built in with a map function to do just this, but it has a significantly different type signature:
 
@@ -536,8 +569,7 @@ We can then run our unholy mess with:
 
 run_ (lineEnum $$ unnest $ map read $$ sumIter) >>= print
 
-And actually, the unnest function is available in Data.Enumerator, 
-and it's called joinI. So we should really write:
+And actually, the unnest function is available in Data.Enumerator, and it's called joinI. So we should really write:
 
 run_ (lineEnum $$ joinI $ map read $$ sumIter) >>= print
 
@@ -564,10 +596,15 @@ run_ (lineEnum $$ joinI $ skip $$ joinI $ map read $$ sumIter) >>= print
 
 Here, we read lines, skip every other input, convert the Strings to Ints and sum them.
 
-Real life examples: 
-  http-enumerator package
-  I started working on these tutorials as I was working on the http-enumerator package. I think the usage of enumeratees there is a great explanation of the benefits they can offer in real life. There are three different ways the response body can be broken up:
-  Chunked encoding. In this case, the web server gives a hex string specifying the length of the next chunk and then that chunk. At the end, it sends a 0 to indicate the end of that response.Content length. Here, the web server sends a header before any of the body is sent specifying the total length of the body.Nothing at all. In this case, the response body lasts until an end-of-file.In addition, the body may or may not be GZIP compressed. We end up with the following enumeratees, each with type signature Enumeratee ByteString ByteString m b: chunkedEncoding, contentLength and ungzip. We then get to do something akin to:
+Real life examples: http-enumerator package
+
+I started working on these tutorials as I was working on the http-enumerator package. I think the usage of enumeratees there is a great explanation of the benefits they can offer in real life. There are three different ways the response body can be broken up:
+
+* Chunked encoding. In this case, the web server gives a hex string specifying the length of the next chunk and then that chunk. At the end, it sends a 0 to indicate the end of that response.
+* Content length. Here, the web server sends a header before any of the body is sent specifying the total length of the body.
+* Nothing at all. In this case, the response body lasts until an end-of-file.
+
+In addition, the body may or may not be GZIP compressed. We end up with the following enumeratees, each with type signature Enumeratee ByteString ByteString m b: chunkedEncoding, contentLength and ungzip. We then get to do something akin to:
 
 let parseBody x =
         if ("transfer-encoding", "chunked") `elem` responseHeaders
@@ -579,7 +616,7 @@ let decompress x =
         if ("content-encoding", "gzip") `elem` responseHeaders
             then joinI $ ungzip $$ x
             else x
-        run_ $ socketEnumerator $$ parseBody $ decompress $ bodyIteratee
+run_ $ socketEnumerator $$ parseBody $ decompress $ bodyIteratee
 
 We create a chain: the data from the server is fed into the parseBody function. In the case of chunked encoding, the data is processed appropriately and then headers are filtered out. If we are dealing with content length, then only the specified number of bytes are read. And in the case of neither of those, parseBody is a no-op.
 
@@ -587,5 +624,14 @@ Whatever the case may be, the raw response body is then fed into decompress. If 
 
 Exercises
 
-Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. 
-Its type signature should be Enumeratee Char Word8 m b.Write the opposite enumeratee, eg Enumeratee Word8 Char m b.Create a quickcheck property that ensures that these two functions work correctly.SummaryEnumeratees are the pipes connecting enumerators to iteratees.The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.You can always compose multiple enumeratees together, such as in http-enumerator.
+1. Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. Its type signature should be Enumeratee Char Word8 m b.
+2. Write the opposite enumeratee, eg Enumeratee Word8 Char m b.
+3. Create a quickcheck property that ensures that these two functions work correctly.
+
+Summary
+
+* Enumeratees are the pipes connecting enumerators to iteratees.
+* The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.
+* You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.
+* Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.
+* You can always compose multiple enumeratees together, such as in http-enumerator.
