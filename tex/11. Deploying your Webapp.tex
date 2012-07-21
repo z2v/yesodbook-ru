@@ -273,62 +273,86 @@ fastcgi_param  SERVER_NAME        $server_name;
 
 Аналогичный подход wai-handler-launch, который не требует библиотеки QtWebkit, запускает Warp сервер и затем открывает пользовательский браузер по-умолчанию. Следует отметить небольшой трюк: для того, чтобы понять, что пользователь всё ещё пользуется сайтом, wai-handler-launch вставляет небольшой отрывок Javascript сценария на каждую HTML страницу, которую раздаёт, который периодически посылает пустые запросы на сервер. Если wai-handler-launch не получает ответа на такой пустой запрос в течение двух минут, он останавливается.
 %
-CGI on Apache
+%CGI on Apache
+\subsection{CGI и Apache}
 %
 %CGI and FastCGI work almost identically on Apache, so it should be fairly straight-forward to port this configuration. You essentially need to accomplish two goals:
 %
 %1. Get the server to serve your file as (Fast)CGI.
 %2. Rewrite all requests to your site to go through the (Fast)CGI executable.
 %
+CGI и FastCGI работают с Apache почти одинаково, так что подправить конфигурацию должно быть довольно просто. Вам всего лишь надо добиться выполнения двух пунктов:
+\begin{enumerate}
+  \item Заставить веб сервер раздавать ваши файлы как (Fast)CGI;
+  \item Сделать так, чтобы все запросы к вашему сайту шли через (Fast)CGI исполняемый файл.
+\end{enumerate}
+
 %Here is a configuration file for serving a blog application, with an executable named "bloggy.cgi", living in a subfolder named "blog" of the document root. This example was taken from an application living in the path /f5/snoyman/public/blog.
 %
-%Options +ExecCGI
-%AddHandler cgi-script .cgi
-%Options +FollowSymlinks
-%
-%RewriteEngine On
-%RewriteRule ^/f5/snoyman/public/blog$ /blog/ [R=301,S=1]
-%RewriteCond $1 !^bloggy.cgi
-%RewriteCond $1 !^static/
-%RewriteRule ^(.*) bloggy.cgi/$1 [L]
+Вот пример файла конфигурации для приложения-блога, исполняемый файл которого называется ``bloggy.cgi'', расположенного в подкаталоге ``blog''. Этот пример бы взят из приложения, находящегося в каталоге /f5/snoyman/public/blog.
+
+\begin{lstlisting}
+Options +ExecCGI
+AddHandler cgi-script .cgi
+Options +FollowSymlinks
+
+RewriteEngine On
+RewriteRule ^/f5/snoyman/public/blog$ /blog/ [R=301,S=1]
+RewriteCond $1 !^bloggy.cgi
+RewriteCond $1 !^static/
+RewriteRule ^(.*) bloggy.cgi/$1 [L]
+\end{lstlisting}
 %
 %The first RewriteRule is to deal with subfolders. In particular, it redirects a request for /blog to /blog/. The first RewriteCond prevents directly requesting the executable, the second allows Apache to serve the static files, and the last line does the actual rewriting.
+
+Первая запись RewriteRule отвечает за правильную обработку подкаталогов. В частности, она перенаправляет запросы к /blog на /blog/. Первая запись RewriteCond предотвращает запрос самого исполняемого файла, вторая -- разрешает Apache раздавать статические файлы. Последняя строка, собственно, и осуществляет перенаправление запросов.
 %
 %FastCGI on lighttpd
+\subsection{FastCGI и lighttpd}
 %
 %For this example, I've left off some of the basic FastCGI settings like mime-types. I also have a more complex file in production that prepends "www." when absent and serves static files from a separate domain. However, this should serve to show the basics.
 %
+
+Для этого примера я опустил некоторые из основных FastCGI настроек, такие как mime-типы. В реальном приложении у меня используется более сложный файл, который добавляет префикс ``www.'' в начало URL если он отсутствует, а также раздаёт статические файлы с отдельного домена. Однако, следующего примера должно быть достаточно, чтобы понять основы.
+
 %Here, "/home/michael/fastcgi" is the fastcgi application. The idea is to rewrite all requests to start with "/app", and then serve everything beginning with "/app" via the FastCGI executable.
+Здесь ``/home/michael/fastcgi'' -- это fastcgi приложение. Идея состоит в том, чтобы перенаправлять все запросы на ``/app'', после чего раздавать всё, начинающееся с ``/app'' через исполняемый файл FastCGI.
 %
-%server.port = 3000
-%server.document-root = "/home/michael"
-%server.modules = ("mod_fastcgi", "mod_rewrite")
-%
-%url.rewrite-once = (
-%  "(.*)" => "/app/$1"
-%)
-%
-%fastcgi.server = (
-%    "/app" => ((
-%        "socket" => "/tmp/test.fastcgi.socket",
-%        "check-local" => "disable",
-%        "bin-path" => "/home/michael/fastcgi", # full path to executable
-%        "min-procs" => 1,
-%        "max-procs" => 30,
-%        "idle-timeout" => 30
-%    ))
-%)
+\begin{lstlisting}
+server.port = 3000
+server.document-root = "/home/michael"
+server.modules = ("mod_fastcgi", "mod_rewrite")
+
+url.rewrite-once = (
+  "(.*)" => "/app/$1"
+)
+
+fastcgi.server = (
+    "/app" => ((
+        "socket" => "/tmp/test.fastcgi.socket",
+        "check-local" => "disable",
+        "bin-path" => "/home/michael/fastcgi", # полный путь к исполняемому файлу
+        "min-procs" => 1,
+        "max-procs" => 30,
+        "idle-timeout" => 30
+    ))
+)
+\end{lstlisting}
 %
 %CGI on lighttpd
+\subsection{CGI и lighttpd}
 %
 %This is basically the same as the FastCGI version, but tells lighttpd to run a file ending in ".cgi" as a CGI executable. In this case, the file lives at "/home/michael/myapp.cgi".
+Ниже представлен конфигурационный файл, почти идентичный версии для FastCGI, однако он говорит lighttpd запускать файл, заканчивающийся на ``.cgi'' как CGI исполняемый файл. В данном случае этот файл располагается в ``/home/michael/myapp.cgi''.
 %
-%server.port = 3000
-%server.document-root = "/home/michael"
-%server.modules = ("mod_cgi", "mod_rewrite")
-%
-%url.rewrite-once = (
-%    "(.*)" => "/myapp.cgi/$1"
-%)
-%
-%cgi.assign = (".cgi" => "")
+\begin{lstlisting}
+server.port = 3000
+server.document-root = "/home/michael"
+server.modules = ("mod_cgi", "mod_rewrite")
+
+url.rewrite-once = (
+    "(.*)" => "/myapp.cgi/$1"
+)
+
+cgi.assign = (".cgi" => "")
+\end{lstlisting}
