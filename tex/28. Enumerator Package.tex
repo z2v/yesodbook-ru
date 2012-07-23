@@ -217,16 +217,16 @@ Iteratee $ return $ Continue $ go runningSum'
 continue $ go runningSum'
 \end{lstlisting}
 
-Monad instance for Iteratee
+Екземпляр монады для Iteratee
 
-This is all very nice: we now have an iteratee that can be fed numbers from any monad and sum them. It can even take input from different sources and sum them together. (By the way, I haven't actually shown you how to feed those numbers in: that is in part 2 about enumerators.) But let's be honest: sum5 is an ugly function. Isn't there something easier?
+Это все очень хорошо: теперь у нас есть iteratee, которому могут скармливаться числа из любой монады и он может их сложить. Он может даже брать входные данные из различных источников, и складывать их вместе. (Кстати, я на самом деле ещё не показал вам, как скармливать эти числа: об этом во второй части, про enumerators) Но давайте будем честными: sum5 является уродливой функцией. Разве нельзя написать как нибудь попроще?
 
-In fact, there is. Remember how I said Iteratee really just existed to facilitate typeclass instances? This includes a monad instance. Feel free to look at the code to see how that instance is defined, but here we'll just look at how to use it:
+На самом деле, можно. Помните, как я уже говорил, что Iteratee на самом деле существуют просто чтобы облегчить определение екземпляров классов типа? Это включает в себя и екземпляр монады. Вы можете посмотреть код, чтобы увидеть, как этот екземпляр определён, но здесь мы просто покажем, как это можно использовать:
 
 \begin{lstlisting}
 sum6 :: Monad m => Iteratee Int m Int
 sum6 = do
-    maybeNum <- head -- not head from Prelude!
+    maybeNum <- head -- это не функция head из Prelude!
     case maybeNum of
         Nothing -> return 0
         Just i -> do
@@ -234,19 +234,19 @@ sum6 = do
             return $ i + rest
 \end{lstlisting}
 
-That head function is not from Prelude, it's from the Data.Enumerator module. Its type signature is:
+Эта функция head не из Prelude, она из модуля Data.Enumerator. Вот её сигнатура типа:
 
 \begin{lstlisting}
 head :: Monad m => Iteratee a m (Maybe a)
 \end{lstlisting}
 
-which basically means give me the next piece of input if it's there. We'll look at this function in more depth in a bit.
+которая в общем означает, дай мне следующую часть входных данных, если они есть. Чуть позже мы рассмотрим эту функцию более подробно.
 
-Go compare the code for sum6 with sum2: they are amazingly similar. You can often build up more complicated iteratees by using some simple iteratees and the Monad instance of Iteratee.
+Сравните код sum6 и sum2: они удивительно похожи. Часто можно строить более сложные iteratees с помощью простых iteratees и экземпляра Monad для Iteratee.
 
-Interleaved I/O
+Чередующийся(Вложенный) I/O
 
-Alright, let's look at a totally different problem. We want to be fed some strings and print them to the screen one line at a time. One approach would be to use lazy I/O:
+Хорошо, давайте рассмотрим совершенно другую проблему. Мы хотим, считывать строки с входных данных, и выводить их по одной на экран. Один из подходов заключается в использовании ленивого I/O:
 
 \begin{lstlisting}
 lazyIO :: IO ()
@@ -255,12 +255,12 @@ lazyIO = do
     mapM_ putStrLn s
 \end{lstlisting}
 
-But this has two drawbacks:
+Но это решение имеет два недостатка:
 
-* It's tied down to a single input source, stdin. This could be worked around with an argument giving a datasource.
-* But let's say the data source is some scarce resource (think: file handles on a very busy web server). We have no guarantees with lazy I/O of when those file handles will be released.
+* Оно привязано к одному источнику данных, стандартный ввод. Это ограничение можно обойти аргументом, указывающим источник данных.
+* Но, допустим, в качестве источника данных используется некоторый ограниченный ресурс (представте себе дескрипторы файлов на очень загруженном веб-сервере). С ленивым I/O у нас нет никаких гарантий, когда эти дескрипторы файлов будут освобождены.
 
-Let's look at how to write this in our new high-level monadic iteratee approach:
+Давайте рассмотрим, как написать это в нашем новом высокоуровневом монадическом подходе iteratee:
 
 \begin{lstlisting}
 interleaved :: MonadIO m => Iteratee String m ()
@@ -273,11 +273,11 @@ interleaved = do
             interleaved
 \end{lstlisting}
 
-The liftIO function comes from the transformers package, and simply promotes an action in the IO monad to any arbitrary MonadIO action. Notice how we don't really track any state with this iteratee: we don't care about its result, only its side effects.
+Функция liftIO из пакета трансформаторов, она просто продвигает действие в монаде IO в любое произвольное действие в MonadIO. Обратите внимание, что мы не отслеживаем состояние в этом iteratee: мы не заботимся о результате, только о побочных эффектах.
 
-Implementing head
+Реализация head
 
-As a last example, let's actually implement the head function.
+В качестве последнего примера, давайте попробуем реализовать функцию head.
 
 \begin{lstlisting}
 head' :: Monad m => Iteratee a m (Maybe a)
@@ -289,25 +289,25 @@ head' =
     go EOF = yield Nothing EOF
 \end{lstlisting}
 
-Like our sum6 function, this also wraps an inner "go" function with a continue. However, we now have three clauses for our go function. The first handles the case of Chunks []. To quote the enumerator docs:
+Как и наша функция sum6, она тоже оборачивает внутреннюю функцию "go" используя continue. Однако, теперь у нас есть три условия для нашей функции go. Первый обрабатывает случай пустых блоков (Chunks []). Цитируя документацию enumerator:
 
-(Chunks []) is used to indicate that a stream is still active, but currently has no available data. Iteratees should ignore empty chunks.
+(Chunks []) используется для обозначения того, что поток по-всё ещё активный, но в настоящее время нет данных. Iteratees должны игнорировать пустые блоки.
 
-The second clause handles the case where we are given some data. In this case, we yield the first element in the list, and return the rest as leftover data. The third clause handles the end of input by returning Nothing.
+Второй вариант обрабатывает случай, когда нам даны некоторые данные. В этом случае мы возвращаем первый элемент списка, и остатки. Третий пункт обрабатывает конец ввода, возвращая Nothing.
 
-Exercises
+Упражнения
 
-1. Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. Its type signature should be Enumeratee Char Word8 m b.
-2. Write the opposite enumeratee, eg Enumeratee Word8 Char m b.
-3. Create a quickcheck property that ensures that these two functions work correctly.
+1. Написать enumeratee который принимает шестнадцатеричные символы (например, "DEADBEEF"), и записывает их в Word8s. Его сигнатура типа должна быть Enumeratee Char Word8 m b.
+2. Написать противоположный enumeratee, например Enumeratee Word8 Char m b.
+3. Создать тест quickcheck, который проверяет, что эти две функции работают правильно.
 
-Summary
+Выводы
 
-* Enumeratees are the pipes connecting enumerators to iteratees.
-* The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.
-* You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.
-* Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.
-* You can always compose multiple enumeratees together, such as in http-enumerator.
+* Enumeratees являются конвеером связывающим enumerators с iteratees.
+* Странная сигнатура типа Enumeratee скрывает множество мощных возможностей. Особенно обратите внимание, как схожа его сигнатура типа с Enumerators.
+* Вы можете слить Enumeratee в Iteratee используя joinI $ enumeratee $$ iteratee.
+* Не забывайте, что вы можете использовать экземпляр Monad для Iteratee при создании собственных enumeratees.
+* Вы всегда можете составить несколько enumeratees вместе, как например в http-enumerator.
 
 Enumerators
 
