@@ -2,100 +2,99 @@
 
 Практически каждый язык, используемый для веб-разработки, сталкивался с проблемой
 низкоуровневого интерфейса между веб-сервером и приожением. Самым ранним примером
-её решения является почтенный и потёртый в боях CGI
+её решения является почтенный и потёртый в боях CGI (Common Gateway Interface), 
+обеспечивающий языконезависимый интерфейс при помощи стандартного ввода, стандартного
+вывода и переменных окружения.
 
-It is a problem almost every language used for web development has dealt with: 
-the low level interface between the web server and the application. The earliest 
-example of a solution is the venerable and battle-worn CGI (CGI), providing a 
-language-agnostic interface using only standard input, standard output and 
-environment variables.
+Ещё в те времена, когда Perl становалися языком вебпрограммирования де-факто, оcновной
+недостаток CGI стал очевидным: процесс должен запускаться заново для каждого запроса.
+При использовании интерпретируемого языка и приложений, требующих соединение с базой
+данных, эти издержки стали черезмерны. FastCGI (и позднее SCGI) возник как преемник
+CGI, но, кажется, основная часть мира программирования направилась в другом направлении.
 
-Back when Perl was becoming the de facto web programming language, a major 
-shortcoming of CGI became apparent: the process needed to be started anew for 
-each request. When dealing with an interpretted language and application 
-requiring database connection, this overhead became unbearable. FastCGI 
-(and later SCGI) arose as a successor to CGI, but it seems that much of 
-the programming world went in a different direction.
+Каждый язык начал создавать свой собственный стандарт установления связи с серверами.
+mod\_perl. mod\_python. mod\_php. mod\_ruby. В одном и том же языке возникало несколько
+интерфейсов. В некоторых случаях получались даже интерфейсы поверх интерфейсов.
+И всё это привело к большому дублированию усилий: приложение на Python, созданное
+для работы с FastCGI не работало бы с mod\_python; mod\_python существовал только для
+определённых вебсверверов; и подобные специфичные для языка расширения вебсверверов
+требовалось писать для каждого языка программирования.
 
-Each language began creating its own standard for interfacing with servers. mod\_perl.
-mod\_python. mod\_php. mod\_ruby. Within the same language, multiple interfaces arose. In
-some cases, we even had interfaces on top of interfaces. And all of this led to much
-duplicated effort: a Python application designed to work with FastCGI wouldn't work with
-mod\_python; mod\_python only exists for certain webservers; and these programming
-language specific web server  extensions need to be written for each programming
-language.
+У Haskell своя история. У нас вначале был пакет \footnotehref{http://hackage.haskell.org/package/cgi}{cgi},
+который предоставлял монадный интерфейс. Пакет \footnotehref{http://hackage.haskell.org/package/fastcgi}{fastcgi}
+позднее предоставлял такой же интерфейс. В то же время, казалось, что большинство,
+занимающихся вебпрограммированием на Haskell, сфокусировалось на автономном сервере.
+Проблема в том, что у каждого сервера свой собственный интерфейс, что означает, что 
+вам надо ставить целью конкретный сервер. Это означает, что невозможно разделять
+общий функционал наподобие GZIP кодирования, серверов для разработки и фреймворков для тестирования.
 
-Haskell has its own history. We originally had the cgi package, which provided a monadic 
-interface. The fastcgi package then provided the same interface. Meanwhile, it seemed that 
-the majority of Haskell web development focused on the standalone server. The problem is 
-that each server comes with its own interface, meaning that you need to target a specific 
-backend. This means that it is impossible to share common features, like GZIP encoding, 
-development servers, and testing frameworks.
+WAI пытается решить эту проблему, обеспечивая обобщённый и эффективный интерфейс между
+вебсерверами и приложениями. Любой обработчик, поддерживающий интерфейс может обслуживать
+любое приложение WAI, в то же время любоее приложение, использующее интерфейс может
+запускаться с любым обработчиком.
 
-WAI attempts to solve this, by providing a generic and efficient interface between web 
-servers and applications. Any handler supporting the interface can serve any WAI 
-application, while any application using the interface can run on any handler.
-
-At the time of writing, there are various backends, including Warp, FastCGI, and
-development server. There are even more esoteric backends like wai-handler-webkit 
-for creating desktop apps. wai-extra provides many common middleware components 
-like GZIP, JSON-P and virtual hosting. wai-test makes it easy to write unit
-tests, and wai-handler-devel lets you develop your
-applications without worrying about stopping to compile. Yesod targets WAI, and
-Happstack is in the process of converting over as well. It's also used by some
-applications that skip the framework entirely, including the new Hoogle.
+На момент написания существовало несколько бэкэндов, включая Warp, FastCGI и
+сервер разработки. Существуют и более эзотерические бэкэнды, такие как, например,
+\footnotehref{http://hackage.haskell.org/package/wai-handler-webkit}{wai-handler-webkit},
+используемый для создания настольных приложений. \footnotehref{http://hackage.haskell.org/package/wai-extra}{wai-extra} предоставляет большое число компонент связующего слоя, таких как  GZIP, JSON-P
+и виртуальный хостинг. \footnotehref{http://hackage.haskell.org/package/wai-test}{wai-test}
+облегчает написание модульных тестов, а \footnotehref{http://hackage.haskell.org/package/wai-handler-devel}{wai-handler-devel} позволяет разрабатывать приложение не беспокоясь об остановке для компиляции.
+Yesod нацелен на WAI, Happstack также находится в процессе перехода на него.
+Он также используется некоторыми приложениями, которые не используют фреймворки, среди
+которых новая версия Hoogle.
 
 \fbox{\begin{minipage}[!h]{.9\linewidth}
-Yesod provides an alternate approach for a devel server, known as
-yesod devel. The difference from wai-handler-devel is that yesod
-devel actually compiles your code each time, respecting all settings in your 
-cabal file.
-This is the recommended aproach for general Yesod development.
+Yesod предоставляет альтернативный подход для сервера разработки, известный как
+yesod devel. Разница с wai-handler-devel состоит в том, что yesod devel компилирует
+ваш код каждый раз, учитывая настройки в вашем cabal-файле.
+Это рекомендуемый подход к разработке на Yesod.
 \end{minipage}}
 
-\section {The Interface}
+\section {Интерфейс}
 
-The interface itself is very straight-forward: an application takes a request 
-and returns a response. A response is an HTTP status, a list of headers and a 
-response body. A request contains various information: the requested path, 
-query string, request body, HTTP version, and so on.
+Интерфейс сам по себе довольно незатейлив: приложение принимает запрос и возвращает
+ответ. Ответом является статус HTTP, список заголовков и тело ответа.
+Запрос содержит различную информацию: запрашиваемый путь, строка запроса, тело запроса,
+версия HTTP и т.д.
 
-\section {Response Body}
+\section {Тело ответа}
 
-Haskell has a datatype known as a lazy bytestring. By utilizing laziness, you 
-can create large values without exhausting memory. Using lazy I/O, you can do 
-such tricks as having a value which represents the entire contents of a file, 
-yet only occupies a small memory footprint. In theory, a lazy bytestring is the 
-only representation necessary for a response body.
+В Haskell имеется тип данных известный как ленивая строка байтов. Используя ленивость,
+вы можете создавать большие значения без переполнения памяти. Используя ленивый ввод/вывод,
+вы можете сделать такие трюки, как например, иметь значение, которое представляет всё 
+содержимое файла, и которое в то же время имеет небольшие затраты по памяти. В теории
+ленивая строка байтов является единственным необходимым представляением тела ответа.
 
-In practice, while lazy byte strings are wonderful for generating "pure" values, the
-lazy I/O necessary to read a file introduces some non-determinism into our programs.
-When serving thousands of small files a second, the limiting factor is not memory, but
-file handles. Using lazy I/O, file handles may not be freed immediately, leading to
-resource exhaustion. To deal with this, WAI uses conduits.
+На практике же, в то время как ленивые строки байтов замечательно подходят для формирования
+``чистых'' значений, ленивый ввод/вывод, необоходимый для чтения файлов вносит некоторый
+недетерминизм в нашу программу. При обработке тысяч небольших файлов в секунду ограничивающим
+фактором является не память, а число дескрипторов файлов. При использовании ленивого
+ввода/вывода файловые дескрипторы не могут быть освобождены сразу же, что приводит к
+исчерпанию ресурсов. Для решения этого WAI использует каналы.
 
 \fbox{\begin{minipage}[!h]{.9\linewidth}
-Versions of WAI before 1.0 used enumerators in place of conduits. While both conduits
-and enumerators solve the same basic problem, experience showed that enumerators were
-too constricting in their inversion of control approach, making it difficult to
-structure more complicated systems like a streaming proxy server. Conduits were designed
-with the express purpose of making a better WAI.
+Версии WAI до 1.0 использовали энумераторы вместо каналов. В то время как, и каналы
+и энумераторы решают ту же самую базовую задачу, опыт показывал, что энумераторы слишком
+ограничивают своим подходом к инверсии управления, что усложняет структурирование более
+сложных систем, таких как потоковый прокси-сервер. Каналы были спроектированы
+с единственной целью - сделать WAI лучше.
 \end{minipage}}
 
-The data type relevant to us now is a source. A source produces a stream of
-data, producing a single chunk at a time. In the case of WAI, the request body would be
-a source passed to the application, and the response body would be a source returned
-from the application.
+Типом данных, наиболее интересным нам, является тип ``источник''. Источник производит
+поток данных, отдавая одну порцию за раз. В случае WAI, тело запроса будет источником,
+передаваемым приложению, а тело ответа будет источником, возвращаемым из приложения.
 
-There are two further optimizations: many systems provide a sendfile system call, which 
-sends a file directly to a socket, bypassing a lot of the memory copying inherent in more
-general I/O system calls. Additionally, there is a datatype in Haskell called Builder which 
-allows efficient copying of bytes into buffers.
+Имеется ещё 2 оптимизации: многие системы предоставляют системный вызов sendfile, который
+посылает файл прямо в сокет, минуя множественное копирование памяти, которое присуще
+более общим системным вызовам ввода/вывода. Кроме того в Haskell имеется тип данных
+под называнием \lstinline!Builder!, который делает возможным более эффективное копирование
+байтов в буферы.
 
-The WAI response body therefore has three constructors: one for pure builders
-(ResponseBuilder), one for a source of builders (ResponseSource) and one for files (ResponseFile).
+У тела ответа WAI таким образом имеется три конструктора: один для ``чистых'' построителей
+(\lstinline!ResponseBuilder!), один для источника построителей (\lstinline!ResponseSource!) и
+один для файлов (\lstinline!ResponseFile!).
 
-\section {Request Body}
+\section {Тело запроса}
 
 In order to avoid the need to load the entire request body into memory, we use
 sources here as well. Since the purpose of these values are for reading (not writing),
