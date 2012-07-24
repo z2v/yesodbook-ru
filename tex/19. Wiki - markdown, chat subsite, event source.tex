@@ -192,11 +192,12 @@ import qualified Data.Map as Map
 -- Вы можете скачать его исходный код с https://github.com/snoyberg/markdown
 import Text.Markdown (markdown, def)
 
--- | Наш тип-основание включает и подсайт чата, и изменяемую ссылку на карту
--- содержимого wiki. Обратите внимание, что ключом в этой карте является список из Text,
--- так как wiki может иметь произвольную иерархию.
+-- | Наш тип-основание включает и подсайт чата, и изменяемую ссылку на словарь
+-- содержимого wiki. Обратите внимание, что ключом в этом словаре является список
+-- из Text, так как wiki может иметь произвольную иерархию.
 --
--- В реальном приложении мы бы хотели хранить эту информацию в какой-нибудь базе данных.
+-- В реальном приложении мы бы предпочли хранить эту информацию в какой-нибудь
+-- базе данных.
 data Wiki = Wiki
     { getChat :: Chat
     , wikiContent :: I.IORef (Map.Map [Text] Text)
@@ -208,16 +209,14 @@ mkYesod "Wiki" [parseRoutes|
 FIXME
 -- обратите внимание на multipiece для иерархии wiki
 /wiki/*Texts WikiR GET POST -- note the multipiece for the wiki hierarchy
-/chat ChatR Chat getChat    -- the chat subsite
-/auth AuthR Auth getAuth    -- the auth subsite
+/chat ChatR Chat getChat    -- подсайт чата
+/auth AuthR Auth getAuth    -- подсайт аутентификации
 |]
 
 instance Yesod Wiki where
     -- получим работающую ссылку на вход
     authRoute _ = Just $ AuthR LoginR -- get a working login link
 
-    -- Our custom defaultLayout will add the chat widget to every page.
-    -- We'll also add login and logout links to the top.
     -- Наш особый defaultLayout добавит виджет чата на каждую страницу.
     -- Он также добавит ссылки на вход и на выход вверху страниц.
     defaultLayout widget = do
@@ -233,26 +232,24 @@ $doctype 5
         $maybe msg <- mmsg
             <div .message>#{msg}
         <nav>
-            <a href=@{AuthR LoginR}>Login
+            <a href=@{AuthR LoginR}>Войти
             \ | #
-            <a href=@{AuthR LogoutR}>Logout
+            <a href=@{AuthR LogoutR}>Выйти
         ^{pageBody pc}
 |]
 
--- Fairly standard YesodAuth instance. We'll use the dummy plugin so that you
--- can create any name you want, and store the login name as the AuthId.
--- Довольно стандартный экземпляр YesodAuth. Мы будем использовать плагин-пустышку, чтобы вы могли создать любое имя, какое пожелаете, и хранить имя пользователя как AuthId.
+-- Довольно стандартный экземпляр YesodAuth. Мы будем использовать плагин-пустышку,
+-- чтобы вы могли создать любое имя, какое пожелаете, и хранить имя вошедшего
+-- пользователя как AuthId.
 instance YesodAuth Wiki where
     type AuthId Wiki = Text
     authPlugins _ = [authDummy]
     loginDest _ = RootR
     logoutDest _ = RootR
     getAuthId = return . Just . credsIdent
-    -- не используется в authDummy
-    authHttpManager = error "authHttpManager" -- not used by authDummy
+    authHttpManager = error "authHttpManager" -- не используется authDummy
 
--- Just implement authentication based on our yesod-auth usage.
--- Просто реализуем аутентификацию на основе использования нашего yesod-auth.
+-- Просто реализуем аутентификацию на основе нашего yesod-auth.
 instance YesodChat Wiki where
     getUserName = requireAuthId
     isLoggedIn = do
@@ -262,7 +259,6 @@ instance YesodChat Wiki where
 instance RenderMessage Wiki FormMessage where
     renderMessage _ _ = defaultFormMessage
 
--- Nothing special here, just giving a link to the root of the wiki.
 -- Здесь ничего особенного, просто даем ссылку на корень wiki.
 getRootR :: Handler RepHtml
 getRootR = defaultLayout [whamlet|
@@ -273,36 +269,28 @@ getRootR = defaultLayout [whamlet|
   where
     wikiRoot = WikiR []
 
--- A form for getting wiki content
 -- Форма для получения wiki-содержимого
 wikiForm mtext = renderDivs $ areq textareaField "Содержимое страницы" mtext
 
--- Show a wiki page and an edit form
 -- Отобразить страницу wiki и форму для редактирования
 getWikiR :: [Text] -> Handler RepHtml
 getWikiR page = do
-    -- Get the reference to the contents map
-    -- Получим ссылку на карту содержимого
+    -- Получим ссылку на словарь содержимого
     icontent <- fmap wikiContent getYesod
 
-    -- And read the map from inside the reference
-    -- И прочтем карту изнутри ссылки
+    -- И прочтем словарь из ссылки
     content <- liftIO $ I.readIORef icontent
 
-    -- Lookup the contents of the current page, if available
-    -- Найдем содержимое текущей страницы, если оно доступно
+    -- Получим содержимое текущей страницы, если оно доступно
     let mtext = Map.lookup page content
 
-    -- Generate a form with the current contents as the default value.
-    -- Note that we use the Textarea wrapper to get a <textarea>.
     -- Сгенерируем форму с текущим содержимым в качестве значения по умолчанию.
     -- Обратите внимание, что мы используем обертку Textarea, чтобы получить <textarea>.
     (form, _) <- generateFormPost $ wikiForm $ fmap Textarea mtext
     defaultLayout $ do
         case mtext of
-            -- We're treating the input as markdown. The markdown package
-            -- automatically handles XSS protection for us.
-            -- Трактуем ввод как разметку. Пакет markdown автоматически выполняет для нас защиту от XSS.
+            -- Трактуем ввод как markdown. Пакет markdown автоматически
+            -- выполняет для нас защиту от XSS.
             Just text -> toWidget $ markdown def $ TL.fromStrict text
             Nothing -> [whamlet|<p>Страница не существует|]
         [whamlet|
@@ -313,7 +301,6 @@ getWikiR page = do
         <input type=submit>
 |]
 
--- Get a submitted wiki page and updated the contents.
 -- Получим отправленную wiki-страницу и обновим содержимое.
 postWikiR :: [Text] -> Handler RepHtml
 postWikiR page = do
@@ -336,15 +323,12 @@ postWikiR page = do
 
 main :: IO ()
 main = do
-    -- Create our server event channel
-    -- Создадим канал событий нашего сервера
+    -- Создадим наш канал серверных событий
     chan <- newChan
 
-    -- Initially have a blank database of wiki pages
-    -- Изначально будем иметь пустую базу данных wiki-страниц.
+    -- Изначально у нас пустая база данных wiki-страниц
     icontent <- I.newIORef Map.empty
 
-    -- Run our app
     -- Запустим наше приложение
     warpDebug 3000 $ Wiki (Chat chan) icontent
 \end{lstlisting}
