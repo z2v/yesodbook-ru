@@ -1,18 +1,18 @@
 \chapter{http-conduit}
+Большая часть Yesod относится к предоставлению контента по протоколу
+HTTP. Но это только часть истории: кто-то должен получать его. И даже
+если вы пишете веб приложение, иногда этим <<кто-то>> можете быть вы
+сами. Если вы хотите получать контент от других сервисов или
+взаимодействовать с RESTful API(? FIXME), вам потребуется написать
+клиентский код. И рекомендуемый подход для этого~---
+http--conduit.\marginpar{вставить ссылку}
 
-Most of Yesod is about serving content over HTTP. But that's only half
-the story: someone has to receive it. And even when you're writing a
-web app, sometimes that someone will be you. If you want to consume
-content from other services or interact with RESTful APIs, you'll need
-to write client code. And the recommended approach for that is
-http-conduit.
+Эта глава напрямую с Yesod не связана, и будет, вообще говоря, полезной для
+всех, кто хочет выполнять HTTP запросы.
 
-This chapter is not directly connected to Yesod, and will be generally
-useful for anyone wanting to make HTTP requests.
-
-\section{Synopsis}
+\section{Конспект}
 \begin{lstlisting}
-  {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
 import Network.HTTP.Conduit -- the main module
 
 -- The streaming interface uses conduits
@@ -58,36 +58,37 @@ main = do
         responseBody res2 $$ sinkFile "post-foo.txt"
 \end{lstlisting} %$
 
-\section{Concepts}
-
-The simplest way to make a request in http-conduit is with the
-simpleHttp function. This function takes a String giving a URL and
-returns a ByteString with the contents of that URL. But under the
-surface, there are a few more steps:
+\section{Основные положения}
+Самый простой путь выполнения запроса в http--conduit~--- использовать
+функцию~\lstinline!simpleHttp!. Эта функция принимает
+\lstinline!String!, представлящую URL, и возвращает
+\lstinline!ByteString! с содержимым этого URL. Но внутри себя функция
+содержит несколько шагов:
 \begin{itemize}
-\item A new connection Manager is allocated.
-\item The URL is parsed to a Request. If the URL is invalid, then an
-  exception is thrown.
-\item The HTTP request is made, following any redirects from the server.
-\item If the response has a status code outside the 200-range, an exception is thrown.
-\item The response body is read into memory and returned.
-\item runResourceT is called, which will free up any resources (e.g., the open
-  socket to the server).
+\item Создаётся новый менеджер соединения~\lstinline!Manager!.
+\item URL преобразуется в \lstinline!Request!. Если URL некорректный,
+  то выбрасывается исключение.
+\item Выполняется HTTP запрос, следующий по всем перенаправлениям с сервера.
+\item Если код статуса ответа находится вне диапазона 200-х значений,
+  выбрасывается исключение.
+\item Тело запроса считывается в память и возвращается.
+\item Вызывается \lstinline!runResourceT!, который освобождает все
+  ресурсы (например, открытый сокет к серверу).
 \end{itemize}
 
-If you want more control of what's going on, then you can configure
-any of the steps above (plus a few more) by explicitly creating a
-Request value, allocating your Manager manually, and using the http
-and httpLbs functions.
+Если вы хотите больше контроля над тем, что происходит, вы можете
+настроить любой из описанных шагов (плюс ещё несколько), явно создавая
+значение~\lstinline!Request!, вручную размещая \lstinline!Manager!, и
+используя функции \lstinline!http! и \lstinline!httpLbs!.
 
 \section{Request}
-
-The easiest way to creating a Request is with the parseUrl
-function. This function will return a value in any Failure monad, such
-as Maybe or IO. The last of those is the most commonly used, and
-results in a runtime exception whenever an invalid URL is
-provided. However, you can use a different monad if, for example, you
-want to validate user input.
+Самый лёгкий путь создать \lstinline!Request!~--- с помощью
+функции~\lstinline!parseUrl!. Эта функция вернёт значение в любой
+монаде, являющейся экземпляром класса~\lstinline!Failure!, например,
+\lstinline!Maybe! или \lstinline!IO!. Последняя из указанных
+используется чаще всего, и приводит к исключению во время выполнения,
+если функции передан некорректный URL. Однако, вы можете использовать
+другую монаду, если, например, хотите проверять пользовательский ввод.
 \begin{lstlisting}
 import Network.HTTP.Conduit
 import System.Environment (getArgs)
@@ -106,12 +107,13 @@ main = do
                     liftIO $ L.putStr lbs
         _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"
 \end{lstlisting}
-
-The Request type is abstract so that http-conduit can add new settings
-in the future without breaking the API (see the Settings Type chapter
-for more information). In order to make changes to individual records,
-you use record notation. For example, a modification to our program
-that issues HEAD requests and prints the response headers would be:
+Тип~\lstinline!Request! абстрактный, так что http--conduit может
+добавлять новые настройки в будущем, не нарушая API (см. приложение
+Settings Type для более подробной информации)\marginpar{вставить
+  ссылку}. Чтобы изменить отдельные записи, используйте record
+notation\marginpar{FIXME: record notation}. Например, модификация
+нашей программы, которая отправляет HEAD запросы и печатает заголовки
+ответа, могла бы быть такой:
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
 import Network.HTTP.Conduit
@@ -135,19 +137,21 @@ main = do
         _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"
 \end{lstlisting} %$
 
-There are a number of different configuration settings in the API,
-some noteworthy ones are:
+Есть целый ряд различных настроек в API, вот те, на которые стоит
+обратить внимание:
 \begin{description}
 \item[proxy] \hfill \\
-      Allows you to pass the request through the given proxy server.
+  Позволяет отправлять запросы через указанный прокси--сервер.
 \item[redirectCount] \hfill \\
-      Indicate how many redirects to follow. Default is 10.
+  Указывает количество переадресаций, по которым следовать. По
+  умолчанию~--- 10.
 \item[checkStatus] \hfill \\
-      Check the status code of the return value. By default, gives an
-      exception for any non-2XX response.
+  Проверка кода статуса ответа. По умолчанию, выбрасывает исключение
+  для любого кода вне диапазона 200-х значений.
 \item[requestBody] \hfill \\
-      The request body to be sent. Be sure to also update the method. For the
-      common case of url-encoded data, you can use the urlEncodedBody function.
+  Тело запроса для отправки. Удостоверьтесь, что обновили метод. Для
+  общего случая кодирования данных в URL, вы можете использовать
+  функцию~\lstinline!urlEncodedBody!.
 \end{description}
 
 \section{Manager}
