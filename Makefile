@@ -1,5 +1,5 @@
 ifdef STRICT
-TEX=xelatex
+TEX=xelatex -halt-on-error
 else
 TEX=xelatex -interaction=nonstopmode
 endif
