@@ -295,35 +295,21 @@ head' =
 
 Второй вариант обрабатывает случай, когда нам даны некоторые данные. В этом случае мы возвращаем первый элемент списка, и остатки. Третий пункт обрабатывает конец ввода, возвращая Nothing.
 
-Упражнения
-
-1. Написать enumeratee который принимает шестнадцатеричные символы (например, "DEADBEEF"), и записывает их в Word8s. Его сигнатура типа должна быть Enumeratee Char Word8 m b.
-2. Написать противоположный enumeratee, например Enumeratee Word8 Char m b.
-3. Создать тест quickcheck, который проверяет, что эти две функции работают правильно.
-
-Выводы
-
-* Enumeratees являются конвеером связывающим enumerators с iteratees.
-* Странная сигнатура типа Enumeratee скрывает множество мощных возможностей. Особенно обратите внимание, как схожа его сигнатура типа с Enumerators.
-* Вы можете слить Enumeratee в Iteratee используя joinI $ enumeratee $$ iteratee.
-* Не забывайте, что вы можете использовать экземпляр Monad для Iteratee при создании собственных enumeratees.
-* Вы всегда можете составить несколько enumeratees вместе, как например в http-enumerator.
-
 Enumerators
 
-Whereas an Iteratee is a consumer, an Enumerator is a producer. At a high level, an Enumerator is in fact an Iteratee transformer, moving an Iteratee from one state to a new one. Let's look at how this works.
+В то время как Iteratee является потребителем (consumer), Enumerator является производителем (producer). На высоком уровне, Enumerator яаляется в действительности трансформатором Iteratee, переводя Iteratee из одного состояния в новое. Давайте посмотрим, как это работает.
 
-Extracting a value
+Извлекая значение
 
-So far, we've written a few iteratees, but we still don't know how to extract values from them. To start, let's remember that Iteratee is just a newtype wrapper around Step:
+Мы уже написали несколько iteratees, но мы до сих пор не знаем, как из них извлекать значения. Для начала, давайте вспомним, что Iteratee это просто newtype обертка вокруг Step:
 
 \begin{lstlisting}
 newtype Iteratee a m b = Iteratee { runIteratee :: m (Step a m b) }
 \end{lstlisting}
 
-First we need to unwrap the Iteratee and deal with the Step value inside. Remember also that Step has three constructors: Continue, Yield and Error. We'll handle the Error constructor by returning our result in an Either. Yield already provides the data we're looking for.
+Давайте развернём Iteratee, что бы иметь дело со значением Step внутри. Также вспомним, что для типа Step есть три конструктора: Continue, Yield и Error. Мы будем обрабатывать конструктор Error, возвращая наш результат в Either. Yield уже содержит данные, которые мы ищем.
 
-The tricky case is Continue: here, we have an iteratee that is still expecting more data. This is where the EOF constructor comes in handy: it's our little way to tell the iteratee to finish what it's doing and get on with things. If you remember from above, I said a well-behaving iteratee will never return a Continue after receiving an EOF; now we'll see why:
+Сложный случай с Continue: здесь, у нас есть iteratee, которй  ожидает больше данных. Здесь на помощь приходит конструктор EOF: это наш маленький способ сказать iteratee закончить то, что он делает, и продолжить нашу работу. Если вы помните, выше я сказал, что правильно реализованый (воспитаный) iteratee никогда не вернет Continue после получения EOF; сейчас мы увидим, почему:
 
 \begin{lstlisting}
 extract :: Monad m => Iteratee a m b -> m (Either SomeException b)
@@ -341,21 +327,21 @@ extract (Iteratee mstep) = do
         Error e -> return $ Left e
 \end{lstlisting}
 
-Fortunately, you don't need to redefine this yourself: enumerator includes both a run and run_ function. Let's go ahead and use it on our sum6 function:
+К счастью, вам не нужно переопределять это самостоятельно: enumerator содержит обе функции run и run_. Давайте пойдем дальше и воспользуемся этим в нашей sum6 функции:
 
 \begin{lstlisting}
 main = run_ sum6 >>= print
 \end{lstlisting}
 
-If you run this, the result will be 0. This emphasizes an important point: an iteratee is not just how to process incoming data, it is the state of the processing. In this case, we haven't done anything to change the initial state of sum6, so we still have the initial value of 0.
+Если вы исполните это, то результат будет 0. Это подчеркивает один важный момент: iteratee не только то как для обрабатывать входные данные, это ещё и состояние обработки. В этом случае, мы не сделали ничего, чтобы изменить начальное состояние sum6, так что у нас еще начальное значение 0.
 
-To give an analogy: think of an iteratee as a machine. When you feed it data, you modify the internal state but you can't see any of those changes on the outside. When you are done feeding the data, you press a button and it spits out the result. If you don't feed in any data, your result is the initial state.
+Чтобы дать аналогию: представте iteratee как такую машину. Когда вы вводите в неё данные, вы измененяете её внутреннее состояние, но вы не видите всех этих изменений снаружи. Когда же вы закончили ввод, вы нажимаете кнопку, и она выдаёт результат. Если вы не вводили никаких данных, ваш результат в начальном состоянии.
 
-Adding data
+Добавление данных
 
-Let's say that we actually want to sum some numbers. For example, the numbers 1 to 10. We need some way to feed that into our sum6 iteratee. In order to approach this, we'll once again need to unwrap our Iteratee and deal with the Step value directly.
+Давайте предположим, что мы действительно хотим найти сумму некоторых чисел. Например, числа от 1 до 10. Мы должны каким-то образом скормить их нашему sum6 iteratee. Для того, чтобы как-то подойти к этому, нам опять нужно развернуть наш Iteratee и работать со значеним Step напрямую.
 
-In our case, we know with certainty that the Step constructor we used is Continue, so it's safe to write our function as:
+В нашем случае, мы точно знаем, что конструктор Step, который мы использовали это Continue, так что можно безопасно записать нашу функцию как:
 
 \begin{lstlisting}
 sum7 :: Monad m => Iteratee Int m Int
@@ -364,7 +350,7 @@ sum7 = Iteratee $ do
     runIteratee $ k $ Chunks [1..10]
 \end{lstlisting}
 
-But in general, we won't know what constructor will be lying in wait for us. We need to properly deal with Continue, Yield and Error. We've seen what to do with Continue: feed it the data. With Yield and Error, the right action in general is to do nothing, since we've already arrived at our final result (either a successful Yield or an Error). So the "proper" way to write the above function is:
+Но в общем случае, мы не будем знать какой конструктор будет лежать в ожидании нас. Мы должны как положено обработать Continue, Yield и Error. Мы увидели, что делать с Continue: скормить ему данные. С Yield и Error, в общем правильным действием будет ничего не делать, поскольку мы уже прибыли в наш конечное состояние (или успешный Yield или Error). Таким образом, "правильный" способ записи функции выше:
 
 \begin{lstlisting}
 sum8 :: Monad m => Iteratee Int m Int
@@ -375,9 +361,9 @@ sum8 = Iteratee $ do
         _ -> return step
 \end{lstlisting}
 
-Enumerator type synonym
+Синоним типа Enumerator
 
-What we've done with sum7 and sum8 is perform a transformation on the Iteratee. But we've done this in a very limited way: we've hard-coded in the original Iteratee function (sum6). We could just make this an argument to the function:
+То что мы сделали с sum7 и sum8 это выполнили преобразование Iteratee. Но мы сделали это в очень ограниченном виде: мы явно вписали использование орининальной функцию Iteratee (sum6). Мы могли бы сделать её аргументом функции:
 
 \begin{lstlisting}
 sum9 :: Monad m => Iteratee Int m Int -> Iteratee Int m Int
@@ -388,7 +374,7 @@ sum9 orig = Iteratee $ do
         _ -> return step
 \end{lstlisting}
 
-But since we always just want to unwrap the Iteratee value anyway, it turns out that it's more natural to make the argument of type Step, ie:
+Но так как мы всегда просто хотим развернуть значение Iteratee, оказывается, что более естественно сделать аргумент типа Step, а именно:
 
 \begin{lstlisting}
 sum10 :: Monad m => Step Int m Int -> Iteratee Int m Int
@@ -396,19 +382,19 @@ sum10 (Continue k) = k $ Chunks [1..10]
 sum10 step = returnI step
 \end{lstlisting}
 
-This type signature (take a Step, return an Iteratee) turns out to be very common:
+Эта сигнатура типа (взять Step, вернуть Iteratee) оказывается очень распространенна:
 
 \begin{lstlisting}
 type Enumerator a m b = Step a m b -> Iteratee a m b
 \end{lstlisting}
 
-Meaning sum10's type signature could also be expressed as:
+Значит сигнатура типа sum10 может быть выражена следующим образом:
 
 \begin{lstlisting}
 sum10 :: Monad m => Enumerator Int m Int
 \end{lstlisting}
 
-Of course, we need some helper function to connect an Enumerator and an Iteratee:
+Конечно, нам нужна некоторая вспомогательная функция для связи Enumerator и Iteratee:
 
 \begin{lstlisting}
 applyEnum :: Monad m => Enumerator a m b -> Iteratee a m b -> Iteratee a m b
@@ -417,13 +403,13 @@ applyEnum enum iter = Iteratee $ do
     runIteratee $ enum step
 \end{lstlisting}
 
-Let me repeat the intuition here: the Enumerator is transforming the Iteratee from its initial state to a new state by feeding it more data. In order to use this function, we could write:
+Позвольте мне повторить, наша интуиция здесь: Enumerator трпнсформирует Iteratee из его исходного состояния в новое состояние, скармливая ему данные. Для того, чтобы использовать эту функцию, мы можем написать:
 
 \begin{lstlisting}
 run_ (applyEnum sum10 sum6) >>= print
 \end{lstlisting}
 
-This results in 55, exactly as we'd expect. But now we can see one of the benefits of enumerators: we can use multiple data sources. Let's say we have another enumerator:
+Здесь результат 55, точно тот, что мы ожидали. Но теперь мы видим одно из преимуществ enumerators: мы можем использовать несколько источников данных. Допустим, у нас есть еще один enumerator:
 
 \begin{lstlisting}
 sum11 :: Monad m => Enumerator Int m Int
@@ -431,23 +417,23 @@ sum11 (Continue k) = k $ Chunks [11..20]
 sum11 step = returnI step
 \end{lstlisting}
 
-Then we could simply apply both enumerators:
+Тогда мы могли бы просто применить оба enumerators:
 
 \begin{lstlisting}
 run_ (applyEnum sum11 $ applyEnum sum10 sum6) >>= print
 \end{lstlisting}
 
-And we would get the result 210. (Yes, (1 + 20) * 10 = 210.) But don't worry, you don't need to write this applyEnum function yourself: enumerator provides a $$ operator which does the same thing. Its type signature is a bit scarier, since it's a generalization of applyEnum, but it works the same, and even makes code more readable:
+И мы получили бы результат 210. (Да, (1 + 20) * 10 = 210), но не волнуйтесь, вам не нужно писать функцию applyEnum самим: enumerator  предоставляет оператор $$, который делает то же самое. Его сигнатура типа немного страшнее, так как это обобщение applyEnum, но он работает так же, и даже делает код более читабельным:
 
 \begin{lstlisting}
 run_ (sum11 $$ sum10 $$ sum6) >>= print
 \end{lstlisting}
 
-$$ is a synonym for ==<<, which is simply flip >>==. I find $$ the most readable, but YMMV (YMMV).
+$$ это синорим для ==<<, которая просто flip >>==. Я нахожу $$ наиболее читаемым, но для вас это может быть подругому.
 
-Some built-in enumerators
+Некоторые встроенные enumerators
 
-Of course, writing a whole function just to pass some numbers to our sum function seems a bit tedious. We could easily make the list an argument to the function:
+Конечно, писать целую функцию только что бы передать несколько чисел нашей функции суммы кажется несколько утомительным. Мы могли бы легко сделать список аргументом функции:
 
 \begin{lstlisting}
 sum12 :: Monad m => [Int] -> Enumerator Int m Int
@@ -455,7 +441,7 @@ sum12 nums (Continue k) = k $ Chunks nums
 sum12 _ step = returnI step
 \end{lstlisting}
 
-But now there's not even anything Int-specific in our function. We could easily generalize this to:
+Но в нашей функции нет ничего Int специфичного. Мы могли бы легко её обобщить до:
 
 \begin{lstlisting}
 genericSum12 :: Monad m => [a] -> Enumerator a m b
@@ -463,15 +449,15 @@ genericSum12 nums (Continue k) = k $ Chunks nums
 genericSum12 _ step = returnI step
 \end{lstlisting}
 
-And in fact, enumerator comes built in with the enumList function which does this. enumList also takes an Integer argument to indicate the maximum number of elements to stick in a chunk. For example, we could write:
+И в самом деле, enumerator идёт со встроеной функцией enumList, которая это делает. enumList также принимает аргумент типа Integer, который указывает максимальное количество элементов в блоке. Например, мы можем написать:
 
 \begin{lstlisting}
 run_ (enumList 5 [1..30] $$ sum6) >>= print
 \end{lstlisting}
 
-(That produces 465 if you're counting.) The first argument to enumList should never affect the result, though it may have some performance impact.
+(Это произведёт 465, если вы считаете.) Первый аргумент enumList никогда не должен влиять на результат, хотя он может иметь некоторое влияние на производительность.
 
-Data.Enumerator includes two other enumerators: enumEOF simply passes an EOF to the iteratee. concatEnums is slightly more interesting; it combines multiple enumerators together. For example:
+Data.Enumerator включает в себя два других enumerators: enumEOF просто передает EOF в iteratee. concatEnums немного более интересный, он обьединяет несколько enumerators вместе. Например:
 
 \begin{lstlisting}
 run_ (concatEnums
@@ -481,11 +467,11 @@ run_ (concatEnums
         ] $$ sum6) >>= print
 \end{lstlisting}
 
-This also produces 465.
+Это тоже произведёт 465.
 
-Some non-pure input
+Некоторый не чистый вход
 
-Enumerators are much more interesting when they aren't simply dealing with pure values. In the first part of this tutorial, we gave the example of the user entering numbers on the command line:
+Enumerators гораздо интереснее, если они не просто имеют дело с чистыми значениями. В первой части этого руководства, мы привели пример ввода чисел пользователем в командной строке:
 
 \begin{lstlisting}
 getNumber :: IO (Maybe Int)
@@ -505,7 +491,7 @@ sum2 = do
             return $ num + rest
 \end{lstlisting}
 
-We referred to this as the pull-model: sum2 pulled each value from getNumber. Let's see if we can rewrite getNumber to be a pusher instead of a pullee.
+Мы говорили об этом как о модели вытягивания данных: sum2 вытаскивал каждое значению из getNumber. Давайте посмотрим, сможем ли мы переписать getNumber так, что бы она была в роли толкателя (pusher), а не пасивного источника (pullee).
 
 \begin{lstlisting}
 getNumberEnum :: MonadIO m => Enumerator Int m b
@@ -517,49 +503,35 @@ getNumberEnum (Continue k) = do
 getNumberEnum step = returnI step
 \end{lstlisting}
 
-First, notice that we check which constructor was passed, and only perform any actions if it was Continue. If it was Continue, we get the line of input from the user. If the line is "q" (our indication to stop feeding in values), we do nothing. You might have thought that we should pass an EOF. But if we did that, we'd be preventing other data from being sent to this iteratee. Instead, we simply return the original Step value.
+Во-первых, обратите внимание, что мы проверяем какой передали конструктор, и только в случае Continue осуществляем какие либо действия. Если это был Continue, мы получим строку ввода от пользователя. Если строка «q» (наше указание прекратить ввод значений), мы ничего не делаем. Вы, наверное, подумали, что мы должны передать EOF. Но если бы мы это сделали, мы бы предотвратили передачу других данных этой iteratee. Вместо этого, мы просто возвращаем исходное значение Step.
 
-If the line was not "q", we convert it to an Int via read, create a Stream value with the Chunks datatype, and pass it to k. (If we wanted to do things properly, we'd check if x is really an Int and use the Error constructor; I leave that as an exercise to the reader.) At this point, let's look at type signatures:
+Если строка была не "q", мы превращаем её в Int через read, создаём значение Stream с типом данных Chunks, и передаём его k. (Если бы мы хотели, всё делать правильно, мы бы проверили, на самом ли деле x это Int и использовали конструктора Error; я оставляю это в качестве упражнения для читателя.) На данный момент, давайте посмотрим на сигнатуру типа:
 
 \begin{lstlisting}
 k (Chunks [read x]) :: Iteratee Int m b
 \end{lstlisting}
 
-If we simply left off the rest of the line, our program would typecheck. However, it would only ever read one value from the command line; the >>== getNumberEnum causes our enumerator to loop.
+Если мы просто отбросим остаток линии, наша программа прошла бы проверку соответствия типов. Однако, она читала бы только одно значение из командной строки; ==>> getNumberEnum заставляет наш enumerator зацикливаться.
 
-One last thing to note about our function: notice the b in our type signature.
+И последнее, что следует отметить о нашей функции: обратите внимание на b в сигнатуре типа.
 
 \begin{lstlisting}
 getNumberEnum :: MonadIO m => Enumerator Int m b
 \end{lstlisting}
 
-This is saying that our Enumerator can feed Ints to any Iteratee accepting Ints, and it doesn't matter what the final output type will be. This is in general the way enumerators work. This allows us to create drastically different iteratees that work with the same enumerators:
+Оно говорит, что наш Enumerator может скармливать Ints любому Iteratee принемающему Ints, и не имеет значения, какой тип будет у окончательного вывода. Это обычная манера работы enumerators. Это позволяет создавать совершенно разные iteratees, которые работают с одними и теми же enumerators:
 
 \begin{lstlisting}
 intsToStrings :: (Show a, Monad m) => Iteratee a m String
 intsToStrings = (unlines . map show) `fmap` consume
 \end{lstlisting}
 
-And then both of these lines work:
+И после этого обе следуюющие линии работают:
 
 \begin{lstlisting}
 run_ (getNumberEnum $$ sum6) >>= print
 run_ (getNumberEnum $$ intsToStrings) >>= print
 \end{lstlisting}
-
-Exercises
-
-1. Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. Its type signature should be Enumeratee Char Word8 m b.
-2. Write the opposite enumeratee, eg Enumeratee Word8 Char m b.
-3. Create a quickcheck property that ensures that these two functions work correctly.
-
-Summary
-
-* Enumeratees are the pipes connecting enumerators to iteratees.
-* The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.
-* You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.
-* Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.
-* You can always compose multiple enumeratees together, such as in http-enumerator.
 
 Enumeratees
 
@@ -752,16 +724,16 @@ We create a chain: the data from the server is fed into the parseBody function. 
 
 Whatever the case may be, the raw response body is then fed into decompress. If the body is GZIPed, then ungzip inflates it, otherwise decompress is a no-op. Finally, the parsed and inflated data is fed into the user-supplied bodyIteratee function. The user remains blissfully unaware of any steps the data took to get to him/her.
 
-Exercises
+Упражнения
 
-1. Write an enumeratee which takes hex chars (eg, "DEADBEEF") to Word8s. Its type signature should be Enumeratee Char Word8 m b.
-2. Write the opposite enumeratee, eg Enumeratee Word8 Char m b.
-3. Create a quickcheck property that ensures that these two functions work correctly.
+1. Написать enumeratee который принимает шестнадцатеричные символы (например, "DEADBEEF"), и записывает их в Word8s. Его сигнатура типа должна быть Enumeratee Char Word8 m b.
+2. Написать противоположный enumeratee, например Enumeratee Word8 Char m b.
+3. Создать тест quickcheck, который проверяет, что эти две функции работают правильно.
 
-Summary
+Выводы
 
-* Enumeratees are the pipes connecting enumerators to iteratees.
-* The strange type signature of an Enumeratee hides a lot of possible power. Especially notice how similar their type signatures are to Enumerators.
-* You can merge an Enumeratee into an Iteratee with joinI $ enumeratee $$ iteratee.
-* Don't forget that you can use the Monad instance of Iteratee when creating your own enumeratees.
-* You can always compose multiple enumeratees together, such as in http-enumerator.
+* Enumeratees являются конвеером связывающим enumerators с iteratees.
+* Странная сигнатура типа Enumeratee скрывает множество мощных возможностей. Особенно обратите внимание, как схожа его сигнатура типа с Enumerators.
+* Вы можете слить Enumeratee в Iteratee используя joinI $ enumeratee $$ iteratee.
+* Не забывайте, что вы можете использовать экземпляр Monad для Iteratee при создании собственных enumeratees.
+* Вы всегда можете составить несколько enumeratees вместе, как например в http-enumerator.
