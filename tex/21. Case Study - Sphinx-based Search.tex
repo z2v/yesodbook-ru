@@ -1,9 +1,6 @@
 \chapter{Полнотекстовый поиск с использованием Sphinx} % Case Study: Sphinx-based Search
 
-% FIXME: вставить картинку? (см строку 66)
-% FIXME: перевести исходники?
 % FIXME: в 21-4.hs помимо обработчика поискового запроса дофига другого кода, может выпилить его?
-% FIXME: перевести пример HTML? (см строку 132)
 
 Sphinx --- это сервер полнотекстового поиска, благодаря которому реализован поиск на многих сайтах, включая сайт самого Yesod. Код, необходимый для интеграции Sphinx и Yesod, является довольно коротким. Тем не менее, он содержит несколько непростых моментов, а потому является прекрасной иллюстрацией к использованию некоторых деталей внутреннего устройства Yesod. % a great case study in how to play with some of the under-the-surface details of Yesod.
 
@@ -47,25 +44,92 @@ index searcher
 
 \section{Базовая настройка Yesod} % Basic Yesod Setup
 
-% FIXME: Let's get our basic Yesod setup going
+Создадим новое Yesod-приложение. Нам понадобится одна таблица в базе данных для хранения документов, которые будут состоять из заголовка и текста. Эту таблицу мы будем хранить в SQLite. Создадим маршруты для поиска, добавления и просмотра документов, а также для генерации xmlpipe-файла для Sphinx.
 
-Создадим новое Yesod-приложение. Нам понадобится одна таблица в базе данных для хранения документов, которые будут состоять из заголовка и текста. Эту таблицу мы будем хранить в SQLite. Также мы создадим маршруты для поиска, добавления и просмотра документов, а также для генерации xmlpipe-файла для Sphinx.
-
-\lstinputlisting{../hs/21-1.hs}
+\begin{lstlisting}
+mkYesod "Searcher" [parseRoutes|
+/ RootR GET
+/doc/#DocId DocR GET
+/add-doc AddDocR POST
+/search SearchR GET
+/search/xmlpipe XmlpipeR GET
+|]
+\end{lstlisting}
 
 К счастью, на данный момент все это уже кажется знакомым. Далее мы определим две формы --- одну для создания документов и одну для поиска:
 
-\lstinputlisting{../hs/21-2.hs}
+\begin{lstlisting}
+addDocForm :: Html -> MForm Searcher Searcher (FormResult Doc, Widget)
+addDocForm = renderTable $ Doc
+    <$> areq textField "Title" Nothing
+    <*> areq textareaField "Contents" Nothing
+
+searchForm :: Html -> MForm Searcher Searcher (FormResult Text, Widget)
+searchForm = renderDivs $ areq (searchField True) "Query" Nothing
+\end{lstlisting}%$
 
 Передача параметра \lstinline'True' в функцию \lstinline'searchField' обеспечивает автоматическую установку фокуса на поле ввода при загрузке страницы. Наконец, объявляем обработчики для главной страницы (на ней отображаются формы добавления и поиска документов), а также отображения и добавления документа:
 
-\lstinputlisting{../hs/21-3.hs}
+\begin{lstlisting}
+getRootR :: Handler RepHtml
+getRootR = do
+    docCount <- runDB $ count ([] :: [Filter Doc])
+    ((_, docWidget), _) <- runFormPost addDocForm
+    ((_, searchWidget), _) <- runFormGet searchForm
+    let docs = if docCount == 1
+                then "There is currently 1 document."
+                else "There are currently " ++ show docCount ++
+                       " documents."
+    defaultLayout [whamlet|
+<p>Welcome to the search application. #{docs}
+<form method=post action=@{AddDocR}>
+    <table>
+        ^{docWidget}
+        <tr>
+            <td colspan=3>
+                <input type=submit value="Add document">
+<form method=get action=@{SearchR}>
+    ^{searchWidget}
+    <input type=submit value=Search>
+|]
+
+postAddDocR :: Handler RepHtml
+postAddDocR = do
+    ((res, docWidget), _) <- runFormPost addDocForm
+    case res of
+        FormSuccess doc -> do
+            docid <- runDB $ insert doc
+            setMessage "Document added"
+            redirect $ DocR docid
+        _ -> defaultLayout [whamlet|
+<form method=post action=@{AddDocR}>
+    <table>
+        ^{docWidget}
+        <tr>
+            <td colspan=3>
+                <input type=submit value="Add document">
+|]
+
+getDocR :: DocId -> Handler RepHtml
+getDocR docid = do
+    doc <- runDB $ get404 docid
+    defaultLayout $
+        [whamlet|
+<h1>#{docTitle doc}
+<div .content>#{docContent doc}
+|]
+data Result = Result
+    { resultId :: DocId
+    , resultTitle :: Text
+    , resultExcerpt :: Html
+    }
+\end{lstlisting}%$
 
 \section{Поиск} % Searching
 
 Теперь, когда мы разобрались со всякой рутиной, займемся непосредственно поиском. В результатах поиска нам понадобится отображать три вещи --- идентификатор документа, его заголовок, а также выдержки. Выдержки представляют собой выделенные отрывки документа, содержащие искомое выражение.
 
-% FIXME: Результаты поиска (картинка)
+\includegraphics{21-search-results.png} % Результаты поиска (картинка)
 
 Давайте начнем с определения типа данных Result:
 
@@ -79,13 +143,59 @@ data Result = Result
 
 Теперь взглянем на обработчик поискового запроса:
 
-\lstinputlisting{../hs/21-4.hs}
-
-% FIXME: мы просто полагаемся на функцию ...
+\begin{lstlisting}
+getSearchR :: Handler RepHtml
+getSearchR = do
+    ((formRes, searchWidget), _) <- runFormGet searchForm
+    searchResults <-
+        case formRes of
+            FormSuccess qstring -> getResults qstring
+            _ -> return []
+    defaultLayout $ do
+        toWidget [lucius|
+.excerpt {
+    color: green; font-style: italic
+}
+.match {
+    background-color: yellow;
+}
+|]
+        [whamlet|
+<form method=get action=@{SearchR}>
+    ^{searchWidget}
+    <input type=submit value=Search>
+$if not $ null searchResults
+    <h1>Results
+    $forall result <- searchResults
+        <div .result>
+            <a href=@{DocR $ resultId result}>#{resultTitle result}
+            <div .excerpt>#{resultExcerpt result}
+|]
+\end{lstlisting}%$
 
 Ничего волшебного здесь не происходит, мы просто полагаемся на функции \lstinline'searchForm', объявленную выше, и еще не объявленную \lstinline'getResults'. Эта функция просто принимает строку с поисковым запросом и возвращает список результатов. Здесь мы впервые взаимодейтсвуем с API сервера Sphinx. Мы будем использовать две функции --- \lstinline'query' будет возвращать список совпадений, а \lstinline'buildExcerpts' --- выделенные отрывки. Взгляним на функцию query:
 
-\lstinputlisting{../hs/21-5.hs}
+\begin{lstlisting}
+getResults :: Text -> Handler [Result]
+getResults qstring = do
+    sphinxRes' <- liftIO $ S.query config "searcher" (unpack qstring)
+    case sphinxRes' of
+        ST.Ok sphinxRes -> do
+            let docids = map (Key . PersistInt64 . ST.documentId) $
+                           ST.matches sphinxRes
+            fmap catMaybes $ runDB $ forM docids $ \docid -> do
+                mdoc <- get docid
+                case mdoc of
+                    Nothing -> return Nothing
+                    Just doc -> liftIO $ Just <$>
+                                  getResult docid doc qstring
+        _ -> error $ show sphinxRes'
+  where
+    config = S.defaultConfig
+        { S.port = 9312
+        , S.mode = ST.Any
+        }
+\end{lstlisting}%$
 
 Она принимает три аргумента --- параметры конфигурации, строку с именем индекса, по которому будет производиться поиск, и поисковый запрос. Функция возвращает список идентификаторов документов, содержащих поисковый запрос. Здесь есть небольшая хитрость, связанная с тем, что возвращаемые идентификаторы имеют тип \lstinline'Int64', когда нам нужен \lstinline'DocId'. Благодаря тому, что SQL-бэкенды \lstinline'Persistent' используют конструктор \lstinline'PersistInt64' для этих идентификаторов, мы сможем получить требуемые значения.
 
@@ -129,11 +239,15 @@ escape =
 
 Результат поиска, который мы получаем от Sphinx, представляет собой список ленивых ByteString'ов. Но мы, само собой разумеется, предпочли бы получить \lstinline'Html'. Потому мы конкатенируем элементы списка в одну ленивую \lstinline'ByteString', декодируем ее в ленивый текст (игнорируя некорректные последовательности символов UTF-8), а затем используем функцию \lstinline'preEscapedToMarkup' для того, чтобы тэги, используемые для выделения найденных совпадений, не экранировались. Вот пример полученного в итоге HTML-кода:
 
-\begin{lstlisting}[language=HTML] % TODO: перевести?
-&#8230; Departments.  The President shall have <span class='match'>Power</span> to fill up all Vacancies
-&#8230;  people. Amendment 11 The Judicial <span class='match'>power</span> of the United States shall
-&#8230; jurisdiction. 2. Congress shall have <span class='match'>power</span> to enforce this article by
-&#8230; 5. The Congress shall have <span class='match'>power</span> to enforce, by appropriate legislation
+\begin{lstlisting}[language=HTML]
+&#8230; Departments.  The President shall have <span
+class='match'>Power</span> to fill up all Vacancies
+&#8230;  people. Amendment 11 The Judicial <span
+class='match'>power</span> of the United States shall
+&#8230; jurisdiction. 2. Congress shall have <span
+class='match'>power</span> to enforce this article by
+&#8230; 5. The Congress shall have <span
+class='match'>power</span> to enforce, by appropriate legislation
 &#8230;
 \end{lstlisting}
 
@@ -254,4 +368,4 @@ getXmlpipeR = do
 
 \section{Весь код} % Full code
 
-\lstinputlisting{../hs/21-6.hs}
+\lstinputlisting{../hs/21-source.hs}
