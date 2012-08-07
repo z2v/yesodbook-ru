@@ -1,30 +1,16 @@
 \chapter{xml-conduit}
 
-Many developers cringe at the thought of dealing with XML files. XML has the reputation of
-having a complicated data model, with obfuscated libraries and huge layers of complexity sitting
-between you and your goal. I'd like to posit that a lot of that pain is actually a language and
-library issue, not inherent to XML.
+Many developers cringe at the thought of dealing with XML files. XML has the reputation of having a complicated data model, with obfuscated libraries and huge layers of complexity sitting between you and your goal. I'd like to posit that a lot of that pain is actually a language and library issue, not inherent to XML.
 
-Once again, Haskell's type system allows us to easily break down the problem to its most basic
-form. The xml-types package neatly deconstructs the XML data model (both a
-streaming and DOM-based approach) into some simple ADTs. Haskell's standard immutable data
-structures make it easier to apply transforms to documents, and a simple set of functions makes
-parsing and rendering a breeze.
+Once again, Haskell's type system allows us to easily break down the problem to its most basic form. The xml-types package neatly deconstructs the XML data model (both a streaming and DOM-based approach) into some simple ADTs. Haskell's standard immutable data structures make it easier to apply transforms to documents, and a simple set of functions makes parsing and rendering a breeze.
 
-We're going to be covering the xml-conduit package. Under
-the surface, this package uses a lot of the approaches Yesod in general does for high
-performance: blaze-builder, text,
-conduit and attoparsec. But from a
-user perspective, it provides everything from the simplest APIs
-(readFile/writeFile) through full control of XML event
-streams.
+We're going to be covering the xml-conduit package. Under the surface, this package uses a lot of the approaches Yesod in general does for high performance: blaze-builder, text, conduit and attoparsec. But from a user perspective, it provides everything from the simplest APIs (readFile/writeFile) through full control of XML event streams.
 
-In addition to xml-conduit, there are a few related packages that
-come into play, like xml-hamlet and xml2html. We'll cover both how to use all these packages, and when they should be used.
+In addition to xml-conduit, there are a few related packages that come into play, like xml-hamlet and xml2html. We'll cover both how to use all these packages, and when they should be used.
 
-\section{Synopsis}
+\section{Краткое содержание} % Synopsis
 
-Input XML file
+Входной XML файл:
 
 \begin{lstlisting}[language=XML]
 <document title="My Title">
@@ -33,7 +19,8 @@ Input XML file
 </document>
 \end{lstlisting}
 
-Haskell code
+Код на Haskell:
+
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -91,8 +78,11 @@ goElem (Element "image" attrs _children) =
 goElem (Element name attrs children) =
     -- don't know what to do, just pass it through...
     Element name attrs $ concatMap goNode children
+\end{lstlisting}%$
 
-Output XHTML
+Выходные данные в формате XHTML:
+
+\begin{lstlisting}[language=XHTML]
 <?xml version="1.0" encoding="UTF-8"?>
 <html>
     <head>
@@ -115,18 +105,13 @@ Output XHTML
         <img src="myimage.png"/>
     </body>
 </html>
-\begin{lstlisting}%$
+\begin{lstlisting}
 
-\section{Types}
+\section{Типы} % Types
 
-Let's take a bottom-up approach to analyzing types. This section will also serve as a primer on
-the XML data model itself, so don't worry if you're not completely familiar with it.
+Let's take a bottom-up approach to analyzing types. This section will also serve as a primer on the XML data model itself, so don't worry if you're not completely familiar with it.
 
-I think the first place where Haskell really shows its strength is with the
-xml-types:Data.XML.Types:Name datatype. Many languages (like Java) struggle
-with properly expressing names. The issue is that there are in fact three components to a name:
-its local name, its namespace (optional), and its prefix (also optional). Let's look at some XML
-to explain:
+I think the first place where Haskell really shows its strength is with the xml-types:Data.XML.Types:Name datatype. Many languages (like Java) struggle with properly expressing names. The issue is that there are in fact three components to a name: its local name, its namespace (optional), and its prefix (also optional). Let's look at some XML to explain:
 
 \begin{lstlisting}[language=XML]
 <no-namespace/>
@@ -134,101 +119,78 @@ to explain:
 <foo:with-prefix xmlns:foo="second-namespace" foo:second-attr="value2"/>
 \end{lstlisting}
 
-The first tag has a local name of no-namespace, and no
-namespace or prefix. The second tag (local name: no-prefix) also has no prefix, 
-but it does have a namespace (first-namespace). first-attr, however, does not
-inherit that namespace: attribute namespaces must always be explicitly set with a prefix.
+The first tag has a local name of no-namespace, and no namespace or prefix. The second tag (local name: no-prefix) also has no prefix,  but it does have a namespace (first-namespace). first-attr, however, does not inherit that namespace: attribute namespaces must always be explicitly set with a prefix.
 
-Namespaces are almost always URIs of some sort, though there is nothing in any specification
-requiring that it be so.
-The third tag has a local name of with-prefix, a prefix of
-foo and a namespace of second-namespace.
-Its attribute has a second-attr local name and the same prefix and namespace.
-The xmlns and xmlns:foo attributes are part of the namespace
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+Namespaces are almost always URIs of some sort, though there is nothing in any specification requiring that it be so.
+\end{minipage}}
+
+The third tag has a local name of with-prefix, a prefix of foo and a namespace of second-namespace. Its attribute has a second-attr local name and the same prefix and namespace. The xmlns and xmlns:foo attributes are part of the namespace
 specification, and are not considered attributes of their respective elements.
 
-So let's review what we need from a name: every name has a local name, and it can optionally
-have a prefix and namespace. Seems like a simple fit for a record type:
+So let's review what we need from a name: every name has a local name, and it can optionally have a prefix and namespace. Seems like a simple fit for a record type:
 
 \begin{lstlisting}
-  data Name = Name
+data Name = Name
     { nameLocalName :: Text
     , nameNamespace :: Maybe Text
     , namePrefix :: Maybe Text
     }
 \end{lstlisting}
 
-According the the XML namespace standard, two names are considered equivalent if they
-have the same localname and namespace. In other words, the prefix is not important. Therefore,
-xml-types defines Eq and Ord instances that
-ignore the prefix.
+According the the XML namespace standard, two names are considered equivalent if they have the same localname and namespace. In other words, the prefix is not important. Therefore, xml-types defines Eq and Ord instances that ignore the prefix.
 
-The last class instance worth mentioning is IsString. It would be
-very tedious to have to manually type out Name "p" Nothing Nothing
-every time we want a paragraph. If you turn on OverloadedStrings,
-"p" will resolve to that all by itself! In addition, the
-IsString instance recognizes something called Clark notation, which allows you
-to prefix the namespace surrounded in curly brackets. In other words:
-
-"{namespace}element" == Name "element" (Just "namespace") Nothing
-"element" == Name "element" Nothing Nothing
-
-The Four Types of Nodes
-XML documents are a tree of nested nodes. There are in fact four different types of nodes
-allowed: elements, content (i.e., text), comments, and processing instructions.
-
-You may not be familiar with that last one, it's less commonly used. It is marked
-up as:<?target data?>There are two surprising facts about processing instructions (PIs):
-
-  PIs don't have attributes. While often times you'll see processing instructions
-  that appear to have attributes, there are in fact no rules about that data of an
-  instruction.
-
-  The <?xml ...?> stuff at the beginning of a document is not
-  a processing instruction. It is simply the beginning of the document (known as the XML
-  declaration), and happens to look an awful lot like a PI. The difference though is that the
-  <?xml ...?> line will not appear in your parsed content.
-   
-Since processing instructions have two pieces of text associated with them (the target and the
-data), we have a simple data type:
+The last class instance worth mentioning is IsString. It would be very tedious to have to manually type out Name "p" Nothing Nothing every time we want a paragraph. If you turn on OverloadedStrings, "p" will resolve to that all by itself! In addition, the IsString instance recognizes something called Clark notation, which allows you to prefix the namespace surrounded in curly brackets. In other words:
 
 \begin{lstlisting}
-  data Instruction = Instruction
+"{namespace}element" == Name "element" (Just "namespace") Nothing
+"element" == Name "element" Nothing Nothing
+\end{lstlisting}
+
+\section{Четыре типа узлов} % The Four Types of Nodes
+
+XML documents are a tree of nested nodes. There are in fact four different types of nodes allowed: elements, content (i.e., text), comments, and processing instructions.
+
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+You may not be familiar with that last one, it's less commonly used. It is marked
+up as:
+
+\begin{lstlisting}[language=XML]
+<?target data?>
+\end{lstlisting}
+
+There are two surprising facts about processing instructions (PIs):
+
+\begin{itemize}
+\item PIs don't have attributes. While often times you'll see processing instructions that appear to have attributes, there are in fact no rules about that data of an instruction.
+\item The <?xml ...?> stuff at the beginning of a document is not a processing instruction. It is simply the beginning of the document (known as the XML declaration), and happens to look an awful lot like a PI. The difference though is that the <?xml ...?> line will not appear in your parsed content.
+\end{itemize}
+\end{minipage}}
+
+Since processing instructions have two pieces of text associated with them (the target and the data), we have a simple data type:
+
+\begin{lstlisting}
+data Instruction = Instruction
     { instructionTarget :: Text
     , instructionData :: Text
     }
 \end{lstlisting}
 
-Comments have no special datatype, since they are just text. But content is an
-interesting one: it could contain either plain text or unresolved entities (e.g.,
-&copyright-statement;). 
-xml-types keeps those
-unresolved entities in all the data types in order to completely match the spec. However, in
-practice, it can be very tedious to program against those data types. And in most use cases, an
-unresolved entity is going to end up as an error anyway.
+Comments have no special datatype, since they are just text. But content is an interesting one: it could contain either plain text or unresolved entities (e.g., &copyright-statement;).  xml-types keeps those unresolved entities in all the data types in order to completely match the spec. However, in practice, it can be very tedious to program against those data types. And in most use cases, an unresolved entity is going to end up as an error anyway.
 
-So the xml-conduit:Text.XML module defines its own set
-of datatypes for nodes, elements and documents that removes all unresolved entities. If you need
-to deal with unresolved entities instead, you should use the xml-conduit:Text.XML.Unresolved module. From now on, we'll be focusing only on the
-Text.XML data types, though they are almost identical to the
-xml-types versions.
+So the xml-conduit:Text.XML module defines its own set of datatypes for nodes, elements and documents that removes all unresolved entities. If you need to deal with unresolved entities instead, you should use the xml-conduit:Text.XML.Unresolved module. From now on, we'll be focusing only on the Text.XML data types, though they are almost identical to the xml-types versions.
 
-Anyway, after that detour: content is just a piece of text, and therefore it too does
-not have a special datatype. The last node type is an element, which contains three pieces of
-information: a name, a list of attributes and a list of children nodes. An attribute has two
-pieces of information: a name and a value. (In xml-types, this value could
-contain unresolved entities as well.) So our Element is defined as:
+Anyway, after that detour: content is just a piece of text, and therefore it too does not have a special datatype. The last node type is an element, which contains three pieces of information: a name, a list of attributes and a list of children nodes. An attribute has two pieces of information: a name and a value. (In xml-types, this value could contain unresolved entities as well.) So our Element is defined as:
 
 \begin{lstlisting}
-  data Element = Element
+data Element = Element
     { elementName :: Name
     , elementAttributes :: [(Name, Text)]
     , elementNodes :: [Node]
     }
 \end{lstlisting}
 
-  Which of course begs the question: what does a Node look like? This
-   is where Haskell really shines: its sum types model the XML data model perfectly.
+Which of course begs the question: what does a Node look like? This is where Haskell really shines: its sum types model the XML data model perfectly.
 
 \begin{lstlisting}
   data Node
@@ -238,12 +200,12 @@ contain unresolved entities as well.) So our Element is defined as:
     | NodeComment Text
 \end{lstlisting}
 
- Documents
-  So now we have elements and nodes, but what about an entire document? Let's just lay out the
-   datatypes:
+\section{Документы} % Documents
+ 
+So now we have elements and nodes, but what about an entire document? Let's just lay out the datatypes:
 
 \begin{lstlisting}
-  data Document = Document
+data Document = Document
     { documentPrologue :: Prologue
     , documentRoot :: Element
     , documentEpilogue :: [Miscellaneous]
@@ -269,15 +231,9 @@ data ExternalID
     | PublicID Text Text
 \end{lstlisting}
 
-The XML spec says that a document has a single root element
-(documentRoot). It also has an optional doctype statement. Before and after
-both the doctype and the root element, you are allowed to have comments and processing
-instructions. (You can also have whitespace, but that is ignored in the parsing.)
+The XML spec says that a document has a single root element (documentRoot). It also has an optional doctype statement. Before and after both the doctype and the root element, you are allowed to have comments and processing instructions. (You can also have whitespace, but that is ignored in the parsing.)
 
-So what's up with the doctype? Well, it specifies the root element of the document, and then
-optional public and system identifiers. These are used to refer to DTD files, which give more
-information about the file (e.g., validation rules, default attributes, entity resolution). Let's
-see some examples:
+So what's up with the doctype? Well, it specifies the root element of the document, and then optional public and system identifiers. These are used to refer to DTD files, which give more information about the file (e.g., validation rules, default attributes, entity resolution). Let's see some examples:
 
 \begin{lstlisting}[language=HTML]
 <!DOCTYPE root> <!-- no external identifier -->
@@ -285,102 +241,58 @@ see some examples:
 <!DOCTYPE root PUBLIC "My Root Public Identifier" "root.dtd"> <!-- public identifiers have a system ID as well -->
 \end{lstlisting}
 
-And that, my friends, is the entire XML data model. For many parsing purposes, you'll
-be able to simply ignore the entire Document datatype and go immediately to the
-documentRoot.
+And that, my friends, is the entire XML data model. For many parsing purposes, you'll be able to simply ignore the entire Document datatype and go immediately to the documentRoot.
 
-\section{Events}
+\section{События} % Events
 
-In addition to the document API, xml-types defines an xml-types:Data.XML.Types:Event datatype. This can be used for constructing
-streaming tools, which can be much more memory efficient for certain kinds of processing (eg,
-adding an extra attribute to all elements). We will not be covering the streaming API currently,
-though it should look very familiar after analyzing the document API.
+In addition to the document API, xml-types defines an xml-types:Data.XML.Types:Event datatype. This can be used for constructing streaming tools, which can be much more memory efficient for certain kinds of processing (eg, adding an extra attribute to all elements). We will not be covering the streaming API currently, though it should look very familiar after analyzing the document API.
 
-You can see an example of the streaming API in the Sphinx case
-study.
+\fbox{\begin{minipage}[!h]{.9\linewidth}
+You can see an example of the streaming API in the Sphinx case study.
+\end{minipage}}
 
-Text.XML
+\section{Text.XML}
 
-The recommended entry point to xml-conduit is the xml-conduit:Text.XML module. This module exports all of the datatypes you'll need to
-manipulate XML in a DOM fashion, as well as a number of different approaches for parsing and
-rendering XML content. Let's start with the simple
+The recommended entry point to xml-conduit is the xml-conduit:Text.XML module. This module exports all of the datatypes you'll need to manipulate XML in a DOM fashion, as well as a number of different approaches for parsing and rendering XML content. Let's start with the simple
 
 \begin{lstlisting}
-ones:readFile  :: ParseSettings  -> FilePath -> IO Document
+ones:readFile :: ParseSettings  -> FilePath -> IO Document
 writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 \end{lstlisting}
 
-This
-introduces the ParseSettings and RenderSettings datatypes. You can use these to modify the behavior of the parser and
-renderer, such as adding character entities and turning on pretty (i.e., indented) output. Both
-these types are instances of the data-default:Data.Default:Default
-typeclass, so you can simply use def when these need to be supplied.
-That is how we will supply these values through the rest of the chapter; please see the API docs
-for more information.
+This introduces the ParseSettings and RenderSettings datatypes. You can use these to modify the behavior of the parser and renderer, such as adding character entities and turning on pretty (i.e., indented) output. Both these types are instances of the data-default:Data.Default:Default typeclass, so you can simply use def when these need to be supplied. That is how we will supply these values through the rest of the chapter; please see the API docs for more information.
 
-It's worth pointing out that in addition to the file-based API, there is also a text- and
-bytestring-based API. The bytestring-powered functions all perform intelligent encoding
-detections, and support UTF-8, UTF-16 and UTF-32, in either big or little endian, with and
-without a Byte-Order Marker (BOM). All output is generated in UTF-8.
+It's worth pointing out that in addition to the file-based API, there is also a text- and bytestring-based API. The bytestring-powered functions all perform intelligent encoding detections, and support UTF-8, UTF-16 and UTF-32, in either big or little endian, with and without a Byte-Order Marker (BOM). All output is generated in UTF-8.
 
-For complex data lookups, we recommend using the higher-level cursors API. The
-standard Text.XML API not only forms the basis for that higher level, but is
-also a great API for simple XML transformations and for XML generation. See the synopsis for an
-example.
+For complex data lookups, we recommend using the higher-level cursors API. The standard Text.XML API not only forms the basis for that higher level, but is also a great API for simple XML transformations and for XML generation. See the synopsis for an example.
 
-\section{A note about file paths}
+\section{Замечание относительно путей к файлам} % A note about file paths
 
-In the type signature above, we have a type FilePath. However, this isn't
-Prelude.FilePath. The standard Prelude defines a type
-synonym type FilePath = [Char]. Unfortunately, there are many limitations to
-using such an approach, including confusion of filename character encodings and differences in
-path separators.
+In the type signature above, we have a type FilePath. However, {\bf this isn't Prelude.FilePath}. The standard Prelude defines a type synonym type FilePath = [Char]. Unfortunately, there are many limitations to using such an approach, including confusion of filename character encodings and differences in path separators.
 
-Instead, xml-conduit uses the system-filepath package,
-which defines an abstract FilePath type. I've personally found this to be a much
-nicer approach to work with. The package is fairly easy to follow, so I won't go into details
-here. But I do want to give a few quick explanations of how to use it:
+Instead, xml-conduit uses the system-filepath package, which defines an abstract FilePath type. I've personally found this to be a much nicer approach to work with. The package is fairly easy to follow, so I won't go into details here. But I do want to give a few quick explanations of how to use it:
 
-Since a FilePath is an instance of IsString, you can type
-in regular strings and they will be treated properly, as long as the
-OverloadedStrings extension is enabled. (I highly recommend enabling it
-anyway, as it makes dealing with Text values much more pleasant.)
-If you need to explicitly convert to or from Prelude's
-FilePath, you should use the
-system-filepath:Filesystem.Path.CurrentOS:encodeString and
-system-filepath:Filesystem.Path.CurrentOS:decodeString, respectively. This
-takes into account file path encodings.
-Instead of manually splicing together directory names and file names with extensions, use the
-operators in the Filesystem.Path.CurrentOS module, e.g. myfolder </> filename <.> extension.
+\begin{itemize}
+\item Since a FilePath is an instance of IsString, you can type in regular strings and they will be treated properly, as long as the OverloadedStrings extension is enabled. (I highly recommend enabling it anyway, as it makes dealing with Text values much more pleasant.)
+\item If you need to explicitly convert to or from Prelude's FilePath, you should use the encodeString and decodeString, respectively. This takes into account file path encodings.
+\item Instead of manually splicing together directory names and file names with extensions, use the operators in the Filesystem.Path.CurrentOS module, e.g. myfolder </> filename <.> extension.
+\begin{end}
   
-\section{Cursor}
+\section{Курсор} % Cursor
 
-Suppose you want to pull the title out of an XHTML document. You could do so with the
-Text.XML interface we just described, using standard pattern matching on the
-children of elements. But that would get very tedious, very quickly. Probably the gold standard
-for these kinds of lookups is XPath, where you would be able to write /html/head/title. And that's exactly what inspired the design of the xml-conduit:Text.XML.Cursor combinators.
+Suppose you want to pull the title out of an XHTML document. You could do so with the Text.XML interface we just described, using standard pattern matching on the children of elements. But that would get very tedious, very quickly. Probably the gold standard for these kinds of lookups is XPath, where you would be able to write /html/head/title. And that's exactly what inspired the design of the xml-conduit:Text.XML.Cursor combinators.
 
-A cursor is an XML node that knows its location in the tree; it's able to traverse
-upwards, sideways, and downwards. (Under the surface, this is achieved by tying
-the knot.) There are two functions available for creating cursors from
-Text.XML types: fromDocument and fromNode.
+A cursor is an XML node that knows its location in the tree; it's able to traverse upwards, sideways, and downwards. (Under the surface, this is achieved by tying the knot.) There are two functions available for creating cursors from Text.XML types: fromDocument and fromNode.
 
-We also have the concept of an Axis, defined as type Axis = Cursor -> [Cursor]. It's easiest to get started by looking at
-example axes: child returns zero or more cursors that are the child of the current one, parent
-returns the single parent cursor of the input, or an empty list if the input is the root element,
+We also have the concept of an Axis, defined as type Axis = Cursor -> [Cursor]. It's easiest to get started by looking at example axes: child returns zero or more cursors that are the child of the current one, parent returns the single parent cursor of the input, or an empty list if the input is the root element,
 and so on.
 
-In addition, there are some axes that take predicates. element is a commonly
-used function that filters down to only elements which match the given name. For example,
-element "title" will return the input element if its name is "title", or an
-empty list otherwise.
+In addition, there are some axes that take predicates. element is a commonly used function that filters down to only elements which match the given name. For example, element "title" will return the input element if its name is "title", or an empty list otherwise.
 
-Another common function which isn't quite an axis is content :: Cursor ->
-[Text]. For all content nodes, it returns the contained text; otherwise, it returns an
+Another common function which isn't quite an axis is content :: Cursor -> [Text]. For all content nodes, it returns the contained text; otherwise, it returns an
 empty list.
 
-And thanks to the monad instance for lists, it's easy to string all of these
-together. For example, to do our title lookup, we would write the following program:
+And thanks to the monad instance for lists, it's easy to string all of these together. For example, to do our title lookup, we would write the following program:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -400,16 +312,15 @@ main = do
 
 What this says is:
 
-% ТУТ КАРТИНКА?
-  
-Get me all the child nodes of the root element
-Filter down to only the elements named "head"
-Get all the children of all those head elements
-Filter down to only the elements named "title"
-Get all the descendants of all those title elements. (A descendant is a child, or a
-descendant of a child. Yes, that was a recursive definition.)
-Get only the text nodes.
-  
+\begin{itemize}
+\item Get me all the child nodes of the root element
+\item Filter down to only the elements named "head"
+\item Get all the children of all those head elements
+\item Filter down to only the elements named "title"
+\item Get all the descendants of all those title elements. (A descendant is a child, or a descendant of a child. Yes, that was a recursive definition.)
+\item Get only the text nodes.
+\end{itemize}
+
 So for the input document:
 
 \begin{lstlisting}[language=HTML]
@@ -423,9 +334,7 @@ So for the input document:
 </html>
 \end{lstlisting}
 
-We end up with the output My Title. This is all well and good, but it's much
-more verbose than the XPath solution. To combat this verbosity, Aristid Breitkreuz added a set of
-operators to the Cursor module to handle many common cases. So we can rewrite our example as:
+We end up with the output My Title. This is all well and good, but it's much more verbose than the XPath solution. To combat this verbosity, Aristid Breitkreuz added a set of operators to the Cursor module to handle many common cases. So we can rewrite our example as:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -442,14 +351,9 @@ main = do
         cursor $/ element "head" &/ element "title" &// content
 \end{lstlisting}%$
 
-\$/ says to apply the axis on the right to the children of
-   the cursor on the left. &/ is almost identical, but is instead
-   used to combine two axes together. This is a general rule in Text.XML.Cursor: operators beginning with \$ directly apply an axis, while & will
-   combine two together. &// is used for applying an axis to all
-   descendants.
+\$/ says to apply the axis on the right to the children of the cursor on the left. &/ is almost identical, but is instead used to combine two axes together. This is a general rule in Text.XML.Cursor: operators beginning with \$ directly apply an axis, while & will combine two together. &// is used for applying an axis to all descendants.
 
-Let's go for a more complex, if more contrived, example. We have a document that looks
-like:
+Let's go for a more complex, if more contrived, example. We have a document that looks like:
 
 \begin{lstlisting}[language=HTML]
   <html>
@@ -469,9 +373,7 @@ like:
 </html>
 \end{lstlisting}
 
-We want to get the content of all the h1 tags which precede an
-h2 tag with a class attribute of "bar". To perform this
-convoluted lookup, we can write:
+We want to get the content of all the h1 tags which precede an h2 tag with a class attribute of "bar". To perform this convoluted lookup, we can write:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -492,24 +394,17 @@ main = do
                &// content
 \end{lstlisting}%$
 
-Let's step through that. First we get all h2 elements in the document.
-(\$// gets all descendants of the root element.) Then we filter out only those
-with class=bar. That >=> operator is actually
-the standard operator from base:Control.Monad; yet another advantage
-of the monad instance of lists. precedingSibling finds all nodes that come
-before our node and share the same parent. (There is also a preceding axis which takes all elements earlier in the tree.) We then take just the
-h1 elements, and then grab their content.
+Let's step through that. First we get all h2 elements in the document. (\$// gets all descendants of the root element.) Then we filter out only those with class=bar. That >=> operator is actually the standard operator from base:Control.Monad; yet another advantage of the monad instance of lists. precedingSibling finds all nodes that come before our node and share the same parent. (There is also a preceding axis which takes all elements earlier in the tree.) We then take just the h1 elements, and then grab their content.
 
+\fbox{\begin{minipage}[!h]{.9\linewidth}
 The equivalent XPath, for comparison, would be //h2[@class ='bar']/preceding-sibling::h1//text().
+\end{minipage}}
 
-While the cursor API isn't quite as succinct as XPath, it has the advantages of being standard
-Haskell code, and of type safety.
+While the cursor API isn't quite as succinct as XPath, it has the advantages of being standard Haskell code, and of type safety.
 
-xml-hamlet
+\section{xml-hamlet}
 
-Thanks to the simplicity of Haskell's data type system, creating
-XML content with the Text.XML API is easy, if a bit verbose. The
-following code:
+Thanks to the simplicity of Haskell's data type system, creating XML content with the Text.XML API is easy, if a bit verbose. The following code:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -537,18 +432,14 @@ main =
         ]
 \end{lstlisting}
 
-  produces
+produces
 
 \begin{lstlisting}[language=XML]
 <?xml version="1.0" encoding="UTF-8"?>
 <html><head><title>My <b>Title</b></title></head><body><p>foo bar baz</p></body></html>
 \end{lstlisting}
 
-This is leaps and bounds easier than having to deal with an imperative, mutable-value-based API
-(cough, Java, cough), but it's far from pleasant, and obscures what we're really trying to
-achieve. To simplify things, we have the xml-hamlet package, which using
-Quasi-Quotation to allow you to type in your XML in a natural syntax. For example, the above
-could be rewritten as:
+This is leaps and bounds easier than having to deal with an imperative, mutable-value-based API (cough, Java, cough), but it's far from pleasant, and obscures what we're really trying to achieve. To simplify things, we have the xml-hamlet package, which using Quasi-Quotation to allow you to type in your XML in a natural syntax. For example, the above could be rewritten as:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -573,21 +464,20 @@ main =
 
 Let's make a few points:
 
+\begin{itemize}
+\item The syntax is almost identical to normal Hamlet, except URL-interpolation (@{...}) has been removed. As such:
+
+\begin{itemize}
+\item No close tags.
+\item Whitespace-sensitive.
+\item If you want to have whitespace at the end of a line, use a # at the end. At the beginning, use a backslash.
+\end{itemize}
   
-The syntax is almost identical to normal Hamlet, except URL-interpolation (@{...}) has been
-removed. As such:
-  No close tags.
-  Whitespace-sensitive.
-  If you want to have whitespace at the end of a line, use a # at the end. At the beginning,
-  use a backslash.
-  
-An xml interpolation will return a list of Nodes. So you still need to wrap up the output in all the normal
-Document and root Element constructs.
-There is no support for the special .class and
-  #id attribute forms.
-  
-And like normal Hamlet, you can use variable interpolation and control structures. So a
-slightly more complex example would be:
+\item An xml interpolation will return a list of Nodes. So you still need to wrap up the output in all the normal Document and root Element constructs.
+\item There is no support for the special .class and #id attribute forms.
+\end{itemize}
+
+And like normal Hamlet, you can use variable interpolation and control structures. So a slightly more complex example would be:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -636,38 +526,27 @@ personNodes person = [xml|
 
 A few more notes:
 
-  
-   The caret-interpolation (^{...}) takes a list of nodes, and so can easily embed
-                other xml-quotations.
-   Unlike Hamlet, hash-interpolations (#{...}) are not polymorphic, and can only accept Text values.
-  
-xml2html
+\begin{itemize}
+\item The caret-interpolation (^{...}) takes a list of nodes, and so can easily embed other xml-quotations.
+\item Unlike Hamlet, hash-interpolations (#{...}) are not polymorphic, and can only accept Text values.
+\end{itemize}
 
-So far in this chapter, our examples have revolved around XHTML. I've done that so far
-simply because it is likely to be the most familiar form of XML for most of our readers. But
-there's an ugly side to all this that we must acknowledge: not all XHTML will be correct HTML.
-The following discrepancies exist:
+\section{xml2html}
 
-  
-There are some void tags (e.g., img, br) in HTML
-which do not need to have close tags, and in fact are not allowed to.
-HTML does not understand self-closing tags, so <script></script> and
+So far in this chapter, our examples have revolved around XHTML. I've done that so far simply because it is likely to be the most familiar form of XML for most of our readers. But there's an ugly side to all this that we must acknowledge: not all XHTML will be correct HTML. The following discrepancies exist:
+
+\begin{itemize}
+\item There are some void tags (e.g., img, br) in HTML which do not need to have close tags, and in fact are not allowed to.
+\item HTML does not understand self-closing tags, so <script></script> and
 <script/> mean very different things.
-
-Combining the previous two points: you are free to self-close void tags, though to a browser
-it won't mean anything.
-
-In order to avoid quirks mode, you should start your HTML documents with a
-DOCTYPE statement.
-We do not want the XML declaration <?xml ...?> at the top of an HTML page
-We do not want any namespaces used in HTML, while XHTML is fully namespaced.
-The contents of <style> and <script>
-tags should not be escaped.
+\item Combining the previous two points: you are free to self-close void tags, though to a browser it won't mean anything.
+\item In order to avoid quirks mode, you should start your HTML documents with a DOCTYPE statement.
+\item We do not want the XML declaration <?xml ...?> at the top of an HTML page
+\item We do not want any namespaces used in HTML, while XHTML is fully namespaced.
+\item The contents of <style> and <script> tags should not be escaped.
+\end{itemize}
   
-That's where the xml2html package comes into play. It provides a
-blaze-html:Text.Blaze.Html:ToHtml instance for Nodes,
-Documents and Elements. In order to use it, just import the
-xml2html:Text.XML.Xml2Html module.
+That's where the xml2html package comes into play. It provides a ToHtml instance for Nodes, Documents and Elements. In order to use it, just import the Text.XML.Xml2Html module.
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
