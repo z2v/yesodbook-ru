@@ -1,8 +1,8 @@
 \chapter{xml-conduit}
 
-Many developers cringe at the thought of dealing with XML files. XML has the reputation of having a complicated data model, with obfuscated libraries and huge layers of complexity sitting between you and your goal. I'd like to posit that a lot of that pain is actually a language and library issue, not inherent to XML.
+Многих разработчиков трясет от одной только мысли о работе с XML файлами. XML имеет репутацию формата, имеющего излишне усложненную модель данных, запутанные библиотеки и толстый слой сложностей, находящихся между разработчиком и его целью. Но я смею заверить, что многое из этого относятся скорее к проблемам языков программирования и библиотек, чем формата XML.
 
-Once again, Haskell's type system allows us to easily break down the problem to its most basic form. The xml-types package neatly deconstructs the XML data model (both a streaming and DOM-based approach) into some simple ADTs. Haskell's standard immutable data structures make it easier to apply transforms to documents, and a simple set of functions makes parsing and rendering a breeze.
+Как я уже отмечал, система типов языка Haskell позволяет нам с легкостью свести любую проблему к ее самой базовой форме. The xml-types package neatly deconstructs the XML data model (both a streaming and DOM-based approach) into some simple ADTs. Haskell's standard immutable data structures make it easier to apply transforms to documents, and a simple set of functions makes parsing and rendering a breeze.
 
 We're going to be covering the xml-conduit package. Under the surface, this package uses a lot of the approaches Yesod in general does for high performance: blaze-builder, text, conduit and attoparsec. But from a user perspective, it provides everything from the simplest APIs (readFile/writeFile) through full control of XML event streams.
 
