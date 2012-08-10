@@ -535,19 +535,19 @@ run_ (getNumberEnum $$ intsToStrings) >>= print
 
 Enumeratees
 
-The final piece in the puzzle is the Enumeratee. This is a combination of an Iteratee (it consumes some data) and an Enumerator (is passes it other data on). It can be thought of as a stream transformer, or as a pipe connecting an Enumerator to an Iteratee.
+Заключительной частью головоломки является Enumeratee. Это сочетание Iteratee (он потребляет некоторые данные) и Enumerator (передает свои данные). Его можно рассматривать как трансформатор потока, или, как конвеер соединяющий Enumerator и Iteratee.
 
-Generalizing getNumberEnum
+Обобщяя getNumberEnum
 
-Earlier, we created a getNumberEnum function with a type signature:
+Раньше мы создали функцию getNumberEnum с сигнатурой типа:
 
 \begin{lstlisting}
 getNumberEnum :: MonadIO m => Enumerator Int m b
 \end{lstlisting}
 
-If you don't remember, this means getNumberEnum produces a stream of Ints. In particular, our getNumberEnum function read lines from stdin, converted them to ints and fed them into an iteratee. It stopped reading lines when it saw a "q".
+Если вы не помните, то это означает, что getNumberEnum производит поток Int. В частности, наша функция getNumberEnum читает строки из стандартного ввода, преобразовывает их в Int и скармливает их в iteratee. Она перестёт читать строки, когда встречает "q". 
 
-But this functionality seems like it could be useful outside the realm of Ints. We may like to deal with the original Strings, for example, or Bools, or a bunch of other things. We could easily define a more generalized function which simply doesn't do the String to Int conversion:
+Но кажется, что эта функциональность, может быть полезна и вне области Int. Например, мы можем захотеть работать с оригинальными String, или Bool, или множеством других типов. Так мы можем легко определить более обобщенную функцию, которая просто не делает преобразования String в Int:
 
 \begin{lstlisting}
 lineEnum :: MonadIO m => Enumerator String m b
@@ -559,11 +559,11 @@ lineEnum (Continue k) = do
 lineEnum step = returnI step
 \end{lstlisting}
 
-Cool, let's plug this into our sumIter function (I've renamed the sum6 function from the previous two parts):
+Круто, давайте используем это с нашей функции sumIter (я переименовал функции sum6 из двух предыдущих частей):
 
 lineEnum $$ sumIter
 
-Actually, that doesn't type check: lineEnum produces Strings, and sumIter takes Ints. We need to modify one of them somehow.
+На самом деле, это проходит проверку типа: lineEnum производит String, а sumIter хочет Int. Нам нужно как-то изменить одну из них.
 
 \begin{lstlisting}
 sumIterString :: Monad m => Iteratee String m Int
@@ -580,11 +580,11 @@ sumIterString = Iteratee $ do
         return $ go step
 \end{lstlisting}
 
-What we've done here is wrap around the original iteratee. As usual, we first need to unwrap the Iteratee constructor and the monad to get at the heart of the Step value. Once we have that innerStep value, we pass it to the go function, which simply transforms that values in the Stream value from Strings to Ints.
+То что мы тут сделали, это обернули вокруг оригинального iteratee. Как обычно, нам в первую очередь необходимо развернуть конструктор Iteratee и монаду, чтобы добраться до сердца значения Step. Как только мы получим значение innerStep, мы передаем его функции go, которая просто преобразовывает значения в значении Stream, из String в Int.
 
-Even more general
+Ещё общее
 
-Of course, it would be nice if we could apply this transformation to *any* iteratee. To start with, let's just pass the inner iteratee and the mapping function as parameters.
+Конечно, было бы неплохо, если бы мы могли применить это преобразование к *любой* iteratee. Для начала, давайте просто передадим внутренний iteratee и отображающюю функции в качестве параметров.
 
 \begin{lstlisting}
 mapIter :: Monad m => (aOut -> aIn) -> Iteratee aIn m b -> Iteratee aOut m b
@@ -600,51 +600,51 @@ mapIter f innerIter = Iteratee $ do
         return $ go step
 \end{lstlisting}
 
-We could call this like:
+Это можно вызывать так:
 
 \begin{lstlisting}
 run_ (lineEnum $$ mapIter read sumIter) >>= print
 \end{lstlisting}
 
-Nothing much to see here, it's basically identical to the previous version. What's funny is that enumerator comes built in with a map function to do just this, but it has a significantly different type signature:
+Здесь нет ничего особенного, это в общем-то идентично предыдущей версии. Что интересно, это то, что в пакете enumerator есть  функция map, чтобы как раз делать это, но у неё значительно отличается сигнатура типа:
 
 \begin{lstlisting}
 map :: Monad m => (ao -> ai) -> Enumeratee ao ai m b
 \end{lstlisting}
 
-since:
+так как:
 
 \begin{lstlisting}
 type Enumeratee aOut aIn m b = Step aIn m b -> Iteratee aOut m (Step aIn m b)
 \end{lstlisting}
 
-that's equivalent to:
+это еквивалентно:
 
 \begin{lstlisting}
 map :: Monad m => (aOut -> aIn) -> Step aIn m b -> Iteratee aOut m (Step aIn m b)
 \end{lstlisting}
 
-What's with all this extra complication in type signature? Well, it's not necessary for map itself, but it is necessary for a whole bunch of other similar functions. But let's focus on this map for a second so we don't get lost: the first argument is the same old mapping function we had before. The second argument is a Step value. This isn't really so surprising: in our mapIter, we took an Iteratee with the same parameters, and we internally just unwrapped it to a Step.
+К чему все это дополнительное осложнение сигнатуры типа? Это не является необходимым для самой map, но это необходимо для целой кучи других подобных функций. Но давайте на секунду сосредоточимся на map, чтобы мы не заблудились: первый аргумент это та же старая отображающая функция, что была раньше. Вторым аргументом является значение Step. Это не так уж удивительно: в нашей mapIter, мы взяли Iteratee с теми же параметрами, и внутренне просто развернул его в Step.
 
-But what's happening with that return value? Remembering the meanings for all these datatypes, it's an Iteratee which will be fed a stream of aOuts and return a Step (aka, a new iteratee, right?). This kind of makes intuitive sense: we've introduced a middle man which accepts input from one source and transforms a Step to a newer state.
+Но что происходит с возвращаемым значением? Помня о значении всех этих типов данных, это Iteratee которому будет подаваться поток aOut и который будет возвращать Step (aka, новый iteratee, правда?). Этот вроде как имеет интуитивный смысл: мы ввели посредника, который принимает ввод от одного источника и преобразует Step в новое состояние.
 
-But now perhaps the trickiest part of the whole thing: how do we actually use this map function? It turns out that an Enumeratee is close enough in type signature to an Enumerator that we can just do:
+А теперь, возможно, самая сложная часть всего этого: как мы можем использовать эту функцию map? Оказывается, что Enumeratee достаточно близок по сигнатуре типа к Enumerator, что мы можем просто сделать:
 
 \begin{lstlisting}
 map read $$ sumIter
 \end{lstlisting}
 
-But the type signature on that turns out to be a little bit weird:
+Но сигнатура типа оказывается немного странной:
 
 \begin{lstlisting}
 Iteratee String m (Step Int m Int)
 \end{lstlisting}
 
-Remembering that an Iteratee is just a wrapped up Step, what we've got here is an iteratee that takes Strings and returns an Iteratee, which in turn takes Ints and produces an Int. Having this fancy result allows us to do one of our great tricks with iteratees: plug in data from multiple sources. For example, we could plug some Strings into this whole ugly thing, run it, get a new iteratee which takes Ints, feed that some Ints and get an Int result.
+Помня, что Iteratee просто завернутый Step, мы имеем здесь iteratee, который принимает String и возвращает Iteratee, который, в свою очередь принимает Int и производит Int. Этот причудливый результат позволяет сделать один из наших великих трюков с iteratees: подключить данные из нескольких источников. Например, мы могли бы подключить несколько String к этой уродливой вещи, запустить её, получить новый iteratee который получает Int, скармливает эти Int и получает результат Int.
 
-(If all that went over your head, don't worry. I won't be talking about that kind of stuff any more.)
+(Если это всё прошло мимо ваших ушей, не волнуйтесь. Я больше не буду говорить о таких вещах.)
 
-But often times, we don't need all of that power. We just want to stick our enumeratee onto our iteratee and get a new iteratee. In our case, we want to attach our map onto the sumIter to produce a new iteratee that takes Strings and returns Ints. In order to do that, we need a function like this:
+Но зачастую, нам не нужна все эта мощь. Мы просто хотим прилепить наш enumeratee к нашему iteratee и получить новый iteratee. В нашем случае, мы хотим присоединить нашу map к sumIter для получения нового iteratee, которая принимает String и возвращает Int. Для того, чтобы это сделать, нам нужна функция подобная этой:
 
 \begin{lstlisting}
 unnest :: Monad m => Iteratee String m (Step Int m Int) -> Iteratee String m Int
@@ -657,27 +657,27 @@ unnest outer = do -- using the Monad instance of Iteratee
     go (Continue k) = k EOF >>== go
 \end{lstlisting}
 
-We can then run our unholy mess with:
+Мы можем запустить наш полнейший беспорядок так:
 
 \begin{lstlisting}
 run_ (lineEnum $$ unnest $ map read $$ sumIter) >>= print
 \end{lstlisting}
 
-And actually, the unnest function is available in Data.Enumerator, and it's called joinI. So we should really write:
+На самом деле функция unnest доступна в Data.Enumerator, и там она называется joinI. Таким образом, мы действительно должны писать:
 
 \begin{lstlisting}
 run_ (lineEnum $$ joinI $ map read $$ sumIter) >>= print
 \end{lstlisting}
 
-Skipping
+Пропуск значений
 
-Let's write a slightly more interesting enumeratee: this one skips every other input value.
+Давайте напишем чуть более интересный enumeratee: этот пропускает входные значения через одно.
 
 \begin{lstlisting}
 skip :: Monad m => Enumeratee a a m b
 skip (Continue k) = do
     x <- head
-    _ <- head -- the one we're skipping
+    _ <- head -- это мы пропускаем
     case x of
         Nothing -> return $ Continue k
         Just y -> do
@@ -686,25 +686,25 @@ skip (Continue k) = do
 skip step = return step
 \end{lstlisting}
 
-What's interesting about the approach here is how similar it looks to an Enumerator. We're doing a lot of the same things: checking if the Step value is a Continue; if it's not, then simply return it. Then we capitalize on the Iteratee Monad instance, using the head function to pop two values out of the stream. If there's no more data, we return the original Continue value: just like with an Enumerator, we don't give an EOF so that we can feed more data into the iteratee later. If there is data, we pass it off to the iteratee, get our new step value and then loop.
+Что интересно в этом подходе, это то как он похож на Enumerator. Мы делаем много тех же вещей: проверяем, или значение Step это Continue; если это не так, то просто возвращаем его. Затем мы пользуемся тем, что Iteratee является экземпляром Monad, используя функцию head извлекаем два значения из потока. Если данных больше нет, мы возвращаем исходное значение Continue: как и с Enumerator, мы не возвращаем EOF, чтобы мы позже смогли скормить ещё данные в iteratee. Если есть данные, мы передаем их в iteratee, получаем наше новое значение Step, и затем зацикливаемся.
 
-And what's cool about enumeratees is we can chain these all together:
+И то, что круто в enumeratees это то, что мы можем сцеплять все вместе:
 
 \begin{lstlisting}
 run_ (lineEnum $$ joinI $ skip $$ joinI $ map read $$ sumIter) >>= print
 \end{lstlisting}
 
-Here, we read lines, skip every other input, convert the Strings to Ints and sum them.
+Здесь мы читаем строки, пропускаем каждую вторую, преобразуем String в Int и суммируем их.
 
-Real life examples: http-enumerator package
+Реальные примеры из жизни: пакет http-enumerator
 
-I started working on these tutorials as I was working on the http-enumerator package. I think the usage of enumeratees there is a great explanation of the benefits they can offer in real life. There are three different ways the response body can be broken up:
+Я начал работать на этим руководством, во время работы над пакетом http-enumerator. Я думаю, что использование enumeratees даёт отличное объяснение преимуществ, которые они могут предложить в реальной жизни. Существуют три различных способа разбить тело ответа:
 
-* Chunked encoding. In this case, the web server gives a hex string specifying the length of the next chunk and then that chunk. At the end, it sends a 0 to indicate the end of that response.
-* Content length. Here, the web server sends a header before any of the body is sent specifying the total length of the body.
-* Nothing at all. In this case, the response body lasts until an end-of-file.
+* Блочное кодирование. В этом случае веб-сервер возвращает шестнадцатеричную строку, определяющую длину следующего блока, а затем этот блок. В конце концов, он отправляет 0, чтобы указать конец этого ответа.
+* Длинна содержимого. Здесь, веб-сервер отправляет перед телом ответа заголовок, указывающий полную длину тела.
+* Ничего не делать. В этом случае, тело ответа длится до конца файла.
 
-In addition, the body may or may not be GZIP compressed. We end up with the following enumeratees, each with type signature Enumeratee ByteString ByteString m b: chunkedEncoding, contentLength and ungzip. We then get to do something akin to:
+Кроме того, тело может быть и не быть запаковано GZIP. В конечном итоге мы остаёмся со следующими enumeratees, каждый с сигнатурой типа Enumeratee ByteString ByteString m b: chunkedEncoding, contentLength и ungzip. Затем мы должны сжелать что-то похожее на:
 
 \begin{lstlisting}
 let parseBody x =
@@ -712,7 +712,7 @@ let parseBody x =
             then joinI $ chunkedEncoding $$ x
             else case mlen of
                     Just len -> joinI $ contentLength len $$ x
-                    Nothing -> x -- no enumeratee applied at all
+                    Nothing -> x -- вообще не применяем ни один enumeratee
 let decompress x =
         if ("content-encoding", "gzip") `elem` responseHeaders
             then joinI $ ungzip $$ x
@@ -720,9 +720,9 @@ let decompress x =
 run_ $ socketEnumerator $$ parseBody $ decompress $ bodyIteratee
 \end{lstlisting}
 
-We create a chain: the data from the server is fed into the parseBody function. In the case of chunked encoding, the data is processed appropriately and then headers are filtered out. If we are dealing with content length, then only the specified number of bytes are read. And in the case of neither of those, parseBody is a no-op.
+Мы создаем цепочку: данные с сервера поступает в функцию parseBody. В случае блочного кодирования, данные обрабатываются соответствующим образом, и затем заголовки отфильтровуються. Если мы имеем дело с длинной содержимого, то считываем только указанное количество байт. А в случае, ни одного из этих вариантов, parseBody является пустой операцией (no-op).
 
-Whatever the case may be, the raw response body is then fed into decompress. If the body is GZIPed, then ungzip inflates it, otherwise decompress is a no-op. Finally, the parsed and inflated data is fed into the user-supplied bodyIteratee function. The user remains blissfully unaware of any steps the data took to get to him/her.
+В любом случае, тело ответа затем скармливаеться decompress. Если тело запаковано GZIP, то ungzip распаковывает его, в противном случае decompress является пустой операцией. Наконец, разобранные и распакованые данные скармливаются в поставляемую пользователем функцию bodyIteratee. Пользователь остается в блаженном неведении о любых шагах которые потребовались, чтобы доставить данные для него.
 
 Упражнения
 
