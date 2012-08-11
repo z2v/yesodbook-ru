@@ -71,14 +71,14 @@ copyFile src dest = runResourceT $ CB.sourceFile src $$ CB.sinkFile dest
 Модуль Data.Conduit.List предоставляет некоторые число функций для создания sink,
 источников и кондуитов. Вот так выглядит свёртка: суммирование чисел.
 \begin{lstlisting}
-sumSink :: Resource m =< Sink Int m Int
+sumSink :: Resource m => Sink Int m Int
 sumSink = CL.fold (+) 0
 \end{lstlisting}
 Мы можем реализовать то же самое более низкоуровнево, используя функцию \verb=sinkState=.
 Они принимает три параметра: начальное состояние, функцию приема дополнительных данных и
 функцию закрытия.
 \begin{lstlisting}
-sumSink2 :: Resource m =< Sink Int m Int
+sumSink2 :: Resource m => Sink Int m Int
 sumSink2 = sinkState
     0 -- начальное значение
     -- обновим состояния согласно полученным данным 
@@ -131,7 +131,7 @@ textify = CL.map intToText
 \end{lstlisting}
 Аоспользуемся функцией conduitState также как это было сделано выше. Здесь нам не нужно
 состояние, поэтому подставим фиктивно значение.
-\begin{lstlisting}textify2 :: Resource m =< Conduit Int m Text
+\begin{lstlisting}textify2 :: Resource m => Conduit Int m Text
 textify2 = conduitState
     ()
     (\() input -> return $ StateProducing () [intToText input])
@@ -170,7 +170,7 @@ writeFibs2 count dest =
 \end{lstlisting}
 Или мы можем скомбинировать все написанные кондуиты в один
 \begin{lstlisting}someIntLines :: ResourceThrow m -- encoding can throw an exception
-             =< Int
+             => Int
              -> Conduit Int m ByteString
 someIntLines count =
       CL.isolate count
@@ -472,7 +472,7 @@ data ReleaseMap base =
     ReleaseMap !NextKey !RefCount !(IntMap (base ()))
 
 newtype ResourceT m a =
-    ResourceT (Ref (Base m) (ReleaseMap (Base m)) -< m a)
+    ResourceT (Ref (Base m) (ReleaseMap (Base m)) -> m a)
 \end{lstlisting}
 Мы видим, что ReleaseKey это просто Int. Если вы загляните на несколько строк вниз, то
 это определение обретет смысл, так как мы используем IntMap для того, чтобы хранить
@@ -522,309 +522,309 @@ ResourceIO
 more typing).
    
 Forking
-It would seem that forking a thread would be inherently unsafe with ResourceT,
-since the parent thread may call runResourceT while the child thread is still
-accessing some of the allocated resources. This is indeed true, if you use the normal
-forkIO function.
 
-You can't actually use the standard forkIO, since it only operates in the
-IO monad, but you could use the fork function from
-lifted-base. In fact, due to this issue, the regions
-package does not provide a MonadBaseControl instance for its transformer (which
-is very similar to ResourceT). However, our goal in ResourceT
-is not to make it impossible for programmers to mess up, only to make it easier to do the
-right
-thing. Therefore, we still provide the instance, even though it could be abused.
-In order to solve this, ResourceT includes reference counting. When you fork a
-new thread via resourceForkIO, the RefCount value of the
-ReleaseMap is incremented. Every time runResourceT is called,
-the value is decremented. Only when the value hits 0 are all the release actions called.
-% 
-% Convenience Exports
-% 
-% In addition to what's been listed so far, there are a few extra functions exported
-% (mostly) for
-% convenience.
+Может показаться, что ответвление от процесса хронически небезопасно при использовании 
+ResourceT, так как родительский поток процесс может вызвать \verb=runResourceT= в то время
+как дочерний использует ресурсы. Это, конечно же, так, если вы используете обычную
+функцию forkIO.
+
+Вообще говоря, вы не можете использовать стандартный forkIO, так как он использует монаду
+IO, но вы можете использовать функцию fork из залифченой базовой монады.
+По этой причине пакет regions не предоставляет экземпляр MonadBaseControl для этого
+трансформатора (который очень похож на ResourceT). Однако, назначение ResourceT
+не запретить программистам стрелять себе в ногу, а только, чтобы было легче писать
+правильно. Поэтому, мы всё же предостовляем экземпляр, даже если он может быть
+использован неправильно. Чтобы решить эту проблему ResourceT включает в себя
+счетчик ссылок. Когда вы образовываете новый поток с помощью resourceForkIO,
+значение RefCount в ReleaseMap инкрементируется. Всякий раз, когда runResourceT
+вызывается, это значение декрементируется. Только когда оно достигент нуля происходят
+действия по освобождению ресурсов.
+ 
+Дополнительные функции для удобства
+
+В дополнение мы расскажем про несколько функций, созданных для удобства.
 %   
-% newRef, writeRef, and readRef wrap up the
-% HasRef versions of the functions and allow them to run in any ResourceT.
-% withIO is essentially a type-restricted version of with but working around 
-% some of the nastiness with types you would otherwise run into. In general:
-% you'll want to use withIO when writing IO code.
-% transResourceT let's you modify which monad your ResourceT is running in,
-% assuming it keeps the same
-% \begin{lstlisting}
-%     base.transResourceT :: (Base m ~ Base n)
-%                =< (m a -< n a)
-%                -< ResourceT m a
-%                -< ResourceT n a
-% transResourceT f (ResourceT mx) = ResourceT (\r -< f (mx r))
-% \end{lstlisting}  
-% 
-% Source
-% 
-% I think it's simplest to understand sources by looking at the types:
-% 
-% data SourceResult m a = Open (Source m a) a | Closed
-% data Source m a = Source
-%     { sourcePull :: ResourceT m (SourceResult m a)
-%     , sourceClose :: ResourceT m ()
-%     }
-% 
-% A source has just two operations on it: you can pull data from it, and you can close it
-% (think
-% of closing a file handle). When you pull, you either get some data and the a new
-% Source (the source is still open), or nothing (the source is closed). Let's
-% look at some of the simplest sources:
-% \begin{lstlisting}
-%   -- START
-% import Prelude hiding (repeat)
-% import Data.Conduit
-% 
-% -- | Never give any data
-% eof :: Monad m =< Source m a
-% eof = Source
-%     { sourcePull = return Closed
-%     , sourceClose = return ()
-%     }
-% 
-% -- | Always give the same value
-% repeat :: Monad m =< a -< Source m a
-% repeat a = Source
-%     { sourcePull = return $ Open (repeat a) a
-%     , sourceClose = return ()
-%     }
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% These sources are very straight-forward, since they always return the
-% same results.
-% Additionally, their close records don't do anything. You might think that this is a bug:
-% shouldn't a call to sourcePull return Closed after it's been
-% closed? This isn't required, since one of the rules of sources is that they can never be
-% reused. In other words:
-% 
-%     
-% If a Source returns Open, it has provided you with a new
-% Source which you should use in place of the original one.
-% If it returns Closed, then you cannot perform any more operations on it.
-%     
-% Don't worry too much about the invariant. In practice, you will almost never call
-% sourcePull or sourceClose yourself. In fact, you hardly
-% even write them yourself either (that's what sourceState and
-% sourceIO are for). The point is that we can make some assumptions when we
-% implement our sources.
-% 
-% State
-% 
-% There is something similar about the two sources mentioned above: they never change. They
-% always return the same value. In other words, they have no state. For almost all serious
-% sources, we'll need some kind of state.
-% 
-% The state might actually be defined outside of our program. For example, if we write a
-% source that reads data from a Handle, we don't need to manually specify any
-% state, since the Handle itself already has.
-% The way we store state in a source is by updating the returned Source value in
-% the Open constructor. This is best seen with an example.
-% \begin{lstlisting}
-% -- START
-% import Data.Conduit
-% import Control.Monad.Trans.Resource
-% 
-% -- | Provide data from the list, one element at a time.
-% sourceList :: Resource m =< [a] -< Source m a
-% sourceList list = Source
-%     { sourcePull =
-%         case list of
-%             [] -< return Closed -- no more data
-% 
-%             -- This is where we store our state: by return a new
-%             -- Source with the rest of the list
-%             x:xs -< return $ Open (sourceList xs) x
-%         , sourceClose = return ()
-%         }
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% Each time we pull from the source, it checks the input list. If the list is empty, pulling
-% returns Closed, which makes sense. If the list is not empty, pulling returns
-% Open with both the next value in the list, and a new Source
-% value containing the rest of the input list.
-% 
-% sourceState and sourceIO
-% 
-% In addition to being able to manually create Sources, we also have a few
-% convenience functions that allow us to create most sources in a more high-level fashion.
-% sourceState let's you write code similar to how you would use the
-% State monad. You provide an initial state, your pull function is provided with
-% the current state, and it returns a new state and a return value. Let's use this to
-% reimplement
-% sourceList.
-% \begin{lstlisting}
-%   -- START
-% import Data.Conduit
-% import Control.Monad.Trans.Resource
-% 
-% -- | Provide data from the list, one element at a time.
-% sourceList :: Resource m =< [a] -< Source m a
-% sourceList state0 = sourceState
-%     state0
-%     pull
-%   where
-%     pull [] = return StateClosed
-%     pull (x:xs) = return $ StateOpen xs x
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% Notice the usage of the StateClosed and StateOpen
-% constructors. These are very similar to Closed and Open, except
-% that instead of specifying the next Source to be used, you provide the next
-% state (here, the remainder of the list).
-% 
-% The other common activity is to perform some I/O allocation (like opening a file),
-% registering
-% some cleanup action (closing that file), and having a function for pulling data from that
-% resource. conduit comes built-in with a sourceFile function
-% that gives a stream of ByteStrings. Let's write a wildly inefficient alternative
-% that returns a stream of characters.
-% \begin{lstlisting}
-% -- START
-% import Data.Conduit
-% import Control.Monad.Trans.Resource
-% import System.IO
-% import Control.Monad.IO.Class (liftIO)
-% 
-% sourceFile :: ResourceIO m =< FilePath -< Source m Char
-% sourceFile fp = sourceIO
-%     (openFile fp ReadMode)
-%     hClose
-%     (\h -< liftIO $ do
-%         eof <- hIsEOF h
-%         if eof
-%             then return IOClosed
-%             else fmap IOOpen $ hGetChar h)
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% Like sourceState, it uses a variant on the Open and
-% Closed constructors. sourceIO does a number of things for
-% us:
-% 
-%   
-% It registers the cleanup function with the ResourceT transformer, ensuring
-% it gets called even in the presence of exceptions.
-% It sets up the sourceClose record to release the resource immediately.
-% As soon as you return IOClosed, it will release the resource.
-%   
-% Sinks
-% 
-% A sink consumes a stream of data, and produces a result. A sink must always produce a
-% result,
-% and must always produce a single result. This is encoded in the types themselves.
-% 
-% There is a Monad instance for sink, making it simple to compose multiple sinks
-% together into a larger sink. You can also use the built-in sink functions to perform most
-% of your
-% work. Like sources, you'll rarely need to dive into the inner workings. Let's start off
-% with an
-% example: getting lines from a stream of Chars (we'll assume Unix line endings
-% for simplicity).
-% \begin{lstlisting}
-% import Data.Conduit
-% import qualified Data.Conduit.List as CL
-% 
-% -- Get a single line from the stream.
-% sinkLine :: Resource m =< Sink Char m String
-% sinkLine = sinkState
-%     id -- initial state, nothing at the beginning of the line
-%     push
-%     close
-%   where
-%     -- On a new line, return the contents up until here
-%     push front '\n' =
-%         return $ StateDone Nothing $ front []
-% 
-%     -- Just another character, add it to the front and keep going
-%     push front char =
-%         return $ StateProcessing $ front . (char:)
-% 
-%     -- Got an EOF before hitting a newline, just give what we have so far
-%     close front = return $ front []
-% 
-% -- Get all the lines from the stream, until we hit a blank line or EOF.
-% sinkLines :: Resource m =< Sink Char m [String]
-% sinkLines = do
-%     line <- sinkLine
-%     if null line
-%         then return []
-%         else do
-%             lines <- sinkLines
-%             return $ line : lines
-% 
-% content :: String
-% content = unlines
-%     [ "This is the first line."
-%     , "Here's the second."
-%     , ""
-%     , "After the blank."
-%     ]
-% 
-% main :: IO ()
-% main = do
-%     lines <- runResourceT $ CL.sourceList content $$ sinkLines
-%     mapM_ putStrLn lines
-% \end{lstlisting}
-% Running this sample produces the expected output:
-% 
-% This is the first line.
-% Here's the second.
-% 
-% sinkLine demonstrates usage of the sinkState function, which
-% is very similar to the sourceState function we just saw. It takes three
-% arguments: an initial state, a push function (takes the current state and next input, and
-% returns
-% a new state and result) and a close function (takes the current state and returns an
-% output). As
-% opposed to sourceState- which doesn't need a close function- a sink is required
-% to always return a result.
-% 
-% Our push function has two clauses. When it gets a newline character, it indicates that
-% processing is complete via StateDone. The Nothing indicates
-% that there is no leftover input (we'll discuss that later). It also gives an output of all
-% the
-% characters it has received. The second clause simply appends the new character to the
-% existing
-% state and indicates that we are still working via StateProcessing. The close
-% function returns all characters.
-% 
-% sinkLines shows how we can use the monadic interface to produce new sinks. If
-% you replace sinkLine with getLine, this would look like
-% standard code to pull lines from standard input. This familiar interface should make it
-% easy to
-% get up and running quickly.
-% 
-% Types
-% The types for sinks are just a bit more involved than sources. Let's have a look:
-% \begin{lstlisting}
-% type SinkPush input m output = input -< ResourceT m (SinkResult input m output)
-% type SinkClose m output = ResourceT m output
-% 
-% data SinkResult input m output =
-%     Processing (SinkPush input m output) (SinkClose m output)
-%   | Done (Maybe input) output
-% 
-% data Sink input m output =
-%     SinkNoData output
-%   | SinkData
-%         { sinkPush :: SinkPush input m output
-%         , sinkClose :: SinkClose m output
-%         }
-%   | SinkLift (ResourceT m (Sink input m output))
-% \end{lstlisting}  
+Функции \verb=newRef=, \verb=writeRef=, и \verb=readRef= оборачивают
+функции с HasRef, позволяют им работать с любым ResourceT.
+\verb=withIO= по сути является функцией \verb=with= с ограниченным типом, но она 
+позволяет работать с некоторой вложенностью типов, в то время как при \verb=with=
+пришлось бы продираться в глубину (but working around 
+some of the nastiness with types you would otherwise run into). В общем, вам стоит
+использовать withIO для написания IO кода.
+\verb=transResourceT= позволит вам модифицировать в какой монаде исполняется ваш
+\verb=ResourceT=, assuming it keeps the same
+\begin{lstlisting}
+    base.transResourceT :: (Base m ~ Base n)
+               => (m a -> n a)
+               -> ResourceT m a
+               -> ResourceT n a
+transResourceT f (ResourceT mx) = ResourceT (\r -> f (mx r))
+\end{lstlisting}  
+
+Источники
+
+Проще всего понять что это такое посмотрев  на типы:
+\begin{lstlisting}
+data SourceResult m a = Open (Source m a) a | Closed
+data Source m a = Source
+    { sourcePull :: ResourceT m (SourceResult m a)
+    , sourceClose :: ResourceT m ()
+    }
+\end{lstlisting}
+Источник имеет две операции: вы можете запросить ещё данных и вы можете закрыть его (как,
+например, закрыть дескриптор файла). При запросе новых данных вы или получаете немного
+данных и новое  значение типа Source (источник остается открытым), или Nothing (источник
+закрывается) . Давайте посмотрим на простеёшие примеры.
+\begin{lstlisting}
+  -- START
+import Prelude hiding (repeat)
+import Data.Conduit
+
+-- | Never give any data
+eof :: Monad m => Source m a
+eof = Source
+    { sourcePull = return Closed
+    , sourceClose = return ()
+    }
+
+-- | Always give the same value
+repeat :: Monad m => a -> Source m a
+repeat a = Source
+    { sourcePull = return $ Open (repeat a) a
+    , sourceClose = return ()
+    }
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
+Эти источники довольно прямолинейны, так как они всегда возвращают одно и то же. К тому
+же их функции закрытия ничего не делают. Вам может показаться, что это баг: не должны ли 
+мы возвращать в sourcePull \verb=return Closed= после того, как источник был закрыт? Это
+не является необходимым, since one of the rules of sources is
+that they can never be
+reused. Другими словами:
+
+    
+\textit{Если источник вернул Open, то он предоставил вам новый источник, с которым и
+стоит работать, заменив оригинальный. Если источник вернул Closed, тогда, вы больше не
+может выполнять операции над ним.}
+    
+Не стоит очень беспокоиться по поводу сохранения этого инварианта. На практике, вам почти
+не придется вызывать sourcePull или sourceClose самостоятельно. Также, навряд ли вам
+придутся их самостоятельно описывать (для этого существуют sourceState и sourceIO).
+%In fact, you hardly  even write them yourself either (that's what sourceState and
+% sourceIO are for). FIXME уточнить это предожение
+Идея в том, что мы можем сделать некоторые предположения, когда реализовываем источники. 
+ 
+
+Состояние
+
+В двух примерах источников выше есть кое-что общее: они всегда возвращают то же самое
+значение. Другими словами, у них не состояния. Для более-менее серьёзных источников надо
+потреуется реализовывать состояние.
+
+Состояние может запросто быть определено вне нашей программы. Например, если мы
+реализовываем источник, который читает данных из дескриптора, нам не нужно вручную
+указывать никакого состояния, потому что дескриптор имеет состояние сам по себе.
+Будем хранить состояние в источнике путём обновления возвращаемого значения типа Source в
+конструкторе Open. Лучше всего это рассмотреть на примере.
+
+\begin{lstlisting}
+-- START
+import Data.Conduit
+import Control.Monad.Trans.Resource
+
+-- | Provide data from the list, one element at a time.
+sourceList :: Resource m => [a] -> Source m a
+sourceList list = Source
+    { sourcePull =
+        case list of
+            [] -> return Closed -- no more data
+
+            -- This is where we store our state: by return a new
+            -- Source with the rest of the list
+            x:xs -> return $ Open (sourceList xs) x
+        , sourceClose = return ()
+        }
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
+
+Всякий раз, когда мы забираем данные из источника, он проверяет список. Если он пуст,
+возвращаем Closed, что разумно. Если не пуст, возвращаем Open со следующим значением
+списка и новым значением источника, вызванного от хвоста списка.
+
+sourceState and sourceIO
+
+В добавление к возможности манипулировать источниками, мы также имеет несколько функций,
+позволяющих создавать источники более высокоуровнево. sourceState позволяет писать
+код как будто вы используете монаду State. Вы предоставляете начальное состояние,
+вункцию получения данных от текущего состояния, а она возвращает новое состояние и
+новое значение. Перепишем sourceList с помощью неё:
+
+\begin{lstlisting}
+  -- START
+import Data.Conduit
+import Control.Monad.Trans.Resource
+
+-- | Provide data from the list, one element at a time.
+sourceList :: Resource m => [a] -> Source m a
+sourceList state0 = sourceState
+    state0
+    pull
+  where
+    pull [] = return StateClosed
+    pull (x:xs) = return $ StateOpen xs x
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
+
+Замечание по использованию конструкторов StateClosed и StateOpen. Они очень похожи на
+Closed и Open, за исключением того, что при указании следующего источника вы указываете и
+следующее состояние (остаток списка).
+
+Другое распространенное применение --- аллокация ресурсов ввода-вывода (например,
+открытие файла), регистрация функции свобождения ресурса (закрытие файла) и
+предоставление функции получения данных из ресура.
+В пакете conduit присутствует встроенная функция \verb=sourceFile=, которая выдает поток
+значений типа ByteString. Давайте напишем совершенно неэффективную альтернативу,
+которая будет возвразать поток символов.
+
+\begin{lstlisting}
+-- START
+import Data.Conduit
+import Control.Monad.Trans.Resource
+import System.IO
+import Control.Monad.IO.Class (liftIO)
+
+sourceFile :: ResourceIO m => FilePath -> Source m Char
+sourceFile fp = sourceIO
+    (openFile fp ReadMode)
+    hClose
+    (\h -> liftIO $ do
+        eof <- hIsEOF h
+        if eof
+            then return IOClosed
+            else fmap IOOpen $ hGetChar h)
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
+
+Как и \verb=sourceState=, она использует конструкторы \verb*|Open| и \verb*|Closed|.
+Функция sourceIO выполняет несколько действий  для нас:
+\begin{itemize}
+ \item Регистрирует функцию освобождения ресурса, с трансформерос ResourceT,
+гарантируя, что она будет вызвана даже в случае исключений.
+ \item Инициализирует поле sourceClose чтобы освободить ресурс немедленно.
+ \item Как только вернется IOClosed, будет вызвано освобождение русурса.
+\end{itemize}
+  
+Sinks
+
+Они поглощают потоки данных и генерируют результат. Они должны всегда выдавать результат
+и толтко единичный результат. Это зафиксированно в их типе.
+
+Экземпляр Monad для sink упрощает композицию нескольких sink, в больший sink. Вы также
+можете использовать встроенные функции для большинства своих нужд. Как и с источниками,
+вам редко понадобиться погружаться в тонкости реалллизации. Начнем с примера:
+получение строк и потока символов (будет предполагать наличие перевод строк в стиле Unix,
+для простоты).
+
+\begin{lstlisting}
+import Data.Conduit
+import qualified Data.Conduit.List as CL
+
+-- Get a single line from the stream.
+sinkLine :: Resource m => Sink Char m String
+sinkLine = sinkState
+    id -- initial state, nothing at the beginning of the line
+    push
+    close
+  where
+    -- On a new line, return the contents up until here
+    push front '\n' =
+        return $ StateDone Nothing $ front []
+
+    -- Just another character, add it to the front and keep going
+    push front char =
+        return $ StateProcessing $ front . (char:)
+
+    -- Got an EOF before hitting a newline, just give what we have so far
+    close front = return $ front []
+
+-- Get all the lines from the stream, until we hit a blank line or EOF.
+sinkLines :: Resource m => Sink Char m [String]
+sinkLines = do
+    line <- sinkLine
+    if null line
+        then return []
+        else do
+            lines <- sinkLines
+            return $ line : lines
+
+content :: String
+content = unlines
+    [ "This is the first line."
+    , "Here's the second."
+    , ""
+    , "After the blank."
+    ]
+
+main :: IO ()
+main = do
+    lines <- runResourceT $ CL.sourceList content $$ sinkLines
+    mapM_ putStrLn lines
+\end{lstlisting}
+Running this sample produces the expected output:
+\begin{verbatim}
+This is the first line.
+Here's the second.
+\end{verbatim}
+ 
+ 
+Функция sinkLine демонстрирует использование sinkState, которая очень похожа только что
+виденную функцию sourceState. Она принимает три параметра: начальное состояние,
+функцию ``добавления`` \verb=push= 
+(принимает текущее состояние и входные данные и возвращает новое состояние и результат)
+и функцию закрытия (принимает текущее состояние и возвращает вывод). Как
+противоположность к sourceState, которая не нуждается в функции закрытия, sink должна
+всегда возвращать результат.
+
+В нашей функции push две клаузы. Когда она получет символ конца строки, процесс
+заканчивается в состоянии StateDone. Nothing означает, что входных данных не
+осталось (мы обсудим это позднее). Она также выдает все полученные символы. Вторая
+клауза просто добавляет символ к текущему состоянию и соощает, что мы продолжаем работу
+в состоянии StateProcessing. Функция close возвращает все символы.
+
+Функция sinkLines демонстрирует как мы можем использовать монадический интерфейс,
+чтобы создавать новые sinks. Если вы замените sinkLine на getLine, это будет выглядеть
+как обычный код, который забирает строки и стандартного входного потока. This familiar
+interface should make it easy to get up and running quickly.
+%FIXME
+
+Типы
+
+Типы для синков несколько более хитроумны, чем для источников. Давайте взглянем на них:
+
+\begin{lstlisting}
+type SinkPush input m output = input -> ResourceT m (SinkResult input m output)
+type SinkClose m output = ResourceT m output
+
+data SinkResult input m output =
+    Processing (SinkPush input m output) (SinkClose m output)
+  | Done (Maybe input) output
+
+data Sink input m output =
+    SinkNoData output
+  | SinkData
+        { sinkPush :: SinkPush input m output
+        , sinkClose :: SinkClose m output
+        }
+  | SinkLift (ResourceT m (Sink input m output))
+\end{lstlisting}  
 % Whenever a sink is pushed to, it can either say it needs more data
 % (Processing) or say it's all done. When still processing, it must provided
 % updated push and close function; when done, it returns any leftover inut and the output.
@@ -837,7 +837,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % return, we're giving back a value that requires no data in order to compute it.
 % We could model this with the SinkData constructor, with something like:
 % \begin{lstlisting}
-% myReturn a = SinkData (\input -< return (Done (Just input) a)) (return a)
+% myReturn a = SinkData (\input -> return (Done (Just input) a)) (return a)
 % \end{lstlisting}
 % But doing so would force reading in an extra bit of input that we don't need right now,
 % and
@@ -856,7 +856,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % import Control.Monad.IO.Class (liftIO)
 % 
 % -- Consume all input and discard it.
-% sinkNull :: Resource m =< Sink a m ()
+% sinkNull :: Resource m => Sink a m ()
 % sinkNull =
 %     SinkData push close
 %   where
@@ -868,7 +868,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % -- and then returning a different push function for subsequent
 % -- calls. By using withIO, we know that the handle will be closed even
 % -- if there's an exception.
-% sinkFile :: ResourceIO m =< FilePath -< Sink Char m ()
+% sinkFile :: ResourceIO m => FilePath -> Sink Char m ()
 % sinkFile fp =
 %     SinkData pushInit closeInit
 %   where
@@ -888,7 +888,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 %         return ()
 % 
 % -- And we'll count how many values were in the stream.
-% count :: Resource m =< Sink a m Int
+% count :: Resource m => Sink a m Int
 % count =
 %     SinkData (push 0) (close 0)
 %   where
@@ -902,7 +902,8 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % main :: IO ()
 % main = return ()
 % \end{lstlisting}
-% Nothing is particularly complicated to implement. You should notice a common pattern here:
+% Nothing is particularly complicated to implement. You should notice a common pattern
+here:
 % declaring your push and close functions in a where clause, and then
 % using them twice: once for the initial SinkData, and once for the
 % Processing constructor. This can become a bit tedious; that's why
@@ -920,19 +921,19 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % -- We never have to touch the release key directly, sinkIO automatically
 % -- releases our resource as soon as we return IODone from our push function,
 % -- or sinkClose is called.
-% sinkFile :: ResourceIO m =< FilePath -< Sink Char m ()
+% sinkFile :: ResourceIO m => FilePath -> Sink Char m ()
 % sinkFile fp = sinkIO
 %     (openFile fp WriteMode)
 %     hClose
 %     -- push: notice that we are given the handle and the input
-%     (\handle char -< do
+%     (\handle char -> do
 %         liftIO $ hPutChar handle char
 %         return IOProcessing)
 %     -- close: we're also given the handle, but we don't use it
-%     (\_handle -< return ())
+%     (\_handle -> return ())
 % 
 % -- And we'll count how many values were in the stream.
-% count :: Resource m =< Sink a m Int
+% count :: Resource m => Sink a m Int
 % count = sinkState
 %     0
 %     -- The push function gets both the current state and the next input...
@@ -940,7 +941,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 %         -- and it returns the new state
 %         return $ StateProcessing $ state + 1)
 %     -- The close function gets the final state and returns the output.
-%     (\state -< return state)
+%     (\state -> return state)
 % -- STOP
 % main :: IO ()
 % main = return ()
@@ -957,7 +958,8 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % analogues to common list functions, like folding. (The module also has some
 % Conduits, like conduit:Data.Conduit.List:map.)
 % 
-% If you're looking for some way to practice with conduits, reimplementing the functions in
+% If you're looking for some way to practice with conduits, reimplementing the functions
+in
 % the
 % List module- both with and without the helper functions- would be a good
 % start.
@@ -970,21 +972,21 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % import Control.Monad.IO.Class (liftIO)
 % 
 % -- A sum function.
-% sum' :: Resource m =< Sink Int m Int
+% sum' :: Resource m => Sink Int m Int
 % sum' = CL.fold (+) 0
 % 
 % -- Print every input value to standard output.
-% printer :: (Show a, ResourceIO m) =< Sink a m ()
+% printer :: (Show a, ResourceIO m) => Sink a m ()
 % printer = CL.mapM_ (liftIO . print)
 % 
 % -- Sum up all the values in a stream after the first five.
-% sumSkipFive :: Resource m =< Sink Int m Int
+% sumSkipFive :: Resource m => Sink Int m Int
 % sumSkipFive = do
 %     CL.drop 5
 %     CL.fold (+) 0
 % 
 % -- Print each input number and sum the total
-% printSum :: ResourceIO m =< Sink Int m Int
+% printSum :: ResourceIO m => Sink Int m Int
 % printSum = do
 %     total <- CL.foldM go 0
 %     liftIO $ putStrLn $ "Sum: " ++ show total
@@ -1013,19 +1015,20 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % main = runResourceT $ do
 %     res <-
 %         case printSum of
-%             SinkData push close -< loop [1..10] push close
-%             SinkNoData res -< return res
+%             SinkData push close -> loop [1..10] push close
+%             SinkNoData res -> return res
 %     liftIO $ putStrLn $ "Got a result: " ++ show res
 %   where
 %     loop [] _push close = close
 %     loop (x:xs) push close = do
 %         mres <- push x
 %         case mres of
-%             Done _leftover res -< return res
-%             Processing push' close' -< loop xs push' close'
+%             Done _leftover res -> return res
+%             Processing push' close' -> loop xs push' close'
 % 
 % Instead, the recommended approach is to connect your sink to a source. Not only is this
-% simpler, it's less error prone, and means you have a lot of flexibility in where your data
+% simpler, it's less error prone, and means you have a lot of flexibility in where your
+data
 % is
 % coming from. To rewrite the example above:
 % 
@@ -1055,10 +1058,12 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % 
 % But as a quick note here, the leftover value from the Done constructor is not
 % always ignored. The Monad instance, for example, uses it to pass data from one
-% sink to the next in a binding. And in fact, the real connect operator doesn't always throw
+% sink to the next in a binding. And in fact, the real connect operator doesn't always
+throw
 % away the leftovers. When we cover resumable sources later, we'll see that the leftover
 % value is
-% put back on the buffer to allow later sinks reusing an existing source to pull the value.
+% put back on the buffer to allow later sinks reusing an existing source to pull the
+value.
 % 
 % Conduit
 % 
@@ -1075,13 +1080,14 @@ the value is decremented. Only when the value hits 0 are all the release actions
 %   | Finished (Maybe input) [output]
 % 
 % data Conduit input m output = Conduit
-%     { conduitPush :: input -< ResourceT m (ConduitResult input m output)
+%     { conduitPush :: input -> ResourceT m (ConduitResult input m output)
 %     , conduitClose :: ResourceT m [output]
 %     }
 % \end{lstlisting}
 % This should look very similar to what we've seen with sinks. A conduit can be pushed to,
 % in
-% which case it returns a result. A result either indicates that it is still producing data,
+% which case it returns a result. A result either indicates that it is still producing
+data,
 % or
 % that it is finished. When a conduit is closed, it returns some more output.
 % 
@@ -1091,10 +1097,12 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % 
 %   
 % When producing (the equivalent of processing for a sink), we can return output. This is
-% because a conduit will product a new stream of output instead of producing a single output
+% because a conduit will product a new stream of output instead of producing a single
+output
 % value
 % at the end of processing.
-% A sink always returns a single output value, while a conduit returns 0 or more outputs (a
+% A sink always returns a single output value, while a conduit returns 0 or more outputs
+(a
 % list). To understand why, consider conduits such as concatMap (produces
 % multiple outputs for one input) and filter (returns 0 or 1 output for each
 % input).
@@ -1113,23 +1121,23 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % import Data.Conduit
 % 
 % -- A simple conduit that just passes on the data as-is.
-% passThrough :: Monad m =< Conduit input m input
+% passThrough :: Monad m => Conduit input m input
 % passThrough = Conduit
-%     { conduitPush = \input -< return $ Producing passThrough [input]
+%     { conduitPush = \input -> return $ Producing passThrough [input]
 %     , conduitClose = return []
 %     }
 % 
 % -- map values in a stream
-% map :: Monad m =< (input -< output) -< Conduit input m output
+% map :: Monad m => (input -> output) -> Conduit input m output
 % map f = Conduit
-%     { conduitPush = \input -< return $ Producing (map f) [f input]
+%     { conduitPush = \input -> return $ Producing (map f) [f input]
 %     , conduitClose = return []
 %     }
 % 
 % -- map and concatenate
-% concatMap :: Monad m =< (input -< [output]) -< Conduit input m output
+% concatMap :: Monad m => (input -> [output]) -> Conduit input m output
 % concatMap f = Conduit
-%     { conduitPush = \input -< return $ Producing (concatMap f) $ f input
+%     { conduitPush = \input -> return $ Producing (concatMap f) $ f input
 %     , conduitClose = return []
 %     }
 % -- STOP
@@ -1137,7 +1145,8 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % main = return ()
 % \end{lstlisting}
 %  Stateful conduits
-%   Of course, not all conduits can be declared without state. Doing so on the bare metal is
+%   Of course, not all conduits can be declared without state. Doing so on the bare metal
+is
 % not
 %    too difficult.
 % \begin{lstlisting}
@@ -1150,7 +1159,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % -- Reverse the elements in the stream. Note that this has the same downside as
 % -- the standard reverse function: you have to read the entire stream into
 % -- memory before producing any output.
-% reverse :: Resource m =< Conduit input m input
+% reverse :: Resource m => Conduit input m input
 % reverse =
 %     mkConduit []
 %   where
@@ -1159,7 +1168,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 %     close state = return state
 % 
 % -- Same thing with sort: it will pull everything into memory
-% sort :: (Ord input, Resource m) =< Conduit input m input
+% sort :: (Ord input, Resource m) => Conduit input m input
 % sort =
 %     mkConduit []
 %   where
@@ -1182,7 +1191,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % -- Reverse the elements in the stream. Note that this has the same downside as
 % -- the standard reverse function: you have to read the entire stream into
 % -- memory before producing any output.
-% reverse :: Resource m =< Conduit input m input
+% reverse :: Resource m => Conduit input m input
 % reverse =
 %     conduitState [] push close
 %   where
@@ -1190,7 +1199,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 %     close state = return state
 % 
 % -- Same thing with sort: it will pull everything into memory
-% sort :: (Ord input, Resource m) =< Conduit input m input
+% sort :: (Ord input, Resource m) => Conduit input m input
 % sort =
 %     conduitState [] push close
 %   where
@@ -1209,13 +1218,13 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % just look at the fusion operators.
 % \begin{lstlisting}
 %   -- Left fusion: source + conduit = source
-% ($=) :: (Resource m, IsSource src) =< src m a -< Conduit a m b -< Source m b
+% ($=) :: (Resource m, IsSource src) => src m a -> Conduit a m b -> Source m b
 % 
 % -- Right fusion: conduit + sink = sink
-% (=$) :: Resource m =< Conduit a m b -< Sink b m c -< Sink a m c
+% (=$) :: Resource m => Conduit a m b -> Sink b m c -> Sink a m c
 % 
 % -- Middle fusion: conduit + conduit = conduit
-% (=$=) :: Resource m =< Conduit a m b -< Conduit b m c -< Conduit a m c
+% (=$=) :: Resource m => Conduit a m b -> Conduit b m c -> Conduit a m c
 % \end{lstlisting}
 % Using these operators is straightforward.
 % \begin{lstlisting}
@@ -1239,13 +1248,16 @@ the value is decremented. Only when the value hits 0 are all the release actions
 %           $$ (reverse =$= CL.map show)
 %           =$ CL.consume
 % \end{lstlisting}
-% There is in fact one last way of expressing the same idea. I'll leave it as an exercise to
+% There is in fact one last way of expressing the same idea. I'll leave it as an exercise
+to
 % the
 % reader to discover it.
 % 
-% It may seem like all these different approaches are redundant. While occassionally you can
+% It may seem like all these different approaches are redundant. While occassionally you
+can
 % in
-% fact choose whichever approach you feel like using, in many cases you will need a specific
+% fact choose whichever approach you feel like using, in many cases you will need a
+specific
 % approach. For example:
 % 
 %   
@@ -1305,7 +1317,8 @@ the value is decremented. Only when the value hits 0 are all the release actions
 %     go 3 = replicate 5 "three"
 %     go x = [show x]
 % \end{lstlisting}
-% We no longer have the 1-to-1 correspondence. As a result, we can't use the second method.
+% We no longer have the 1-to-1 correspondence. As a result, we can't use the second
+method.
 % But
 % it's even worse: we can't use the first method either, since there's no inverse of our
 % deviousTransform.
@@ -1319,7 +1332,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % deviousTransform 3 = replicate 5 "three"
 % deviousTransform x = [show x]
 % 
-% transform5 :: [Int] -< ([String], [Int])
+% transform5 :: [Int] -> ([String], [Int])
 % transform5 list =
 %     go [] list
 %   where
@@ -1350,7 +1363,8 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % "three", yet only two of
 % them show up in the output. The rest are discarded in the take 5 call.
 % 
-% This whole exercise is just to demonstrate the issue of data loss in conduits. By forcing
+% This whole exercise is just to demonstrate the issue of data loss in conduits. By
+forcing
 % conduits to accept only one input at a time, we avoid the issue of transforming too many
 % elements
 % at once. That doesn't mean we don't lose any data: if a conduit produces too much output
@@ -1374,7 +1388,7 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % \begin{lstlisting}
 % import Data.Conduit
 % -- START
-% sum5Raw :: Resource m =< Conduit Int m Int
+% sum5Raw :: Resource m => Conduit Int m Int
 % sum5Raw =
 %     conduitState (0, 0) push close
 %   where
@@ -1391,7 +1405,8 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % main :: IO ()
 % main = return ()
 % \end{lstlisting}
-% But this is frustrating, since we already have all the tools we need to do this at a high
+% But this is frustrating, since we already have all the tools we need to do this at a
+high
 % level! There's the fold sink for adding up the numbers, and the
 % isolate conduit which will only allow up to a certain number of elements to be
 % passed to a sink. Can't we combine these somehow?
@@ -1409,8 +1424,8 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % import Data.Conduit
 % import qualified Data.Conduit.List as CL
 % -- START
-% sum5 :: Resource m =< Conduit Int m Int
-% sum5 = sequenceSink () $ \() -< do
+% sum5 :: Resource m => Conduit Int m Int
+% sum5 = sequenceSink () $ \() -> do
 %     nextSum <- CL.isolate 5 =$ CL.fold (+) 0
 %     return $ Emit () [nextSum]
 % -- STOP
@@ -1421,16 +1436,18 @@ the value is decremented. Only when the value hits 0 are all the release actions
 % isolate to fold to get the sum of the next five elements from
 % the stream. We then emit that value, and start all over again.
 % 
-% Let's say we want to modify this slightly. We want to get the first 8 sums, and then pass
-% through the remaining values, multiplied by 2. We can keep track of how many values we've
+% Let's say we want to modify this slightly. We want to get the first 8 sums, and then
+pass
+% through the remaining values, multiplied by 2. We can keep track of how many values
+we've
 % returned in our state, and then use the StartConduit constructor to pass control
 % to the multiply-by-2 conduit next.
 % \begin{lstlisting}
 % import Data.Conduit
 % import qualified Data.Conduit.List as CL
 % -- START
-% sum5Pass :: Resource m =< Conduit Int m Int
-% sum5Pass = sequenceSink 0 $ \count -< do
+% sum5Pass :: Resource m => Conduit Int m Int
+% sum5Pass = sequenceSink 0 $ \count -> do
 %     if count == 8
 %         then return $ StartConduit $ CL.map (* 2)
 %         else do
@@ -1511,16 +1528,16 @@ Let's say we're going to write a web server. We're going to use the following lo
 operations:
 \begin{lstlisting}
 data Socket
-recv    :: Socket -< Int -< IO ByteString -- returns empty when the socket is closed
-sendAll :: Socket -< ByteString -< IO ()
+recv    :: Socket -> Int -> IO ByteString -- returns empty when the socket is closed
+sendAll :: Socket -> ByteString -> IO ()
 \end{lstlisting}
 We're up to the part where we need to implement the function handleConn that
 handles an individual connection. It will look something like this:
 \begin{lstlisting}
 data Request  -- request headers, HTTP version, etc
 data Response -- status code, response headers, resposne body
-type Application = Request -< IO Response
-handleConn :: Application -< Socket -< IO ()
+type Application = Request -> IO Response
+handleConn :: Application -> Socket -> IO ()
 \end{lstlisting}
 What does our handleConn need to do? In broad strokes:
 
@@ -1537,7 +1554,7 @@ like:
 \begin{lstlisting}
 data RequestLine = RequestLine ByteString ByteString ByteString
 
-parseRequestLine :: Socket -< IO RequestLine
+parseRequestLine :: Socket -> IO RequestLine
 parseRequestLine socket = do
     bs <- recv socket 4096
     let (method:path:version:ignored) = S8.words bs
@@ -1592,7 +1609,7 @@ data RequestLine = RequestLine ByteString ByteString ByteString
 type Headers = [(ByteString, ByteString)]
 data Request = Request RequestLine Headers
 data Response = Response
-type Application = Request -< IO Response
+type Application = Request -> IO Response
 
 parseRequestHeaders :: Sink ByteString IO Headers
 parseRequestHeaders = undefined
@@ -1600,10 +1617,10 @@ parseRequestHeaders = undefined
 parseRequestLine :: Sink ByteString IO RequestLine
 parseRequestLine = undefined
 
-sendResponse :: Socket -< Response -< IO ()
+sendResponse :: Socket -> Response -> IO ()
 sendResponse = undefined
 
-handleConn :: Application -< Socket -< IO ()
+handleConn :: Application -> Socket -> IO ()
 handleConn app socket = do
     req <- runResourceT $ sourceSocket socket $$ do
         requestLine <- parseRequestLine
@@ -1729,7 +1746,7 @@ data RequestLine = RequestLine ByteString ByteString ByteString
 type Headers = [(ByteString, ByteString)]
 data Request = Request RequestLine Headers (BufferedSource IO ByteString)
 data Response = Response
-type Application = Request -< ResourceT IO Response
+type Application = Request -> ResourceT IO Response
 
 parseRequestHeaders :: Sink ByteString IO Headers
 parseRequestHeaders = undefined
@@ -1737,10 +1754,10 @@ parseRequestHeaders = undefined
 parseRequestLine :: Sink ByteString IO RequestLine
 parseRequestLine = undefined
 
-sendResponse :: Socket -< Response -< IO ()
+sendResponse :: Socket -> Response -> IO ()
 sendResponse = undefined
 
-handleConn :: Application -< Socket -< IO ()
+handleConn :: Application -> Socket -> IO ()
 handleConn app socket = runResourceT $ do
     bsrc <- bufferSource $ sourceSocket socket
     requestLine <- bsrc $$ parseRequestLine
