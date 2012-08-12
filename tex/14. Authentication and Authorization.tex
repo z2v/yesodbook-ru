@@ -256,3 +256,97 @@ main = withSqliteConn "email.db3" $ \conn -> do
 \end{lstlisting}
 Авторизация
 
+Как только вы можете аутентифицировать пользователей, вы можете использовать их учетные данные для авторизационных запросов. Авторизация в Yesod простая и декларативная: большую часть времени, в только нуждаетесь в добавлении authRoute и isAuthorized методов в ваш Yesod экземпляр класс типов. Давайте посмотрим пример.
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell, TypeFamilies,
+             MultiParamTypeClasses, QuasiQuotes #-}
+import Yesod
+import Yesod.Auth
+import Yesod.Auth.Dummy -- только для тестирования, не используйте в реальной жизни!!!
+import Data.Text (Text)
+import Network.HTTP.Conduit (Manager, newManager, def)
+
+data MyAuthSite = MyAuthSite
+    { httpManager :: Manager
+    }
+
+mkYesod "MyAuthSite" [parseRoutes|
+/ RootR GET POST
+/admin AdminR GET
+/auth AuthR Auth getAuth
+|]
+
+instance Yesod MyAuthSite where
+    authRoute _ = Just $ AuthR LoginR
+
+    -- имя маршрута, затем булевое значение показывающее если это запрос на запись
+    isAuthorized RootR True = isAdmin
+    isAuthorized AdminR _ = isAdmin
+
+    -- любой может получить доступ к другим страницам
+    isAuthorized _ _ = return Authorized
+
+isAdmin = do
+    mu <- maybeAuthId
+    return $ case mu of
+        Nothing -> AuthenticationRequired
+        Just "admin" -> Authorized
+        Just _ -> Unauthorized "You must be an admin"
+
+instance YesodAuth MyAuthSite where
+    type AuthId MyAuthSite = Text
+    getAuthId = return . Just . credsIdent
+
+    loginDest _ = RootR
+    logoutDest _ = RootR
+
+    authPlugins _ = [authDummy]
+
+    authHttpManager = httpManager
+
+instance RenderMessage MyAuthSite FormMessage where
+    renderMessage _ _ = defaultFormMessage
+
+getRootR :: Handler RepHtml
+getRootR = do
+    maid <- maybeAuthId
+    defaultLayout [whamlet|
+<p>Note: Log in as "admin" to be an administrator.
+<p>Your current auth ID: #{show maid}
+$maybe _ <- maid
+    <p>
+        <a href=@{AuthR LogoutR}>Logout
+<p>
+    <a href=@{AdminR}>Go to admin page
+<form method=post>
+    Make a change (admins only)
+    \ #
+    <input type=submit>
+|]
+
+postRootR :: Handler ()
+postRootR = do
+    setMessage "You made some change to the page"
+    redirect RootR
+
+getAdminR :: Handler RepHtml
+getAdminR = defaultLayout [whamlet|
+<p>I guess you're an admin!
+<p>
+    <a href=@{RootR}>Return to homepage
+|]
+
+main :: IO ()
+main = do
+    manager <- newManager def
+    warpDebug 3000 $ MyAuthSite manager
+\end{lstlisting}
+authRoute должен быть вашей страницей входа, почти всегда AuthR LoginR. isAuthorized это функция, такая что берет два параметра: запрашиваемый маршрут, и либо запрос "запись", либо нет. Вы можете на самом деле поменять значение запроса на запись, используя метод isWriteRequest, но версия из коробки следует принципам RESTful: что-угодно но GET, HEAD, OPTIONS или TRACE запросы это запросы на запись.
+То, что удобно тело isAuthorized это то, что вы можете запустить и перехватить код, который вы захотите. Это означает вы можете:
+Получить доступ к файловой системе (Нормальный IO)
+Просмотреть записи в базе данных
+Принять любые сессии или запросы какие захотите
+Используя эти техники, вы можете разработать как сложную систему авторизации, какую захотите, или даже связать с существующей системы используя свою организацию.
+Выводы
+
+Эта глава покрывает основы установки пользовательской аутентификации, а также, как встроенные авторизационные функции предоставляются просто, декларативный подход для пользователей. В то время эти сложные концепции, с многими подходами, Yesod должен предоставить вам строительные блоки, которые вам нужны для создания вашего собственного решения аутентификации.
