@@ -949,266 +949,255 @@ here:
 % Nothing dramatic, just slightly shorter, less error-prone code. Using these two helper
 % functions is highly recommended, as it ensures proper resource management and state
 % updating.
-% 
-% List functions
-% 
-% As easy as it is to write your own sinks, you'll likely want to take advantage of the
-% built-in
-% sinks available in the conduit:Data.Conduit.List module. These provide
-% analogues to common list functions, like folding. (The module also has some
-% Conduits, like conduit:Data.Conduit.List:map.)
-% 
-% If you're looking for some way to practice with conduits, reimplementing the functions
-in
-% the
-% List module- both with and without the helper functions- would be a good
-% start.
-% 
-% Let's look at some simple things we can make out of the built-in sinks.
-% \begin{lstlisting}
-% -- START
-% import Data.Conduit
-% import qualified Data.Conduit.List as CL
-% import Control.Monad.IO.Class (liftIO)
-% 
-% -- A sum function.
-% sum' :: Resource m => Sink Int m Int
-% sum' = CL.fold (+) 0
-% 
-% -- Print every input value to standard output.
-% printer :: (Show a, ResourceIO m) => Sink a m ()
-% printer = CL.mapM_ (liftIO . print)
-% 
-% -- Sum up all the values in a stream after the first five.
-% sumSkipFive :: Resource m => Sink Int m Int
-% sumSkipFive = do
-%     CL.drop 5
-%     CL.fold (+) 0
-% 
-% -- Print each input number and sum the total
-% printSum :: ResourceIO m => Sink Int m Int
-% printSum = do
-%     total <- CL.foldM go 0
-%     liftIO $ putStrLn $ "Sum: " ++ show total
-%     return total
-%   where
-%     go accum int = do
-%         liftIO $ putStrLn $ "New input: " ++ show int
-%         return $ accum + int
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% Connecting
-% 
-% At the end of the day, we're actually going to want to use our sinks. While we could
-% manually
-% call sinkPush and sinkClose, it's tedious. For example:
-% \begin{lstlisting}
-% import Data.Conduit
-% import Control.Monad.IO.Class (liftIO)
-% 
-% printSum :: Sink Int m Int
-% printSum = undefined
-% -- START
-% main :: IO ()
-% main = runResourceT $ do
-%     res <-
-%         case printSum of
-%             SinkData push close -> loop [1..10] push close
-%             SinkNoData res -> return res
-%     liftIO $ putStrLn $ "Got a result: " ++ show res
-%   where
-%     loop [] _push close = close
-%     loop (x:xs) push close = do
-%         mres <- push x
-%         case mres of
-%             Done _leftover res -> return res
-%             Processing push' close' -> loop xs push' close'
-% 
-% Instead, the recommended approach is to connect your sink to a source. Not only is this
-% simpler, it's less error prone, and means you have a lot of flexibility in where your
-data
-% is
-% coming from. To rewrite the example above:
-% 
-% import Data.Conduit
-% import qualified Data.Conduit.List as CL
-% import Control.Monad.IO.Class (liftIO)
-% 
-% printSum :: Sink Int m Int
-% printSum = undefined
-% -- START
-% main :: IO ()
-% main = runResourceT $ do
-%     res <- CL.sourceList [1..10] $$ printSum
-%     liftIO $ putStrLn $ "Got a result: " ++ show res
-% \end{lstlisting}
-% Connecting takes care of testing for the sink constructor (SinkData versus
-% SinkNoData versus SinkLift), pulling from the source, and
-% pushing to/closing the sink.
-% 
-% However, there is one thing I wanted to point out from the long-winded example. On the
-% second
-% to last line, we ignore the leftover value of Done. This brings up the issue of
-% data loss. This is an important topic that has had a lot of thought put into it.
-% Unfortunately, we can't fully cover it yet, as we haven't discussed the main culprit in
-% the
-% drama: Conduits (the type, not the package).
-% 
-% But as a quick note here, the leftover value from the Done constructor is not
-% always ignored. The Monad instance, for example, uses it to pass data from one
-% sink to the next in a binding. And in fact, the real connect operator doesn't always
-throw
-% away the leftovers. When we cover resumable sources later, we'll see that the leftover
-% value is
-% put back on the buffer to allow later sinks reusing an existing source to pull the
-value.
-% 
-% Conduit
-% 
-% This section covers the final major datatype in our package, conduits. While sources
-% produce a
-% stream of data and sinks consume a stream, conduits transform a stream.
-% 
-% Types
-% 
-% As we did previously, let's start off by looking at the types involved.
-% \begin{lstlisting}
-% data ConduitResult input m output =
-%     Producing (Conduit input m output) [output]
-%   | Finished (Maybe input) [output]
-% 
-% data Conduit input m output = Conduit
-%     { conduitPush :: input -> ResourceT m (ConduitResult input m output)
-%     , conduitClose :: ResourceT m [output]
-%     }
-% \end{lstlisting}
-% This should look very similar to what we've seen with sinks. A conduit can be pushed to,
-% in
-% which case it returns a result. A result either indicates that it is still producing
-data,
-% or
-% that it is finished. When a conduit is closed, it returns some more output.
-% 
-% But let's examine the idiosyncracies a bit. Like sinks, we can only push one piece of
-% input at
-% a time, and leftover data may be 0 or 1 pieces. However, there are a few changes:
-% 
-%   
-% When producing (the equivalent of processing for a sink), we can return output. This is
-% because a conduit will product a new stream of output instead of producing a single
+%
+Функции работы со списками
+
+Можно легко писать собственные sinks, если вы пользуетесь встроенными примитивами из
+модуля \verb*|Data.Conduit.List|. Там есть аналоги для типичных функций работы со
+списками, например, свертки. (Там так же есть некоторые кондуиты,
+например, conduit:Data.Conduit.List:map.)
+
+Если вы желаете поупражняться в кондуитах, то реализация функций из модуля LIst (с
+хэлперами и без) будет для начала неплохо.
+
+Давайте сначала посмотрим на простые функции, которые можно подружить со встроенными
+синками.
+\begin{lstlisting}
+-- START
+import Data.Conduit
+import qualified Data.Conduit.List as CL
+import Control.Monad.IO.Class (liftIO)
+
+-- A sum function.
+sum' :: Resource m => Sink Int m Int
+sum' = CL.fold (+) 0
+
+-- Print every input value to standard output.
+printer :: (Show a, ResourceIO m) => Sink a m ()
+printer = CL.mapM_ (liftIO . print)
+
+-- Sum up all the values in a stream after the first five.
+sumSkipFive :: Resource m => Sink Int m Int
+sumSkipFive = do
+    CL.drop 5
+    CL.fold (+) 0
+
+-- Print each input number and sum the total
+printSum :: ResourceIO m => Sink Int m Int
+printSum = do
+    total <- CL.foldM go 0
+    liftIO $ putStrLn $ "Sum: " ++ show total
+    return total
+  where
+    go accum int = do
+        liftIO $ putStrLn $ "New input: " ++ show int
+        return $ accum + int
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
+
+Соединение
+
+Наконец, мы хотим как-то поиспользовать наши синки. Пока мы умеет только вручную вызвать
+\verb*|sinkPush| and \verb*|sinkClose|, но эт утомительно. Пример:
+\begin{lstlisting}
+import Data.Conduit
+import Control.Monad.IO.Class (liftIO)
+
+printSum :: Sink Int m Int
+printSum = undefined
+-- START
+main :: IO ()
+main = runResourceT $ do
+    res <-
+        case printSum of
+            SinkData push close -> loop [1..10] push close
+            SinkNoData res -> return res
+    liftIO $ putStrLn $ "Got a result: " ++ show res
+  where
+    loop [] _push close = close
+    loop (x:xs) push close = do
+        mres <- push x
+        case mres of
+            Done _leftover res -> return res
+            Processing push' close' -> loop xs push' close'
+\end{lstlisting}
+Вместо этого, рекомендуется соединять ваш синк с источником. Это проще, 
+ошибок будет меньше, да и вас будет больше простора в том, откуда приходят ваши данные.
+Перепишем пример выше:
+\begin{lstlisting}
+import Data.Conduit
+import qualified Data.Conduit.List as CL
+import Control.Monad.IO.Class (liftIO)
+
+printSum :: Sink Int m Int
+printSum = undefined
+-- START
+main :: IO ()
+main = runResourceT $ do
+    res <- CL.sourceList [1..10] $$ printSum
+    liftIO $ putStrLn $ "Got a result: " ++ show res
+\end{lstlisting}
+
+Соединение требует проверки конструктора синка (SinkData vs. 
+SinkNoData vs. SinkLift), запроса данных из источника , их передачи в синк и его закрытия.
+
+Однако, есть один момент, который я хотел подчеркнуить таким длинным примером. Со второй
+по последнюю строчки мы игнорируем значение, возвращаемое с Done. Это вносит проблему
+потери данных. Это важная тема, которую стоило бы хорошенько обсудить. К сожалению,
+сейчас мы не сможем полностью её осветить, так как мы не обсудили главного виновника
+драмы: Conduits (the type, not the package). % FIXME добавить ссылку
+
+Но если говорить кратко, то оставшееся значение не всегда игнорируется. Экземпляр Monad,
+например, использует его для передачи данных из одной синки в другую по цепочке.
+В действительности, настоящий оператор соединения не всегде отбрасывает остатки. Когда мы
+обсудим источники, получение данных из которых можно приостанавливать (resumable), мы
+увидим, что оставшееся значение складывается обратно в буфер, чтобы позволить последующим
+синкам переиспользовать существующие источники для получения данных.
+
+Кондуиты
+
+В этой части мы рассмотрим главный тип данных в нашем пакете --- кондуиты. В то время как
+источники генерируют данные а синки их поглощают, кондуиты преобразуют поток.
+
+Типы
+
+Также как мы и делали ранее, начнем с изучения используемых типов.
+\begin{lstlisting}
+data ConduitResult input m output =
+    Producing (Conduit input m output) [output]
+  | Finished (Maybe input) [output]
+
+data Conduit input m output = Conduit
+    { conduitPush :: input -> ResourceT m (ConduitResult input m output)
+    , conduitClose :: ResourceT m [output]
+    }
+\end{lstlisting}
+Это очень похоже на то, что мы видели с синками. В кондуит можно положить данные и в этом
+случае он вернет результат. Этот результат демонстрирует либо, что данные ещё
+генерируются, либо, что работа закончена. Если кондуит закрыт, то он возвращает некоторый
+результат.
+
+
+But let's examine the idiosyncracies a bit. Like sinks, we can only push one piece of
+input at
+a time, and leftover data may be 0 or 1 pieces. However, there are a few changes:
+
+  
+When producing (the equivalent of processing for a sink), we can return output. This is
+because a conduit will product a new stream of output instead of producing a single
 output
-% value
-% at the end of processing.
-% A sink always returns a single output value, while a conduit returns 0 or more outputs
+value
+at the end of processing.
+A sink always returns a single output value, while a conduit returns 0 or more outputs
 (a
-% list). To understand why, consider conduits such as concatMap (produces
-% multiple outputs for one input) and filter (returns 0 or 1 output for each
-% input).
-% We have no special constructor like SinkNoData. That's because we provide no
-% Monad instance for conduits. We'll see later how you can still use a familiar
-% Monadic approach to creating conduits.
-%   
-% Overall conduits should seem very similar to what we've covered so far.
-% 
-% Simple conduits
-% 
-% We'll start off by defining some simple conduits that don't have any state.
-% \begin{lstlisting}
-%   -- START
-% import Prelude hiding (map, concatMap)
-% import Data.Conduit
-% 
-% -- A simple conduit that just passes on the data as-is.
-% passThrough :: Monad m => Conduit input m input
-% passThrough = Conduit
-%     { conduitPush = \input -> return $ Producing passThrough [input]
-%     , conduitClose = return []
-%     }
-% 
-% -- map values in a stream
-% map :: Monad m => (input -> output) -> Conduit input m output
-% map f = Conduit
-%     { conduitPush = \input -> return $ Producing (map f) [f input]
-%     , conduitClose = return []
-%     }
-% 
-% -- map and concatenate
-% concatMap :: Monad m => (input -> [output]) -> Conduit input m output
-% concatMap f = Conduit
-%     { conduitPush = \input -> return $ Producing (concatMap f) $ f input
-%     , conduitClose = return []
-%     }
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
+list). To understand why, consider conduits such as concatMap (produces
+multiple outputs for one input) and filter (returns 0 or 1 output for each
+input).
+We have no special constructor like SinkNoData. That's because we provide no
+Monad instance for conduits. We'll see later how you can still use a familiar
+Monadic approach to creating conduits.
+  
+Overall conduits should seem very similar to what we've covered so far.
+
+Простые кондуиты
+
+Начнем с определения простейших кондуитов без состояния.
+\begin{lstlisting}
+  -- START
+import Prelude hiding (map, concatMap)
+import Data.Conduit
+
+-- A simple conduit that just passes on the data as-is.
+passThrough :: Monad m => Conduit input m input
+passThrough = Conduit
+    { conduitPush = \input -> return $ Producing passThrough [input]
+    , conduitClose = return []
+    }
+
+-- map values in a stream
+map :: Monad m => (input -> output) -> Conduit input m output
+map f = Conduit
+    { conduitPush = \input -> return $ Producing (map f) [f input]
+    , conduitClose = return []
+    }
+
+-- map and concatenate
+concatMap :: Monad m => (input -> [output]) -> Conduit input m output
+concatMap f = Conduit
+    { conduitPush = \input -> return $ Producing (concatMap f) $ f input
+    , conduitClose = return []
+    }
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
 %  Stateful conduits
 %   Of course, not all conduits can be declared without state. Doing so on the bare metal
 is
 % not
 %    too difficult.
-% \begin{lstlisting}
-%   -- START
-% import Prelude hiding (reverse)
-% import qualified Data.List
-% import Data.Conduit
-% import Control.Monad.Trans.Resource
-% 
-% -- Reverse the elements in the stream. Note that this has the same downside as
-% -- the standard reverse function: you have to read the entire stream into
-% -- memory before producing any output.
-% reverse :: Resource m => Conduit input m input
-% reverse =
-%     mkConduit []
-%   where
-%     mkConduit state = Conduit (push state) (close state)
-%     push state input = return $ Producing (mkConduit $ input : state) []
-%     close state = return state
-% 
-% -- Same thing with sort: it will pull everything into memory
-% sort :: (Ord input, Resource m) => Conduit input m input
-% sort =
-%     mkConduit []
-%   where
-%     mkConduit state = Conduit (push state) (close state)
-%     push state input = return $ Producing (mkConduit $ input : state) []
-%     close state = return $ Data.List.sort state
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting} 
+\begin{lstlisting}
+  -- START
+import Prelude hiding (reverse)
+import qualified Data.List
+import Data.Conduit
+import Control.Monad.Trans.Resource
+
+-- Reverse the elements in the stream. Note that this has the same downside as
+-- the standard reverse function: you have to read the entire stream into
+-- memory before producing any output.
+reverse :: Resource m => Conduit input m input
+reverse =
+    mkConduit []
+  where
+    mkConduit state = Conduit (push state) (close state)
+    push state input = return $ Producing (mkConduit $ input : state) []
+    close state = return state
+
+-- Same thing with sort: it will pull everything into memory
+sort :: (Ord input, Resource m) => Conduit input m input
+sort =
+    mkConduit []
+  where
+    mkConduit state = Conduit (push state) (close state)
+    push state input = return $ Producing (mkConduit $ input : state) []
+    close state = return $ Data.List.sort state
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting} 
 %  But we can do better. Just like sourceState and sinkState, we
 %             have conduitState to simplify things.
 % 
-% \begin{lstlisting}
-%   -- START
-% import Prelude hiding (reverse)
-% import qualified Data.List
-% import Data.Conduit
-% 
-% -- Reverse the elements in the stream. Note that this has the same downside as
-% -- the standard reverse function: you have to read the entire stream into
-% -- memory before producing any output.
-% reverse :: Resource m => Conduit input m input
-% reverse =
-%     conduitState [] push close
-%   where
-%     push state input = return $ StateProducing (input : state) []
-%     close state = return state
-% 
-% -- Same thing with sort: it will pull everything into memory
-% sort :: (Ord input, Resource m) => Conduit input m input
-% sort =
-%     conduitState [] push close
-%   where
-%     push state input = return $ StateProducing (input : state) []
-%     close state = return $ Data.List.sort state
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
+\begin{lstlisting}
+  -- START
+import Prelude hiding (reverse)
+import qualified Data.List
+import Data.Conduit
+
+-- Reverse the elements in the stream. Note that this has the same downside as
+-- the standard reverse function: you have to read the entire stream into
+-- memory before producing any output.
+reverse :: Resource m => Conduit input m input
+reverse =
+    conduitState [] push close
+  where
+    push state input = return $ StateProducing (input : state) []
+    close state = return state
+
+-- Same thing with sort: it will pull everything into memory
+sort :: (Ord input, Resource m) => Conduit input m input
+sort =
+    conduitState [] push close
+  where
+    push state input = return $ StateProducing (input : state) []
+    close state = return $ Data.List.sort state
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
 % Using conduits
 % 
 % The way Conduits interact with the rest of the package is via
@@ -1216,38 +1205,38 @@ is
 % sink to produce a new sink, or fused with another conduit to produce a new conduit. It's
 % best to
 % just look at the fusion operators.
-% \begin{lstlisting}
-%   -- Left fusion: source + conduit = source
-% ($=) :: (Resource m, IsSource src) => src m a -> Conduit a m b -> Source m b
-% 
-% -- Right fusion: conduit + sink = sink
-% (=$) :: Resource m => Conduit a m b -> Sink b m c -> Sink a m c
-% 
-% -- Middle fusion: conduit + conduit = conduit
-% (=$=) :: Resource m => Conduit a m b -> Conduit b m c -> Conduit a m c
-% \end{lstlisting}
+\begin{lstlisting}
+  -- Left fusion: source + conduit = source
+($=) :: (Resource m, IsSource src) => src m a -> Conduit a m b -> Source m b
+
+-- Right fusion: conduit + sink = sink
+(=$) :: Resource m => Conduit a m b -> Sink b m c -> Sink a m c
+
+-- Middle fusion: conduit + conduit = conduit
+(=$=) :: Resource m => Conduit a m b -> Conduit b m c -> Conduit a m c
+\end{lstlisting}
 % Using these operators is straightforward.
-% \begin{lstlisting}
-%   useConduits = do
-%     runResourceT
-%           $  CL.sourceList [1..10]
-%           $= reverse
-%           $= CL.map show
-%           $$ CL.consume
-% 
-%     -- equivalent to
-%     runResourceT
-%           $  CL.sourceList [1..10]
-%           $$ reverse
-%           =$ CL.map show
-%           =$ CL.consume
-% 
-%     -- and equivalent to
-%     runResourceT
-%           $  CL.sourceList [1..10]
-%           $$ (reverse =$= CL.map show)
-%           =$ CL.consume
-% \end{lstlisting}
+\begin{lstlisting}
+  useConduits = do
+    runResourceT
+          $  CL.sourceList [1..10]
+          $= reverse
+          $= CL.map show
+          $$ CL.consume
+
+    -- equivalent to
+    runResourceT
+          $  CL.sourceList [1..10]
+          $$ reverse
+          =$ CL.map show
+          =$ CL.consume
+
+    -- and equivalent to
+    runResourceT
+          $  CL.sourceList [1..10]
+          $$ (reverse =$= CL.map show)
+          =$ CL.consume
+\end{lstlisting}
 % There is in fact one last way of expressing the same idea. I'll leave it as an exercise
 to
 % the
@@ -1280,43 +1269,43 @@ specific
 % take the first five transformed values and do something with them, and then do something
 % else
 % with the remaining non-transformed values. For example, we want something like:
-% \begin{lstlisting}
-%   main = do
-%     let list = [1..10]
-%         transformed = map show list
-%         (begin, end) = splitAt 5 transformed
-%         untransformed = map read end
-%     mapM_ putStrLn begin
-%     print $ sum untransformed
-% \end{lstlisting}
+\begin{lstlisting}
+  main = do
+    let list = [1..10]
+        transformed = map show list
+        (begin, end) = splitAt 5 transformed
+        untransformed = map read end
+    mapM_ putStrLn begin
+    print $ sum untransformed
+\end{lstlisting}
 % But clearly this isn't a good general solution, since we don't want to have to transform
 % and
 % then untransform every element in the list. For one thing, we may not always have an
 % inverse
 % function. Another issue is efficiency. In this case, we can write something more
 % efficient:
-% \begin{lstlisting}
-%   main = do
-%     let list = [1..10]
-%         (begin, end) = splitAt 5 list
-%         transformed = map show begin
-%     mapM_ putStrLn transformed
-%     print $ sum end
-% \end{lstlisting}
+\begin{lstlisting}
+  main = do
+    let list = [1..10]
+        (begin, end) = splitAt 5 list
+        transformed = map show begin
+    mapM_ putStrLn transformed
+    print $ sum end
+\end{lstlisting}
 % Note the change: we perform our split before transforming any elements. This works
 % because,
 % with map, we have a 1-to-1 correspondence between the input and output elements.
 % So splitting at 5 before or after mapping show is the same thing. But what
 % happens if we replace map show with something more devious.
-% \begin{lstlisting}
-%   deviousTransform =
-%     concatMap go
-%   where
-%     go 1 = [show 1]
-%     go 2 = [show 2, "two"]
-%     go 3 = replicate 5 "three"
-%     go x = [show x]
-% \end{lstlisting}
+\begin{lstlisting}
+  deviousTransform =
+    concatMap go
+  where
+    go 1 = [show 1]
+    go 2 = [show 2, "two"]
+    go 3 = replicate 5 "three"
+    go x = [show x]
+\end{lstlisting}
 % We no longer have the 1-to-1 correspondence. As a result, we can't use the second
 method.
 % But
@@ -1326,32 +1315,32 @@ method.
 % There's only one solution to the problem that I'm aware of: transform elements one at a
 % time.
 % The final program looks like this:
-% \begin{lstlisting}
-% deviousTransform 1 = [show 1]
-% deviousTransform 2 = [show 2, "two"]
-% deviousTransform 3 = replicate 5 "three"
-% deviousTransform x = [show x]
-% 
-% transform5 :: [Int] -> ([String], [Int])
-% transform5 list =
-%     go [] list
-%   where
-%     go output (x:xs)
-%         | newLen <= 5 = (take 5 output', xs)
-%         | otherwise = go output' xs
-%       where
-%         output' = output ++ deviousTransform x
-%         newLen = length output'
-% 
-%     -- Degenerate case: not enough input to make 5 outputs
-%     go output [] = (output, [])
-% 
-% main = do
-%     let list = [1..10]
-%         (begin, end) = transform5 list
-%     mapM_ putStrLn begin
-%     print $ sum end
-% \end{lstlisting}    
+\begin{lstlisting}
+deviousTransform 1 = [show 1]
+deviousTransform 2 = [show 2, "two"]
+deviousTransform 3 = replicate 5 "three"
+deviousTransform x = [show x]
+
+transform5 :: [Int] -> ([String], [Int])
+transform5 list =
+    go [] list
+  where
+    go output (x:xs)
+        | newLen <= 5 = (take 5 output', xs)
+        | otherwise = go output' xs
+      where
+        output' = output ++ deviousTransform x
+        newLen = length output'
+
+    -- Degenerate case: not enough input to make 5 outputs
+    go output [] = (output, [])
+
+main = do
+    let list = [1..10]
+        (begin, end) = transform5 list
+    mapM_ putStrLn begin
+    print $ sum end
+\end{lstlisting}    
 %   The final output of this program is1
 % 2
 % two
