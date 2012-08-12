@@ -1,0 +1,352 @@
+Аутентификая и Авторизация
+
+Аутентификая и Авторизация обе очень связанные, и вдобавок раздельные, концепции. В то время имея дело с идентификацией пользователя, последнее определяет, что позволенно пользователю. К сожалению, также оба термина часто обозначаются как \textquotedblleft auth\textquotedblright, как концепции часто объединенные.
+Yesod обеспечивает встроенную поддержку для нескольких сторонних систем аутентификации, таки как OpenID, BrowserID и OAuth. Эти системы, где ваше приложение доверяет некоторой внешней системе для подтверждения данных пользователя. В дополнении, есть поддержка для более часто используемых имяпользователя/пароль и адреспочты/пароль систем. Предыдущий способ гарантирует простоту для пользователей (нет новых паролей для запоминания) и разработчиков (нет нужды иметь дело с полной архитектурой защиты), в то время как последнее дает разработчику больший контроль.
+На стороне авторизации, нам позволено воспользоваться REST и типобезопасными URL-и, чтобы создавать простые, декларативные системы. В дополнении, также все авторизационные коды написаны на Haskell, и вы имеете всю гибкость языка в вашем распоряжении.
+Эта глава покроет, как установить \textquotedblleft auth\textquotedblright решение в Yesod и рассмотрим некоторые компромисы в различных опциях аутентификации.
+Обзор
+
+Пакет yesod-auth обеспечивает унифицированный интерефейс для различных плагинов аутентификации. Только настоящее требование для этих бэкэндов, чтобы они идентифицировали пользователя основываясь на уникальной строке. В OpenID, к примеру, это может быть фактическое значение OpenID. В BrowserID, это адрес электронной почты. Для HashDB (который использует базу данных хэшированных паролей), это имя пользователя.
+Каждый плагин аутентификации обеспечивает свою собственную систему для входа, любая из двух — это может быть через прохождение токенов с внешнего сайта или формы адрес электронной почты/пароль. После успешного входа, плагин устанавливает значения в пользовательской сессии, чтобы обозначить его/её AuthId. Этот AuthId обычно Persistent ID из таблицы используемой для отслеживания пользователей. 
+Есть несколько функций, доступные для запроса пользовательского AuthId, наиболее часто maybeAuthId, requireAuthId, maybeAuth и requireAuth. require версии перенаправляют на страницу входа, если пользователь не вошел, в то время как второе множество функций (те, что не оканчиваются на Id) дают обе таблицы ID и значение сущности.
+Поскольку всё хранилище AuthId построено на сессиях, все правила применяются из них. На приктике, данные сохраняются зашифрованными, HMACed клиент cookie, который автоматически устаревает после определенного конфигурированного периода неактивности. В дополнении, так как там нет компонента сервеной стороны к сессиям, выход просто удаляет данные из сессии cookie; если пользователь переиспользует старое значение cookie, сессия будет оставаться действительной.
+Есть планы добавить серверный компонент к сессиям, которые будут позволять делать принудительный выход пользователя. Это будет почти естественно имплементированно до 1.0 релиза Yesod.
+С другой стороны, авторизация управляется несколькими методами внутри Yesod класса типов. Для каждого запроса, эти методы запускают определение, если доступ должен быть разрешен, запрещен, или если необходимо чтобы пользователь был авторизован. По умолчанию, эти метода позволяют доступ для каждого запроса. В качестве альтернативы, вы можете имплементировать авторизацию в более специальном способе, добавляя вызовы к requireAuth и как в индивидуальных функциях обработчика, хотя это подрывает много выгоды от декларативной системы авторизации.
+Авторизуй меня
+
+Давайте перейдем в пример с аутентификацией.
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell, TypeFamilies,
+             MultiParamTypeClasses, QuasiQuotes #-}
+import Yesod
+import Yesod.Auth
+import Yesod.Auth.BrowserId
+import Yesod.Auth.GoogleEmail
+import Data.Text (Text)
+import Network.HTTP.Conduit (Manager, newManager, def)
+
+data MyAuthSite = MyAuthSite
+    { httpManager :: Manager
+    }
+
+mkYesod "MyAuthSite" [parseRoutes|
+/ RootR GET
+/auth AuthR Auth getAuth
+|]
+
+instance Yesod MyAuthSite where
+    -- Заметка: В порядке для входа с BrowserID, вы должны корректно
+    -- установить ваш hostname здесь.
+    approot = ApprootStatic "http://localhost:3000"
+
+instance YesodAuth MyAuthSite where
+    type AuthId MyAuthSite = Text
+    getAuthId = return . Just . credsIdent
+
+    loginDest _ = RootR
+    logoutDest _ = RootR
+
+    authPlugins _ =
+        [ authBrowserId
+        , authGoogleEmail
+        ]
+
+    authHttpManager = httpManager
+
+instance RenderMessage MyAuthSite FormMessage where
+    renderMessage _ _ = defaultFormMessage
+
+getRootR :: Handler RepHtml
+getRootR = do
+    maid <- maybeAuthId
+    defaultLayout [whamlet|
+<p>Your current auth ID: #{show maid}
+$maybe _ <- maid
+    <p>
+        <a href=@{AuthR LogoutR}>Logout
+$nothing
+    <p>
+        <a href=@{AuthR LoginR}>Go to the login page
+|]
+
+main :: IO ()
+main = do
+    man <- newManager def
+    warpDebug 3000 $ MyAuthSite man
+\end{lstlisting}
+Мы начали с объявлений маршрута. Первое мы объявили наш стандартный RootR маршрут, и затем мы установили аутентификационный подсайт. Запомните этому подсайту нужны 4 параметра: путь к подсайту, имя маршрута, имя подсайта, и функция для получения значения подсайта. Другими словами, основываясь на строке:
+\lstinline'/auth AuthR Auth getAuth'
+Нам нужно иметь \lstinline'getAuth :: MyAuthSite -> Auth'. Пока мы еще не написали эту функцию сами, yesod-auth предоставляет её автоматически. С другими подсайтами (как со статическими файлами), мы обеспечиваем конфигурацию настройками в значении подсайта, и вледствии этого нужно указать функцию получения. В auth подсайте, мы указываем эти настройки в отдельном классе типов, YesodAuth.
+Почему не используем значение подсайта? Есть несколько настроек, которые мы хотим дать для auth подсайта, и делать это из типа записи будет неудобно. Также, позже мы хотим иметь ассоциируемой тип AuthId, класс типов более естественно.
+С другой стороны, почему не использовать класс типов для всех подсайтов? У этого есть минус: вы можете затем иметь только один экземпляр класса на сайт, не позволяя раздавать различные множества статичных файлов из различных маршрутов. Также, значение подсайта работает лучше когда мы хотим загрузить данные во время иницииализации приложения.
+Так что точно идет в экземпляр класс YesodAuth? Есть шесть необходимых объявлений:
+AuthId это ассоциированный тип. Это значение yesod-auth будет передано вам когда вы спросите, если пользователь вошел (через maybeAuthId или requireAuthId). В гашем случае, мы просто используем Текст, для сохранения необработанного идентификатора- адрес электронной почты в нашем случае, как мы увидим скоро. 
+getAuthId получает настоящий AuthId из типа данных Creds (учетные данные). Этот тип имеет три части информации: используемый бэкэнд аутентификации (browserid или googleemail в нашем случае), актуальный идентификатор, и ассоциированный список различной дополнительной информации.
+loginDest дает маршрут к перенаправлению после успешного входа.
+Так же, logoutDest дает маршрут к перенаправлению после выхода. В нашем примере, мы используем BrowserID, который входит через систему  Mozilla BrowserID. и электронную почту Google, который аутентифицирует пользовательским почтовым электронным адресом используя аккаунт Google. Приятная вещь в этих двух бэкэндах это:
+Они не требуют предустановки, в отличие от Facebook или OAuth, которые требуют установки учетных данных.
+Они используют адресы электронных почт как идентификаторы, с которыми людям комфортно, в отличие от OpenID, которые используют URL. 
+authHttpManager получает менеджер HTTP подключений из основного типа. Это позволяет бэкэнду аутентификации, который использует HTTP соединения (т.е. почти все сторонние системы входа), для передачи соединения, избегая стоимости перезагрузки TCP соединения для каждого соединения.
+В нашем RootR обработчике, мы имеем некоторые простые ссылки к страницам входа и выхода, зависящих от зашел пользователь или нет. Обратите внимание как мы конструируем эти подсайт ссылки: первое мы даем подсайту имя маршрута (AuthR), следующий за маршрутом м подсайтом (LoginR и LogoutR).
+Рисунок ниже показывает что процесс входа выглядит как из перспективы пользователя.
+Начальная загрузка страницы
+
+
+BrowserID экран входа
+
+
+Домащняя страница после входа 
+
+
+Элеткронная почта
+
+Для множества случаев, сторонная аутентификация через электронную почту будет достаточна. Иногда, мы хотим чтобы пользователи создавали пароль на наш сайт на самом деле. Каркасный сайт не включает это в установку, потому что:
+В порядке для принятия защищенного пароля, вам нужно быть запущенным поверх SSL. Много пользователей не предоставляют их сайты поверх SSL.
+В то время как бэкэнд электронной почты должным образом солит и хэширует пароли, скомпрометировнная база данных остается проблематичной. Еще раз, мы не делаем никаких предположений, что пользователи Yesod следуют практикам безопасной разработки.
+Вам нужна работающая система для посылки электронной почты. Много веб серверов эти дни не оборудованны чтобы справляться с всеми измерениями спам защиты используемые почтовыми серверами.
+Пример нижеуже использует встроенную систему отправки писем. Если вы захотите избежать хлопот работая с серверами электронной почты самостоятельно, вы можете использовать Amazon SES. Есть пакет называемый mime-mail-ses, который предоставляет замену для кода sendmail ниже. Этот подход мы используем на сайте Haskellers.com.
+Но предполагая, что вы возможно встретите эти требования, и вы захотите иметь отдельный вход с паролем особенный для ваше сайта, Yesod предлагает встроенный бэкэнд. Он требуетнемножко кода для установки, хотя он нуждается в сохранении паролей безопасно в базе данных и отправке различным адресам электронной почты к пользователю (проверка аккаунта, восстановление пароля, и т.д.).
+Давайте посмотри на сайт предоставляющий аутентификацию электронной почтой, хранящий пароли в постоянной SQLite базе данных.
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes, GADTs,
+             TemplateHaskell, MultiParamTypeClasses, FlexibleContexts #-}
+import Yesod
+import Yesod.Auth
+import Yesod.Auth.Email
+import Database.Persist.Sqlite
+import Database.Persist.TH
+import Data.Text (Text)
+import Network.Mail.Mime
+import qualified Data.Text.Lazy.Encoding
+import Text.Shakespeare.Text (stext)
+import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import Text.Hamlet (shamlet)
+import Data.Maybe (isJust)
+import Control.Monad (join)
+
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+User
+    email Text
+    password Text Maybe -- Пароль может быть не установлен
+    verkey Text Maybe -- Используется для сброса пароля
+    verified Bool
+    UniqueUser email
+|]
+
+data MyEmailApp = MyEmailApp Connection
+
+mkYesod "MyEmailApp" [parseRoutes|
+/ RootR GET
+/auth AuthR Auth getAuth
+|]
+
+instance Yesod MyEmailApp where
+    -- Электронные письма будут содержать ссылки, так что убедитесь включить approot, так что
+    -- ссылки должны быть правильными!
+    approot = ApprootStatic "http://localhost:3000"
+
+instance RenderMessage MyEmailApp FormMessage where
+    renderMessage _ _ = defaultFormMessage
+
+-- Установка Persistent
+instance YesodPersist MyEmailApp where
+    type YesodPersistBackend MyEmailApp = SqlPersist
+    runDB f = do
+        MyEmailApp conn <- getYesod
+        runSqlConn f conn
+
+instance YesodAuth MyEmailApp where
+    type AuthId MyEmailApp = UserId
+
+    loginDest _ = RootR
+    logoutDest _ = RootR
+    authPlugins _ = [authEmail]
+
+    -- Необходимо найти UserId по заданному адресу электронной почты.
+    getAuthId creds = runDB $ do
+        x <- insertBy $ User (credsIdent creds) Nothing Nothing False
+        return $ Just $
+            case x of
+                Left (Entity userid _) -> userid -- новый добавленный пользователь
+                Right userid -> userid -- существующий пользователь
+
+    authHttpManager = error "Email doesn't need an HTTP manager"
+
+-- Здесь весь специфичный код для электронной почты
+instance YesodAuthEmail MyEmailApp where
+    type AuthEmailId MyEmailApp = UserId
+
+    addUnverified email verkey =
+        runDB $ insert $ User email Nothing (Just verkey) False
+
+    sendVerifyEmail email _ verurl =
+        liftIO $ renderSendMail (emptyMail $ Address Nothing "noreply")
+            { mailTo = [Address Nothing email]
+            , mailHeaders =
+                [ ("Subject", "Verify your email address")
+                ]
+            , mailParts = [[textPart, htmlPart]]
+            }
+      where
+        textPart = Part
+            { partType = "text/plain; charset=utf-8"
+            , partEncoding = None
+            , partFilename = Nothing
+            , partContent = Data.Text.Lazy.Encoding.encodeUtf8 [stext|
+Please confirm your email address by clicking on the link below.
+
+\#{verurl}
+
+Thank you
+|]
+            , partHeaders = []
+            }
+        htmlPart = Part
+            { partType = "text/html; charset=utf-8"
+            , partEncoding = None
+            , partFilename = Nothing
+            , partContent = renderHtml [shamlet|
+<p>Please confirm your email address by clicking on the link below.
+<p>
+    <a href=#{verurl}>#{verurl}
+<p>Thank you
+|]
+            , partHeaders = []
+            }
+    getVerifyKey = runDB . fmap (join . fmap userVerkey) . get
+    setVerifyKey uid key = runDB $ update uid [UserVerkey =. Just key]
+    verifyAccount uid = runDB $ do
+        mu <- get uid
+        case mu of
+            Nothing -> return Nothing
+            Just u -> do
+                update uid [UserVerified =. True]
+                return $ Just uid
+    getPassword = runDB . fmap (join . fmap userPassword) . get
+    setPassword uid pass = runDB $ update uid [UserPassword =. Just pass]
+    getEmailCreds email = runDB $ do
+        mu <- getBy $ UniqueUser email
+        case mu of
+            Nothing -> return Nothing
+            Just (Entity uid u) -> return $ Just EmailCreds
+                { emailCredsId = uid
+                , emailCredsAuthId = Just uid
+                , emailCredsStatus = isJust $ userPassword u
+                , emailCredsVerkey = userVerkey u
+                }
+    getEmail = runDB . fmap (fmap userEmail) . get
+
+getRootR :: Handler RepHtml
+getRootR = do
+    maid <- maybeAuthId
+    defaultLayout [whamlet|
+<p>Your current auth ID: #{show maid}
+$maybe _ <- maid
+    <p>
+        <a href=@{AuthR LogoutR}>Logout
+$nothing
+    <p>
+        <a href=@{AuthR LoginR}>Go to the login page
+|]
+
+main :: IO ()
+main = withSqliteConn "email.db3" $ \conn -> do
+    runSqlConn (runMigration migrateAll) conn
+    warpDebug 3000 $ MyEmailApp conn
+\end{lstlisting}
+Авторизация
+
+Как только вы можете аутентифицировать пользователей, вы можете использовать их учетные данные для авторизационных запросов. Авторизация в Yesod простая и декларативная: большую часть времени, в только нуждаетесь в добавлении authRoute и isAuthorized методов в ваш Yesod экземпляр класс типов. Давайте посмотрим пример.
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings, TemplateHaskell, TypeFamilies,
+             MultiParamTypeClasses, QuasiQuotes #-}
+import Yesod
+import Yesod.Auth
+import Yesod.Auth.Dummy -- только для тестирования, не используйте в реальной жизни!!!
+import Data.Text (Text)
+import Network.HTTP.Conduit (Manager, newManager, def)
+
+data MyAuthSite = MyAuthSite
+    { httpManager :: Manager
+    }
+
+mkYesod "MyAuthSite" [parseRoutes|
+/ RootR GET POST
+/admin AdminR GET
+/auth AuthR Auth getAuth
+|]
+
+instance Yesod MyAuthSite where
+    authRoute _ = Just $ AuthR LoginR
+
+    -- имя маршрута, затем булевое значение показывающее если это запрос на запись
+    isAuthorized RootR True = isAdmin
+    isAuthorized AdminR _ = isAdmin
+
+    -- любой может получить доступ к другим страницам
+    isAuthorized _ _ = return Authorized
+
+isAdmin = do
+    mu <- maybeAuthId
+    return $ case mu of
+        Nothing -> AuthenticationRequired
+        Just "admin" -> Authorized
+        Just _ -> Unauthorized "You must be an admin"
+
+instance YesodAuth MyAuthSite where
+    type AuthId MyAuthSite = Text
+    getAuthId = return . Just . credsIdent
+
+    loginDest _ = RootR
+    logoutDest _ = RootR
+
+    authPlugins _ = [authDummy]
+
+    authHttpManager = httpManager
+
+instance RenderMessage MyAuthSite FormMessage where
+    renderMessage _ _ = defaultFormMessage
+
+getRootR :: Handler RepHtml
+getRootR = do
+    maid <- maybeAuthId
+    defaultLayout [whamlet|
+<p>Note: Log in as "admin" to be an administrator.
+<p>Your current auth ID: #{show maid}
+$maybe _ <- maid
+    <p>
+        <a href=@{AuthR LogoutR}>Logout
+<p>
+    <a href=@{AdminR}>Go to admin page
+<form method=post>
+    Make a change (admins only)
+    \ #
+    <input type=submit>
+|]
+
+postRootR :: Handler ()
+postRootR = do
+    setMessage "You made some change to the page"
+    redirect RootR
+
+getAdminR :: Handler RepHtml
+getAdminR = defaultLayout [whamlet|
+<p>I guess you're an admin!
+<p>
+    <a href=@{RootR}>Return to homepage
+|]
+
+main :: IO ()
+main = do
+    manager <- newManager def
+    warpDebug 3000 $ MyAuthSite manager
+\end{lstlisting}
+authRoute должен быть вашей страницей входа, почти всегда AuthR LoginR. isAuthorized это функция, такая что берет два параметра: запрашиваемый маршрут, и либо запрос "запись", либо нет. Вы можете на самом деле поменять значение запроса на запись, используя метод isWriteRequest, но версия из коробки следует принципам RESTful: что-угодно но GET, HEAD, OPTIONS или TRACE запросы это запросы на запись.
+То, что удобно тело isAuthorized это то, что вы можете запустить и перехватить код, который вы захотите. Это означает вы можете:
+Получить доступ к файловой системе (Нормальный IO)
+Просмотреть записи в базе данных
+Принять любые сессии или запросы какие захотите
+Используя эти техники, вы можете разработать как сложную систему авторизации, какую захотите, или даже связать с существующей системы используя свою организацию.
+Выводы
+
+Эта глава покрывает основы установки пользовательской аутентификации, а также, как встроенные авторизационные функции предоставляются просто, декларативный подход для пользователей. В то время эти сложные концепции, с многими подходами, Yesod должен предоставить вам строительные блоки, которые вам нужны для создания вашего собственного решения аутентификации.
