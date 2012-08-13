@@ -1133,11 +1133,10 @@ concatMap f = Conduit
 main :: IO ()
 main = return ()
 \end{lstlisting}
-%  Stateful conduits
-%   Of course, not all conduits can be declared without state. Doing so on the bare metal
-is
-% not
-%    too difficult.
+
+Кондуиты с состоянием
+%
+Конечно же, не все кодуиты могут быть объявлены без состояния.  Реализация (кондуитов с состоянием) в лоб (bare metal) не очень сложна.
 \begin{lstlisting}
   -- START
 import Prelude hiding (reverse)
@@ -1168,9 +1167,7 @@ sort =
 main :: IO ()
 main = return ()
 \end{lstlisting} 
-%  But we can do better. Just like sourceState and sinkState, we
-%             have conduitState to simplify things.
-% 
+Но мы можем сделать лучше. Как и в случае с sourceState и sinkState, мы с помощью conduitState кое-что упростить.
 \begin{lstlisting}
   -- START
 import Prelude hiding (reverse)
@@ -1198,13 +1195,10 @@ sort =
 main :: IO ()
 main = return ()
 \end{lstlisting}
-% Using conduits
-% 
-% The way Conduits interact with the rest of the package is via
-% fusing. A conduit can be fused into a source, producing a new source, fused into a
-% sink to produce a new sink, or fused with another conduit to produce a new conduit. It's
-% best to
-% just look at the fusion operators.
+Использование кондуитов
+
+Кондуиты работаюь с другими сущностями этого пакета с помощью комбинирования (fusing).
+Кондуит может быть скомбинирован с источником, создавая новый источник, с синком для получения нового синка, или с другим кондуитом, для получения новго кондуита. Неплохо бы взглянуть на операторы комбинирования. 
 \begin{lstlisting}
   -- Left fusion: source + conduit = source
 ($=) :: (Resource m, IsSource src) => src m a -> Conduit a m b -> Source m b
@@ -1215,7 +1209,8 @@ main = return ()
 -- Middle fusion: conduit + conduit = conduit
 (=$=) :: Resource m => Conduit a m b -> Conduit b m c -> Conduit a m c
 \end{lstlisting}
-% Using these operators is straightforward.
+Использование этих операторов довольно прямолинейно.
+% FIXME: что это нахрен за два доллара?
 \begin{lstlisting}
   useConduits = do
     runResourceT
@@ -1237,38 +1232,20 @@ main = return ()
           $$ (reverse =$= CL.map show)
           =$ CL.consume
 \end{lstlisting}
-% There is in fact one last way of expressing the same idea. I'll leave it as an exercise
-to
-% the
-% reader to discover it.
-% 
-% It may seem like all these different approaches are redundant. While occassionally you
-can
-% in
-% fact choose whichever approach you feel like using, in many cases you will need a
-specific
-% approach. For example:
-% 
-%   
-% If you have a stream of numbers, and you want to apply a conduit (e.g., map
-% show) to only some of the stream that will be passed to a specific sink, you'll want
-% to use the right fusion operator.
-% If you're reading a file, and want to parse the entire file as textual data, you'll want
-% to
-% use left fusion to convert the entire stream.
-% If you want to create reusable conduits that combine together individual, smaller
-% conduits,
-% you'll use middle fusion.
-%   
-% Data loss
-% 
-% Let's forget about conduits for a moment. Instead, suppose we want to write a program-
-% using
-% plain old lists- that will take a list of numbers, apply some kind of transformation to
-% them,
-% take the first five transformed values and do something with them, and then do something
-% else
-% with the remaining non-transformed values. For example, we want something like:
+Существует ещё один способ выразить то же самое. Его поиск оставлен читателя в качестве упражнения.
+
+Вам может показаться, что такое количество различных способов комбинирования чрезмерно. Хотя вы можете выбирать какой способ вам больше нравится, в большинстве случаем вам нужен определенный способ. Например:
+
+\begin{itemize}   
+\item Если у вас поток чисел и вы хотите применить кондуит (например, map show) только к некоторой части потока, которая будет переданна в определенную синку, то нужно использовать оператор комбинирования справа.
+\item Если вы читаете файл и хотите распарсить его целиком как текстовые данные, стоит использовать оператор комбинирования слева, чтобы преоразовать весь поток.
+\item Если вам нужны переиспользуемые кондуиты, которые будут объединяться в большие кондуиты, используете срединное комбинирование.
+\end{itemize}
+
+Потери данных
+ 
+Забудем о кондуитах на минутку. Давайте напишем программу, которая использует голые списки: она примет список чисел, применит некоторое преобразование к нему, возьмет первые 5 элементов и сделает с ними что-то, а потом возьмем оставшиеся непреобразованные денные и сделает с ними что-нибудь ещё. Как-то так, например:
+% FIXME охренеть какой надуманный пример
 \begin{lstlisting}
   main = do
     let list = [1..10]
@@ -1278,12 +1255,7 @@ specific
     mapM_ putStrLn begin
     print $ sum untransformed
 \end{lstlisting}
-% But clearly this isn't a good general solution, since we don't want to have to transform
-% and
-% then untransform every element in the list. For one thing, we may not always have an
-% inverse
-% function. Another issue is efficiency. In this case, we can write something more
-% efficient:
+Но ясно, что это не очень хорошее решение в целом, потому что нам не нужно преобразовывать в одну сторону, а потом обратно все элементы списка. К тому же мы не всегда будем иметь функцию обратного преобразования. Другая причина --- неэффективность. В данном случае мы можем написать более эффективное решение:
 \begin{lstlisting}
   main = do
     let list = [1..10]
@@ -1292,11 +1264,7 @@ specific
     mapM_ putStrLn transformed
     print $ sum end
 \end{lstlisting}
-% Note the change: we perform our split before transforming any elements. This works
-% because,
-% with map, we have a 1-to-1 correspondence between the input and output elements.
-% So splitting at 5 before or after mapping show is the same thing. But what
-% happens if we replace map show with something more devious.
+Обратите внимание: мы разбиваем список до применения  нашего преобразования. Этот подход работает, потому что при использовании map у нас есть взаимооднозначное соответствие между элементами. Поэтому выделение первых пяти элементов до или после преобразования суть одно и то же. Но что будет, если мы заменим map show чем-то более сложное.
 \begin{lstlisting}
   deviousTransform =
     concatMap go
@@ -1306,15 +1274,9 @@ specific
     go 3 = replicate 5 "three"
     go x = [show x]
 \end{lstlisting}
-% We no longer have the 1-to-1 correspondence. As a result, we can't use the second
-method.
-% But
-% it's even worse: we can't use the first method either, since there's no inverse of our
-% deviousTransform.
-% 
-% There's only one solution to the problem that I'm aware of: transform elements one at a
-% time.
-% The final program looks like this:
+Теперь нет взаимооднозначного соответствия. Следовательно, мы не можем использовать второй способ. Но на самом деле всё гораздо хуже: мы также не можем использовать первый метод, потому что у нас нет обратного преобразования к функции deviousTransform.
+ 
+Я знаю только одно решение проблемы: преобразовавать значения по одному. Конечный вариант будет выглядеть примерно так:
 \begin{lstlisting}
 deviousTransform 1 = [show 1]
 deviousTransform 2 = [show 2, "two"]
@@ -1341,205 +1303,145 @@ main = do
     mapM_ putStrLn begin
     print $ sum end
 \end{lstlisting}    
-%   The final output of this program is1
-% 2
-% two
-% three
-% three
-% 49
-% 
-% What's important to note is that the number 3 is converted into five copies of the word
-% "three", yet only two of
-% them show up in the output. The rest are discarded in the take 5 call.
-% 
-% This whole exercise is just to demonstrate the issue of data loss in conduits. By
-forcing
-% conduits to accept only one input at a time, we avoid the issue of transforming too many
-% elements
-% at once. That doesn't mean we don't lose any data: if a conduit produces too much output
-% for the receiving sink to handle, some of it may be lost.
-% 
-% To put all this another way: conduits avoid chunking to get away from data loss. This is
-% not an
-% issue unique to conduits. If you look in the implementation of concatMapM for
-% enumerator, you'll see that it forces elements to be handled one at a time.
-% In conduits, we opted to force the issue at the type level.
-% 
-% SequencedSink
-% 
-% Suppose we want to be able to combine up existing conduits and sinks to produce a new,
-% more
-% powerful conduit. For example, we want to write a conduit that takes a stream of numbers
-% and sums
-% up every five. In other words, for the input [1..50], it should result in the
-% sequence [15,40,65,90,115,140,165,190,215,240]. We can definitely do this with
-% the low-level conduit interface.
-% \begin{lstlisting}
-% import Data.Conduit
-% -- START
-% sum5Raw :: Resource m => Conduit Int m Int
-% sum5Raw =
-%     conduitState (0, 0) push close
-%   where
-%     push (total, count) input
-%         | newCount == 5 = return $ StateProducing (0, 0) [newTotal]
-%         | otherwise     = return $ StateProducing (newTotal, newCount) []
-%       where
-%         newTotal = total + input
-%         newCount = count + 1
-%     close (total, count)
-%         | count == 0 = return []
-%         | otherwise  = return [total]
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% But this is frustrating, since we already have all the tools we need to do this at a
-high
-% level! There's the fold sink for adding up the numbers, and the
-% isolate conduit which will only allow up to a certain number of elements to be
-% passed to a sink. Can't we combine these somehow?
-% 
-% The answer is a SequencedSink. The idea is to create a normal
-% Sink, except it returns a special output called a
-% SequencedSinkResponse. This value can emit new output, stop processing data, or
-% transfer control to a new conduit. (See the Haddocks for more information.) Then we can
-% turn this
-% into a Conduit using the sequenceSink function. This function
-% also takes some state value that gets passed through to the sink.
-% 
-% So we can rewrite sum5Raw in a much more high-level manner.
-% \begin{lstlisting}
-% import Data.Conduit
-% import qualified Data.Conduit.List as CL
-% -- START
-% sum5 :: Resource m => Conduit Int m Int
-% sum5 = sequenceSink () $ \() -> do
-%     nextSum <- CL.isolate 5 =$ CL.fold (+) 0
-%     return $ Emit () [nextSum]
-% -- STOP
-% main = return ()
-% \end{lstlisting}
-% All of the () in there are simply the unused state variable being passed
-% around, they can be ignored. Otherwise, we're doing exactly what we want. We fuse
-% isolate to fold to get the sum of the next five elements from
-% the stream. We then emit that value, and start all over again.
-% 
-% Let's say we want to modify this slightly. We want to get the first 8 sums, and then
-pass
-% through the remaining values, multiplied by 2. We can keep track of how many values
-we've
-% returned in our state, and then use the StartConduit constructor to pass control
-% to the multiply-by-2 conduit next.
-% \begin{lstlisting}
-% import Data.Conduit
-% import qualified Data.Conduit.List as CL
-% -- START
-% sum5Pass :: Resource m => Conduit Int m Int
-% sum5Pass = sequenceSink 0 $ \count -> do
-%     if count == 8
-%         then return $ StartConduit $ CL.map (* 2)
-%         else do
-%             nextSum <- CL.isolate 5 =$ CL.fold (+) 0
-%             return $ Emit (count + 1) [nextSum]
-% -- STOP
-% main = return ()
-% \end{lstlisting}
-% These are obviously very contrived examples, but I hope it makes clear the power and
-% simplicity
-% available from this approach.
-% 
-Buffering
+Результат работы программы будет таким:
+\begin{verbaim}
+1
+2
+two
+three
+three
+49
+\end{verbatim}
+Стоит обратить внимание, что число 3 преобразуется в пять копий слова "three", хотя только две из них попадают в результат. Остаток отбрасывается при вызове \verb=take 5=.
+ 
+Этот пример наглядно демонстрирует проблему потери данных при использовании кондуитов. Заставляя кодуиты принимать только одни данные в текущий момент времени мы избегаем проблемы немедленного преобразования слишком большого количества данных. Это не значит, что мы не теряем данные: если кондуит, генерирует слишком много данных, что синк не может их все принять, то некоторая ихз часть потеряется.
+ 
+В оправдание скажем, что кондуиты позволяют разбивать данные на куски (chunking), что бы избегать потерь данных.
+% To put all this another way: conduits avoid chunking to get away from data loss. 
+Эта проблема встречается не только при использовании кондуитов. если вы взглянете на реализацию concatMapM для енумераторов, вы увидете что там элементы обрабатываются по одному. В кондуитах мы выбираем решать эту проблему на уровне типов ( In conduits, we opted to force the issue at the type level).
+ 
+ SequencedSink
+ 
+Предположим, что нам необходимо скомбинировать существующие кондуиты  и  синки, чтобы получить новый, более сложный кондуит. Например, мы хотим написать кондуит, который прнимает поток чисел и суммирует их по пять. Другими словами, для входа [1..50] он должен вернуть [15,40,65,90,115,140,165,190,215,240]. Мы определенно можем это сделать с помощью нихкоуровнего интерфеса кондуитов.
+\begin{lstlisting}
+ import Data.Conduit
+ -- START
+ sum5Raw :: Resource m => Conduit Int m Int
+ sum5Raw =
+     conduitState (0, 0) push close
+   where
+     push (total, count) input
+         | newCount == 5 = return $ StateProducing (0, 0) [newTotal]
+         | otherwise     = return $ StateProducing (newTotal, newCount) []
+       where
+         newTotal = total + input
+         newCount = count + 1
+     close (total, count)
+         | count == 0 = return []
+         | otherwise  = return [total]
+ -- STOP
+ main :: IO ()
+ main = return ()
+\end{lstlisting}
+Но это неудобно, так как мы уже имеем всё, что нужно, чтобы реализовать это высокоуровнево. У нас есть синк свертки, чтобы складывать числа и изолирующий кондуит, который позволит передать в синк только определенное количество данных. Может быть мы сможем их скомбинировать?
+ 
+Нам нужен SequencedSink. Он является обычным синком, за исключением того, что он возвращает специальный SequencedSinkResponse. Это значение может вернуть новый результат, остановить обработку данных или передать управление в новый кондуит. (Дополнительную информаци вы можете почерпнуть в Haddocks.) Потом мы сможем преобразовать это в кондуит с помощью функции sequenceSink. Она также принимает состояние, которое будет передано в синк.
+ 
+ Теперь мы можем переписать sum5Raw более высокоуровнево.
+ \begin{lstlisting}
+ import Data.Conduit
+ import qualified Data.Conduit.List as CL
+ -- START
+ sum5 :: Resource m => Conduit Int m Int
+ sum5 = sequenceSink () $ \() -> do
+     nextSum <- CL.isolate 5 =$ CL.fold (+) 0
+     return $ Emit () [nextSum]
+ -- STOP
+ main = return ()
+ \end{lstlisting}
+Здесь все () --- это  неиспользуемое состояние, которое передается и там игнорируется. Другими словами мы сделали ровно то, что хотели. Мы скомбинировали изолирование со сверткой, чтобы получить сумму следующих пять элементов потока. Затем мы возвращаем значение, чтобы начать всё сначала.
+ 
+Предполжим, что мы хотим это слегка изменить. Мы хотим получить первые 8 сумм и затем вернуть эти значения, увеличенные в двое. Будем хранить сколько значений мы вернули в состоянии, а затем воспользуемся конструктором StartConduit, чтобы передать управление кондуиту, умножающему на 2.
+\begin{lstlisting}
+ import Data.Conduit
+ import qualified Data.Conduit.List as CL
+ -- START
+ sum5Pass :: Resource m => Conduit Int m Int
+ sum5Pass = sequenceSink 0 $ \count -> do
+     if count == 8
+         then return $ StartConduit $ CL.map (* 2)
+         else do
+             nextSum <- CL.isolate 5 =$ CL.fold (+) 0
+             return $ Emit (count + 1) [nextSum]
+ -- STOP
+ main = return ()
+\end{lstlisting}
+Очевидно, что примеры выше несколько искусственны, но я надеюсь, что прояснили мощь и простоту этого подхода. 
+ 
+Буферизация.
 
-Buffering is one of the unique features of conduits. With buffering, conduits no longer
-need to
-control the flow of your application. In some cases, this can lead to simpler code.
+Буферизация --- это одно из уникальных свойств кондуитов. С её использованием вам больше не придется заботиться о потоке управления в вашей программе.
+% With buffering, conduits no longer need to control the flow of your application. 
+Иногда, она поможет упростить код.
 
-Inversion of Control
 
-Buffering was actually one of the main motivations in the creation of the
-conduit package. To see its importance, we need to consider the approach we've
-seen so far, which we'll call inversion of control, or IoC.
+Инверсия управления.
 
-Inversion of control can mean different things in different circles. If you object to its
-usage here, go ahead replace it with some other phrase like "warm, fuzzy thing." I won't
-be
-offended.
+Буферизация была одной из главный причин для создания кондуитов. Чтобы понять её важность, расмотрим подход, который мы видели не так давно, который приведет к инверсии управления.
 
-Suppose you want to count how many newline characters there are in a file. In the standard
-imperative approach, you would do someting like:
+Инверсия управления в разных контекстах может означать разное. Если вы возражаете против использования этого термна здесь, то можете называть это "тёплой пушистой штуковиной" --- я не буду возражать.
 
-  
-   Open the file
-   Pull some data into a buffer
-   Loop over the values in the buffer, incrementing a counter on each newline character
-   Return to 2
-   Close the file
-  
-Notice that your code is explicitly calling out to other code and that code is returning
-control back to your code. You have retained full control of the flow of execution of your
-program. The conduit approach we've seen so far does not work this way. Instead, you
-would:
-  
-Write a sink that counts newlines and adds the result to an accumulator.
-Connect the sink to a source
-  
-There's no doubt in my mind that this is an easier approach. You don't have to worry about
-opening and closing files or pulling data from the file. Instead, the data you need to
-process is
-simply presented to you. This is the advantage of IoC: you can focus on specifically your
-piece
-of the code.
+Предположим, что вы хотите посчитать, как много переводов строки в файле. При стандартном императивном подходе вы бы действовали примерно так:
 
-We use this IoC approach all over Haskell: for example, instead of readMVar
-and putMVar, you can use withMVar. Don't bother with
-openFile and closeFile, just use withFile and
-pass in a function that uses the Handle. Even C has a version of this: why
-malloc and free when you could just alloca?
+\begin{itemize}  
+\item   Открываем файл
+\item   Читаем данные в буфер
+\item   Обходим данные в буфере, икрементируя счетчик, когда встречаем перевод строки.
+\item   Возвращаемся на шаг два
+\item   Закрываем файл.
+\end{itemize}
+Обратите внимание, что ваш код явно вызывает другой код, и этот джругой код передает управление обратно в ваш код. Вы полностью контролируете поток управления вашей программы. В кондуитах, как мы видели, так сделать не получится. Вместо этого мы будем:
+\begin{itemize}
+\item  писать в синк, который считает переводы строки и инкрементирует аккумулятор
+\item  Соединять синк с источником.
+\end{itemize} 
+У меня нет сомнений, что этот подход проще. Нам не придется заботиться об открытии и закрытии файла и чтения данных из него. Здесь необходимые данные просто предоставляются нам. Это преимущество инверсии управления --- мы можем сосредоточиться именно на нашей части кода.
 
-Actually, that last one is a huge red herring. Of course you can't just use
-alloca for everything. alloca only allocates memory locally on
-the stack, not dynamically on the heap. There's no way to return your allocated memory
-outside
-the current function.
+Мы используем этот подход всюду в хаскеле: например, вместо readMVar и putMVar, мы используетм withMVar. Не используем openFile и closeFile, сразу пишем withFile и передаем функцию, которая использует дескриптор. Даже в С используется такое же: зачем malloc и free когда можно писать сразу же alloca?
 
-But actually, the same restriction applies to the whole family of with
-functions: you can never return an allocated resource outside of the "block". Usually this
-works
-out just fine, but we need to recognize that this is a change in how we structure our
-programs. Often times, with simple examples, this is a minor change. However, in larger
-settings
-this can become very difficult to manage, bordering on impossible at times.
+Вообще-то, мы уже далеко ушли от темы. Конечно же, мы не можем использовать alloca везде. Функция alloca выделять память только на локальном стеке, а не в динамически в куче. Никак нельзя вернуть выделенную память наружу из данной функции.
 
-A web server
+На самом деле, некоторые ограничения применяются ко всему семейству таких функций: мы никогда не сможем вернуть выделенный ресурс наружу из данного "блока" кода. Обычно, это и не нужно, просто мы должны осмыслить, что это изменение повлияет на структуры наших программ. Однако, в сложных окружениях становится сложно управлять этим, а порою просто не возможно. 
+% FIXME: Что-то я тут не совсем понял.
+% Usually this works
+% out just fine, but we need to recognize that this is a change in how we structure our
+% programs. Often times, with simple examples, this is a minor change. However, in larger
+% settings this can become very difficult to manage, bordering on impossible at times.
 
-Let's say we're going to write a web server. We're going to use the following low-level
-operations:
+Веб-сервер
+
+Давайте напишем веб-сервер. Нам понадобятся следующие низкоуровневые операции:
 \begin{lstlisting}
 data Socket
 recv    :: Socket -> Int -> IO ByteString -- returns empty when the socket is closed
 sendAll :: Socket -> ByteString -> IO ()
 \end{lstlisting}
-We're up to the part where we need to implement the function handleConn that
-handles an individual connection. It will look something like this:
+Также нам понадобится функция handleConn, которая будет обрабатывать соединения по одному. Например такая:
 \begin{lstlisting}
 data Request  -- request headers, HTTP version, etc
 data Response -- status code, response headers, resposne body
 type Application = Request -> IO Response
 handleConn :: Application -> Socket -> IO ()
 \end{lstlisting}
-What does our handleConn need to do? In broad strokes:
-
-  
-   Parse the request line
-   Parse the request headers
-   Construct the Request value
-   Pass Request to the Application and get back a Response
-   Send the Response over the Socket
-  
-We start off by writing steps 1 and 2 manually, without using conduits. We'll do this very
-simply and just assume three space-separated strings. We end up with something that looks
-like:
+Что наша функция handleConn должна делать? Если кратко, то:
+\begin{itemize}  
+\item   Разобрать тело запроса
+\item   Разобрать заголовки запроса
+\item   Создать значение типа Request
+\item   Передать его приложению, чтобы получить обратно ответ типа Response
+\item   Передать ответ обратно в сокет.
+\end{itemize}  
+Начнем с реализации пунктов 1 и 2 вручную, без кондуитов. Будем действовать очень просто, предполагая, что запрос состоит из трех слов, разделенных пробелами. Остановимся на таком варианте:
 \begin{lstlisting}
 data RequestLine = RequestLine ByteString ByteString ByteString
 
@@ -1549,12 +1451,7 @@ parseRequestLine socket = do
     let (method:path:version:ignored) = S8.words bs
     return $ RequestLine method path version
 \end{lstlisting}
-There are two issues here: it doesn't handle the case where there are less than three
-words in
-the chunk of data, and it throws away any extra data. We can definitely solve both of
-these
-issues manually, but it's very tedious. It's much easier to implement this in terms of
-conduits.
+Здесь две проблемы: мы не рассматриваем случай, когда в чанке данных меньше трех строк и отбрасываем лишние данные. Мы определенно можем решить обе проблемы вручную, но это будет утомительно. Гораздо проще переписать это в териминах кондуитов.
 \begin{lstlisting}
 -- START
 import Data.ByteString (ByteString)
@@ -1580,12 +1477,7 @@ parseRequestLine = do
 -- STOP
 main = return ()
 \end{lstlisting}
-This means that our code will automatically be supplied with more data as it comes in, and
-any
-extra data will automatically be buffered in the Source, ready for the next time
-it's used. Now we can easily structure our program together, demonstrating the power of
-the
-conduits approach:
+Это значит, что нашему коду будут предоставлены данные, как только они поступят и дополнительные данные будут автоматически забуферизованы в источнике, готовые к использованию. Теперь мы можем легко состыковать наши программы вместе, пользуясь мощью подхода на кондуитах:
 \begin{lstlisting}
   -- START
 import Data.ByteString (ByteString)
