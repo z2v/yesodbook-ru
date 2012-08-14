@@ -82,7 +82,7 @@ goElem (Element name attrs children) =
 
 Выходные данные в формате XHTML:
 
-\begin{lstlisting}[language=XHTML]
+\begin{lstlisting}[language=XML] % XHTML для lstlisting неизвестен
 <?xml version="1.0" encoding="UTF-8"?>
 <html>
     <head>
@@ -105,7 +105,7 @@ goElem (Element name attrs children) =
         <img src="myimage.png"/>
     </body>
 </html>
-\begin{lstlisting}
+\end{lstlisting}
 
 \section{Типы} % Types
 
@@ -151,7 +151,7 @@ The last class instance worth mentioning is IsString. It would be very tedious t
 
 XML documents are a tree of nested nodes. There are in fact four different types of nodes allowed: elements, content (i.e., text), comments, and processing instructions.
 
-\fbox{\begin{minipage}[!h]{.9\linewidth}
+\begin{remark}
 You may not be familiar with that last one, it's less commonly used. It is marked
 up as:
 
@@ -165,7 +165,7 @@ There are two surprising facts about processing instructions (PIs):
 \item PIs don't have attributes. While often times you'll see processing instructions that appear to have attributes, there are in fact no rules about that data of an instruction.
 \item The <?xml ...?> stuff at the beginning of a document is not a processing instruction. It is simply the beginning of the document (known as the XML declaration), and happens to look an awful lot like a PI. The difference though is that the <?xml ...?> line will not appear in your parsed content.
 \end{itemize}
-\end{minipage}}
+\end{remark}
 
 Since processing instructions have two pieces of text associated with them (the target and the data), we have a simple data type:
 
@@ -176,7 +176,7 @@ data Instruction = Instruction
     }
 \end{lstlisting}
 
-Comments have no special datatype, since they are just text. But content is an interesting one: it could contain either plain text or unresolved entities (e.g., &copyright-statement;).  xml-types keeps those unresolved entities in all the data types in order to completely match the spec. However, in practice, it can be very tedious to program against those data types. And in most use cases, an unresolved entity is going to end up as an error anyway.
+Comments have no special datatype, since they are just text. But content is an interesting one: it could contain either plain text or unresolved entities (e.g., \&copyright-statement;).  xml-types keeps those unresolved entities in all the data types in order to completely match the spec. However, in practice, it can be very tedious to program against those data types. And in most use cases, an unresolved entity is going to end up as an error anyway.
 
 So the xml-conduit:Text.XML module defines its own set of datatypes for nodes, elements and documents that removes all unresolved entities. If you need to deal with unresolved entities instead, you should use the xml-conduit:Text.XML.Unresolved module. From now on, we'll be focusing only on the Text.XML data types, though they are almost identical to the xml-types versions.
 
@@ -351,7 +351,7 @@ main = do
         cursor $/ element "head" &/ element "title" &// content
 \end{lstlisting}%$
 
-\$/ says to apply the axis on the right to the children of the cursor on the left. &/ is almost identical, but is instead used to combine two axes together. This is a general rule in Text.XML.Cursor: operators beginning with \$ directly apply an axis, while & will combine two together. &// is used for applying an axis to all descendants.
+\$/ says to apply the axis on the right to the children of the cursor on the left. \&/ is almost identical, but is instead used to combine two axes together. This is a general rule in Text.XML.Cursor: operators beginning with \$ directly apply an axis, while \& will combine two together. \&// is used for applying an axis to all descendants.
 
 Let's go for a more complex, if more contrived, example. We have a document that looks like:
 
@@ -470,11 +470,11 @@ Let's make a few points:
 \begin{itemize}
 \item No close tags.
 \item Whitespace-sensitive.
-\item If you want to have whitespace at the end of a line, use a # at the end. At the beginning, use a backslash.
+\item If you want to have whitespace at the end of a line, use a \# at the end. At the beginning, use a backslash.
 \end{itemize}
   
 \item An xml interpolation will return a list of Nodes. So you still need to wrap up the output in all the normal Document and root Element constructs.
-\item There is no support for the special .class and #id attribute forms.
+\item There is no support for the special .class and \#id attribute forms.
 \end{itemize}
 
 And like normal Hamlet, you can use variable interpolation and control structures. So a slightly more complex example would be:
@@ -527,8 +527,8 @@ personNodes person = [xml|
 A few more notes:
 
 \begin{itemize}
-\item The caret-interpolation (^{...}) takes a list of nodes, and so can easily embed other xml-quotations.
-\item Unlike Hamlet, hash-interpolations (#{...}) are not polymorphic, and can only accept Text values.
+\item The caret-interpolation (\^{...}) takes a list of nodes, and so can easily embed other xml-quotations.
+\item Unlike Hamlet, hash-interpolations (\#{...}) are not polymorphic, and can only accept Text values.
 \end{itemize}
 
 \section{xml2html}

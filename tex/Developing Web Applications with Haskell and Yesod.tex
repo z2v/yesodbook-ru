@@ -82,6 +82,12 @@
 % for hyperlinks
 \usepackage{hyperref}
 
+% helper for remarks
+\usepackage{adjustbox}
+\newenvironment{remark}
+{\begin{adjustbox}{minipage=.9\linewidth, fbox, center}}
+{\end{adjustbox}}
+
 % use long spaces to remove overfull a la Word
 \sloppy
 
