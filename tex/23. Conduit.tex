@@ -1512,28 +1512,23 @@ handleConn app socket = do
 -- STOP
 main = return ()
 \end{lstlisting}
-Whither the request body?
-This is all great, until we realize we can't read the request body. The
-Application is simply given the Request, and lives in the
-IO monad. It has no access whatsoever to the incoming stream of data.
+Где же тело запроса? У нас всё было бы хорошо, если бы мы могли читать тело запроса. Сейчас
+приложению просто передается значение типа Request, которе завернуто в монаду IO. 
+Оно не имеет доступа к входному потоку данных.
 
-There's an easy fix for this actually: have the Application live in the
-Sink monad. This is the very approach we took with
-enumerator-based WAI 0.4. However, there are two problems:
+Это можно легко исправить, завернув значение типа Application в монаду Sink. 
+Это тот же самый трюк, который мы исопльзовали в enumerator-based WAI 0.4. 
+% FIXME? WAi? WTF?
+Однако, есть две проблемы:
 
+\begin{itemize}
+\item Люди находят это неудобным. Они ожидают, что значение типа Request будет иметь в себе значение requestBody типа Source.
+\item В некоторых случаях использование такого подхода становится невероятно тудным. Например, написать HTTP-прокси комбинируя WAI и http-энумераторы видится почти невозможным.
+\end{itemize}
+Существует ещё один недостаток инферсии управления. Наш код желает быть управляемым.
+Он желает, чтобы ему дали что-то откуда можно брать данные, что-то куда их можно сложить и запуститься от них. Нам нужно какое-то решение этой проблемы.
 
-People find it confusing. What people expect is that the Request
-value would have a requestBody value of type Source.
-This makes certain kinds of usage incredibly difficult. For example, trying to write an
-HTTP
-proxy combining WAI and http-enumerator proved to be almost impossible.
-
-This is the downside of inversion of control. Our code wants to be in control. It wants to
-be
-given something to pull from, something to push to, and run with it. We need some solution
-to the
-problem.
-
+Если вы считаете, что описанная проблема не так критична, то это потому, что вы не до конца погрузились в детали. На надо также учитывать
 If you think that the situation I described with the proxy isn't so bad, it's because I've
 gone easy on the details. We also need to take into account streaming the response body,
 and the
@@ -1548,73 +1543,52 @@ enough data, it would stop. However, odds are that it didn't stop exactly at the
 the headers. It likely consumed a bit of the request body as well.
 
 If we just create a new source and pass that to the request, it will be missing the
-beginning
-of the request body. We need some way to pass that buffered data along.
+beginning of the request body. We need some way to pass that buffered data along.
 
-BufferedSource
+Буферизованные источники (BufferedSource)
 
-And so we finally get to introduce the last data type in conduits:
-BufferedSource. This is an abstract data type, but all it really does is keep a
-mutable reference to a buffer and an underlying Source. In order to create one
-of these, you use the bufferSource function.
+Наконец, мы может представить последний тип данных в кондуитах: BufferedSource. Это абстрактный тип данных, но всё что он в действительности делает, это содержит мутабельную ссылку на буффер и соответствующий ему источник. Чтобы создать значение такого типа, вы можете воспользоваться функцией bufferSource.
+\begin{verbatim}
+bufferSource :: Resource m => Source m a -> ResourceT m (BufferedSource m a)
+\end{verbatim}
+Это небольшое улучшение позволит нам легко решить нашу дилемму связанную с веб-сервером.
+Вместо соединения источника с синками, осуществляющими разбор, мы будем использовать 
+BufferedSource. При закрытии каждого соединения, все оставшиеся данные будут складываться
+обратно в буфер. Для нашего веб-сервера мы создадим BufferedSourceuse и будем использовать 
+его для чтения запросов и их заголовков, а затем передадим этот BufferedSource в приложение, для чтения тел запросов.
+% FIXME я ничего не понял.
 
-bufferSource ::Resource m =< Source m a -< ResourceT m (BufferedSource m a)
-This one little change is what allows us to easily solve our web server dilemna. Instead
-of
-connecting a Source to our parsing Sinks, we use a
-BufferedSource. At the end of each connection, any leftover data is put back on
-the buffer. For our web server case, we can now create a BufferedSource, use
-that to read the request line and headers, and then pass that same
-BufferedSource to the application for reading the request body.
+Классы типов
 
-Typeclass
-
-We want to be able to connect a buffered source to a sink, just like we would a regular
-source.
-We would also like to be able to fuse it to a conduit. In order to make this convenient,
-conduit
-has a typeclass, IsSource. There are instances provided for both
-Source and BufferedSource. Both the connect
-(\verb#$$#) and left-fuse (\verb#$=#) operators use this typeclass.
+Мы хотим уметь соединять буферизованый источник с синком, как будто это обычный источник.
+Мы также хотим уметь комбинировать его с кондуитами. Чтоб сделать это удобным, в кондуитах
+есть класс типов IsSource. Его экземляры предоставлены и для Source, и для BufferedSource. 
+Операторы соединения (\verb#$$#) и комбинирования слева (\verb#$=#) используют этот класс типов.
 
 There's one "gotcha" in the BufferedSource instance of this typeclass, so
-let's explain it. Suppose we want to write a file copy function, without any buffering.
-This is a
-fairly standard usage of conduits:
+let's explain it. Предположим, что мы хотим написать функцию копирования файлов, без буферизации. Это довольно стандартный случай использования кондуитов:
 \begin{lstlisting}
 sourceFile input $$ sinkFile output
 \end{lstlisting}
-When this line is run, both the input and output files are opened, the data is copied, and
-then
-both files are closed. Let's change this example slightly to use buffering:
+Когда запускается этот код, то открывается и input-файл, и output-файл, данные копируются и затем оба файла закрываются. Изменим слегка код, чтобы использовать буферизацию:
 \begin{lstlisting}
 bsrc <- bufferSource $ sourceFile input
 bsrc $$ isolate 50 =$ sinkFile output1
 bsrc $$ sinkFile output2
 \end{lstlisting}
-When is the input file opened and closed? The opening occurs on the first line, when
-buffering
-the source. And if we follow the normal rules from sources, the file should be closed
-after the
-second line. However, if we did that, we couldn't reuse bsrc for line 3!
+А здесь, когда открывается и закрывается входной файл? Если соблюдать обычные правила для источников, то файл откроется в первой строчке, а закроется во второй. Следовательно, мы не сможем его использовать в третьей строчке!
 
-So instead, \verb#$$# does not close the file. As a result, you can pass a
-buffered source to as many actions as you want, without concerns that the file handle has
-been
-closed out from under you.
+Вместо этого, оператор \verb#$$# не закрывает файл. Следовательно, вы можете передавать буферизованый источник для выполнения тех действий, которые вам нужны, не заботясь, что дескриптор файла будет закрыт без вашего ведома.
 
-If you remember from earlier, the invariant of a source is that it cannot be pulled from
-after it returns a Closed response. In order to allow you to work more easily
-with a BufferedSource, this invariant is relaxed. It is the responsibility of
+Как мы упоминали ранее, инвариант гласит, что из источника невозможно забрать данные, если он вернул Closed. Чтобы облегчить работу с буферизоваными источниками, это инвариант десь не выполняется. It is the responsibility of
 the BufferSource implementation to ensure that after the underlying
 Source is closed, it is never used again.
-This presents one caveat: when you're finished with a buffered source, you should manually
-call
-bsourceClose on it. However, as usual, this is merely an optimization, as the
-source will automatically be closed when runResourceT is called.
 
-Recapping the web server
-So what exactly does our web server look like now?
+Будьте осторожны: когда вы закончили работу с буферизованым источником, вам следует вручную вызывать bsourceClose. Однако, это обычно является оптимизацией, так как источник будет автоматически закрываться по окончанию работы функции runResourceT.
+
+Возвращаясь к веб-серверу
+
+Так как именно будет выглядеть наш веб-сервер?
 \begin{lstlisting}
   -- START
 import Data.ByteString (ByteString)
@@ -1649,15 +1623,9 @@ handleConn app socket = runResourceT $ do
 -- STOP
 main = return ()
 \end{lstlisting}
-We've made a few minor changes. Firstly, the Application now lives in the
-ResourceT IO monad. This isn't strictly necessary, but it's very convenient:
-the application can now register cleanup actions that will only take place after the
-response has
-been fully sent to the client.
+Мы провели несколько небольших изменений. Во-первых, наше приложение теперь завернуто в 
+ResourceT IO монаду. Это не строгая необходимость, но это очень удобно:
+приложение теперь может регистрировать функции освобождения ресурсов, которые выполнятся только тогда, когда ответ будет полностью послан клиенту.
 
-But the major changes are in the handleConn function. We now start off by
-buffering our source. This buffered source is then used twice in our function, and then
-passed
-off to the application.
-
+Но главные изменения произошли в функции handleConn. Сейчас мы начинаем работу сразу с буферизации источника. Затем он используется дважды в нашей функции и передается в приложение.
 
