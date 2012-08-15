@@ -16,7 +16,6 @@
 
 В этом приложении рассматривается пакет conduit версии \verb=0.2=.
 
-
 \section{Кондуиты в двух словах}
 
 Хотя понимание низкоуровневой механики кондуитов рекомендуется, вы можете далеко
@@ -205,7 +204,7 @@ main = do
     copyFile "fibs.txt" "fibs2.txt"
 \end{lstlisting}
 
-\section{Структура главы.}
+\section{Структура главы}
 
 Остаток этой главы освещает следующие темы.
 \begin{itemize}
@@ -218,10 +217,11 @@ main = do
 
 \section{Трансформер монады Resource}
 
-Трансформер монады Resource (ResourceT) играет существенную роль в управлении ресурсами в
+Трансформер монады \verb*|Resource (ResourceT)| играет существенную роль в управлении
+ресурсами в
 проектах, использующих кондуиты. Он поставляется вместе с библиотекй \verb=conduit=. Мы
-будем рассматривать ResourceT самого по себе. Хотя некоторые решения в его дизайне
-основаны на кондуитах, ResourceT можно использовато самого по себе.
+будем рассматривать \verb*|ResourceT| самого по себе. Хотя некоторые решения в его дизайне
+основаны на кондуитах, \verb*|ResourceT| можно использовато самого по себе.
 
 \subsection{Назначение}
 
@@ -237,8 +237,9 @@ main = do
     hClose output
 \end{lstlisting}
 
-Если файл input.txt отсутствует, бросится исключение при попытке его открыть. В
-результате hClose output никогда не будет вызвано и мы получим утечку важного ресурса
+Если файл \verb*|input.txt| отсутствует, бросится исключение при попытке его открыть. В
+результате \lstinline'hClose' output никогда не будет вызвано и мы получим утечку важного
+ресурса
 (дескриптора файлов). В небольшой программе это не критично, но очевидно, что мы не
 сможем себе этого позволить в высоко нагруженном процессе сервера с большим аптаймом
 
@@ -252,14 +253,17 @@ main =
     hGetContents input <<= hPutStr output
 \end{lstlisting}
 
-Использование withFile гшарантирует, что дескриптор будет закрыт, даже в случае
+Использование \lstinline'withFile' гарантирует, что дескриптор будет закрыт, даже в
+случае
 исключений. Оно также поддерживает асинхронные исключения. Вообще говоря, это прекрасный
-подход для случаев, когда вы можете его использовать. Хотя withFile просто использовать,
+подход для случаев, когда вы можете его использовать. Хотя \lstinline'withFile' просто
+использовать,
 часто он влечет переписывание всей программы. А это переписывание может быть очень
 скучным и сильно неэффективным.
 
 Возьмем, например, енумераторы. Если вы заглянете в документацию, то найдете функцию
-enumFile для чте ния содержимого файла, но не найдете функции iterFile для записи
+\lstinline'enumFile' для чте ния содержимого файла, но не найдете функции
+\lstinline'iterFile' для записи
 содержимого в файл. Так сделано потому, что поток управления итератов не позволяет
 правильно управлять дескрипторами. Взамен, чтобо записать в файл вам надо создавать
 дескриптор до запуска итерата, т.е.: 
@@ -280,7 +284,8 @@ main =
 приложения. Кроме этого, часто мы не можем открыть файл, так как мы поймем какой файл
 надо открывать только тогда, когда прочитаем все данные.
 
-Одна из заявленных целей кондуитов --- решить эту пролему с помощью ResourceT. Программа
+Одна из заявленных целей кондуитов --- решить эту пролему с помощью \lstinline'ResourceT'.
+Программа
 выше может быть переписана вот так:
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -291,49 +296,49 @@ main = runResourceT $ sourceFile "input.txt" $$ sinkFile "output.txt"
 \end{lstlisting}
 
 \subsection{Как это работает}
-
-There are essentially three base functions on ResourceT, and then a bunch of
-conveniences thrown on top. The first function is:
+Всего основных функций по работе с \lstinline'ResourceT' --- три, остальные были
+сделаны поверх этих трех исключительно для удобства. Вот первая из жто троицы:
 \begin{lstlisting}
 register :: IO () -> ResourceT IO ReleaseKey
 \end{lstlisting}
-Полииморфность этой функции и остальных ниже не используется в полную силу, на самом деле
-они могут работать с другими монадами кроме IO. In fact, almost any transformer on top of
-IO, as well as any ST stacks, work. Мы разъясним детали познее.
-% FIXME: Я провтыкал что такое ST
+Полиморфность этой функции и остальных ниже не используется в полную силу. На самом деле
+они могут работать с другими монадами кроме IO. По факту, почти любой траснсформер над
+IO, также как на любым другим ST стэком, будет работать. Мы разъясним детали познее.
+
 Эта функция региструет кусок кода, утверждения которого будут выполнены. Она также
-возвращает ReleaseKey, которое используется в следующей функции:
+возвращает \lstinline'ReleaseKey', которое используется в следующей функции:
 \begin{lstlisting}release :: ReleaseKey -> ResourceT IO ()
 \end{lstlisting}
-Возоы функции \verb=release= от ReleaseKey немедленно выполняет действии, которое ыло
-зарегистрировано ранее. Мы можем вызывать \verb=release= от одной и той же ReleaseKey
-стольк раз, сколько пожелаем, при первом вызове регистрация действия отменяется. Это
+Возов функции \verb=release= от ReleaseKey немедленно выполняет действие, которое было
+зарегистрировано ранее. Мы можем вызывать \verb=release= от одной и той же
+\lstinline'ReleaseKey'
+столько раз, сколько пожелаем, при первом вызове регистрация действия отменяется. Это
 значит, что вы можете безопасно зарегистрировать действие освобождения памяти, не
 заботясь о том, что оно будет выполнено дважды.
 
-Со временем, мы можем захотеть освободить ресурс, ResourceT. Чтобы сделать это,
+Со временем, мы можем захотеть освободить ресурс \lstinline'ResourceT'. Чтобы сделать это,
 воспользуемся:
 \begin{lstlisting}
 runResourceT :: ResourceT IO a -> IO a
 \end{lstlisting}
-В этой внешене невинной функции происходит вся магия. 
- It runs through ("пронизывать") all of
-the
-registered cleanup actions and performs them. Она безопасна с точки зрения исключений, в
+В этой внешене невинной функции происходит вся магия. Она выполняется во всех
+харегистрированных функциях освобождения ресурсов и выполняет его. Она безопасна с точки
+зрения исключений, в
 том смысле, что освобождения ресурсов будут выполнены в случае и синхронных, и
-асинхронныъ исключений. И, как было упомянуто выше, вызов функции release отменит
+асинхронных исключений. И, как было упомянуто выше, вызов функции \lstinline'release'
+отменит
 регистрацию действия. Таким образом нам не стоит беспокоиться о повторном освобождении
 ресурсов.
 
 Наконец, для удобства, мы приведем ещё одну функцию для выделения ресурса и регистрации
 действия по его освобождению:
 \begin{lstlisting}
-with :: IO a -- ^ allocate
-     -> (a -> IO ()) -- ^ free resource
+with :: IO a -- ^ выделить
+     -> (a -> IO ()) -- ^ освободить
      -> ResourceT IO (ReleaseKey, a)
 \end{lstlisting}
 
-Теперь перепишем с использованием ResourceT первый некачественный пример:
+Теперь перепишем с использованием \lstinline'ResourceT' первый некачественный пример:
 \begin{lstlisting}
 import System.IO
 import Control.Monad.Trans.Resource
@@ -355,26 +360,23 @@ main = runResourceT $ do
 
 \subsection{Несколько слов о типах}
 
-Как было упомянуто, ResourceT это нечто большее, чем код, исполняемый надо IO. Но давайте
-опустим некторые вещи, которые нам потребуются от этой монады.
+Как было упомянуто, \lstinline'ResourceT' это нечто большее, чем код, исполняемый над IO.
+Но давайте опустим некоторые вещи, которые нам потребуются от этой монады.
 \begin{itemize}
 \item Мутабельные ссылки, для хранения зарегистрированный действий по освобождению
-ресурсов.
-Нам может показаться, что мы можем использовать StateT трансформер, но тогда наше
-состояние не сможет корректно обходиться с исключениями.
-\item We only want to register actions in the base monad. For example, if we have a
-ResourceT (WriterT [Int] IO) stack, we only want to register
-IO actions. This makes it easy to lift our stacks around (i.e., add an extra
-transformer to the middle of an existing stack), and avoids confusing issues about the
-threading
-of other monadic side-effects.
-\item Some way to guarantee an action is performed, even in the presence of exceptions.
-This
-boils
-down to needing a bracket-like function.
+ресурсов. Нам может показаться, что мы можем использовать \lstinline'StateT' трансформер,
+но тогда наше состояние не сможет корректно обходиться с исключениями.
+\item Нам нужно зарегистрировать действия в базовой монаде. Например, если мы имеем 
+стэк \lstinline'ResourceT (WriterT [Int] IO)', нам нужно только зарегистрировать
+действия в IO. Это позволит легко втягивать (lift) наш стэк (т.е. добавлять новый
+трансформер в середину стека) и избегать проблем about the
+threading of other monadic side-effects.
+% FIXME я не уверен что такое тут threading
+\item Какой-то способ гарантировать, что действие будет выполнено даже в случае
+исключений. Отсюда следует небходимать функции а-ля корзина.
 \end{itemize}
 
-Для начала определим класс типов для монад, которые имеют мутабельные ссылки
+Для начала определим класс типов для монад, которые имеют мутабельные ссылки.
 \begin{lstlisting}
  class Monad m => HasRef m where
     type Ref m :: * -> *
@@ -406,12 +408,14 @@ instance HasRef IO where
     try = E.try 
 \end{lstlisting}
 Однако, при реализации инстанса монады ST мы сталкиваемся с проблемой: мы никак не можем
-обрабатывать исключения в монаде ST. В результате, функции mask, mask\_ и try имеют
+обрабатывать исключения в монаде ST. В результате, функции \lstinline'mask',
+\lstinline'mask_' и \lstinline'try' имеют
 дефолтную реализацию без проверки исключений. Сейчас мы сформулируем первое
 предупреждение:
 
 \textit{Операции в монаде ST не безопасны относительно исключений. Мы не должен выделять
-важные ресурсы в монаде ST когда используем ResourceT. You might be wondering why bother
+важные ресурсы в монаде ST когда используем \lstinline'ResourceT'. You might be wondering
+why bother
 with
 ResourceT at all then for ST. The answer is that there is a
 lot you can do with conduits without allocating scarce resources, and ST is a
@@ -433,13 +437,12 @@ class (HasRef (Base m), Monad m) => Resource m where
 \begin{lstlisting}
 resourceBracket_ :: Base m a -> Base m b -> m c -> m c 
 \end{lstlisting}
-Причной, по которой перыве два аргумента функции resourceBracket\_ ``живут'' в монаде
-Base,
-является то, что в ResourceT все выделения и освобождения ресурсов, происходят в базовой
- монаде.
+Причной, по которой первые два аргумента функции \lstinline'resourceBracket_' <<живут>> в
+монаде Base, является то, что в \lstinline'ResourceT' все выделения и освобождения
+ресурсов, происходят в базовой монаде.
 
-So on top of our HasRef instance for IO, we now need a
-Resource instance as well. This is similarly straight-forward:
+Итак, над нашим инстансом HasRef для IO нам также нужен инстанс
+\lstinline'Resource'. Реализация довольно очевидна:
 \begin{lstlisting}
  instance Resource IO where
     type Base IO = IO
@@ -447,12 +450,12 @@ Resource instance as well. This is similarly straight-forward:
     resourceBracket_ = E.bracket_
 \end{lstlisting}
 
-We have similar ST instances, with resourceBracket\_ having no
-exception safety. The final step is dealing with monad transformers. We don't need to
-provide a
-HasRef instance, but we do need a Resource instance. The
-tricky part is providing a valid implementation of resourceBracket\_. For this,
-we use some functions from monad-control:
+У нас есть несколько сходных инстансов \lstinline'ST', в которых функция
+\lstinline'resourceBracket_' небезопасна относительно исключений. Решающий шаг заключается
+в реализации трансформеров. Нам не нужно
+предоставлять инстанс \lstinline'HasRef', но инстанс \lstinline'Resource' --- нужно.
+Хитрость нужна в допустимой реализации функции \lstinline'resourceBracket_'. Здесь мы
+воспользовалсиь некоторыми функциями для управления монадами (monad-control):
 
 \begin{lstlisting}
 instance (MonadTransControl t, Resource m, Monad (t m))
@@ -465,15 +468,16 @@ instance (MonadTransControl t, Resource m, Monad (t m))
       where
         control' f = liftWith f >>= restoreT . return 
 \end{lstlisting}
-For any transformer, its base is the base of its inner monad. Similarly, we lift to the
-base by
-lifting to the inner monad and then lifting to the base from there. The tricky part is the
-implemetnation of \verb=resourceBracket_=. I will not go into a detailed explanation,
-as I would simply make a fool of myself.
+Для всякого трансформера, его база является базой внутренней монады. Аналогично, мы можем
+добраться до базовой монады, втянув внутреннюю монаду и добравшись до её базы. Хитрость
+понадобится при реализации \verb=resourceBracket_=. Я не буду вдаваться в подробные
+объяснения, чтобы, случайно, не выставить себя идиотом.
+I will not go into a detailed explanation, as I would simply make a fool of myself.
 
 \subsection{Определение ResourceT}
 
-Теперь у нас достаточно информации, чтобы осмыслить определение типа ResourceT:
+Теперь у нас достаточно информации, чтобы осмыслить определение типа
+\lstinline'ResourceT':
 \begin{lstlisting}
 newtype ReleaseKey = ReleaseKey Int
 
@@ -486,44 +490,50 @@ data ReleaseMap base =
 newtype ResourceT m a =
     ResourceT (Ref (Base m) (ReleaseMap (Base m)) -> m a)
 \end{lstlisting}
-Мы видим, что ReleaseKey это просто Int. Если вы загляните на несколько строк вниз, то
-это определение обретет смысл, так как мы используем IntMap для того, чтобы хранить
-зарегистрированые действия. Мы также определяем два синонима: RefCount и NextKey. NextKey
+Мы видим, что \lstinline'ReleaseKey' это просто \lstinline'Int'. Если вы загляните на
+несколько строк вниз, то
+это определение обретет смысл, так как мы используем \lstinline'IntMap' для того, чтобы
+хранить
+зарегистрированые действия. Мы также определяем два синонима: \lstinline'RefCount' и
+\lstinline'NextKey'. \lstinline'NextKey'
 хранит последнее присвоенное значение ключа и инкрементируется каждый раз, когда
 вызывается функция \verb=register=. Мы коснемся этого немного позже.
 
-ReleaseMap хранит три вида информации: следующий ключ, счетчик ссылок, и затем map всех
-зарегистрированных действий (actions). Заметьте, что ReleaseMap принимает типовый
-параметр base, который определяет, какой монады действия по освобождению ресурсов  будут
-использоваться 
+\lstinline'ReleaseMap' хранит три вида информации: следующий ключ, счетчик ссылок, и затем
+\lstinline'map' всех
+зарегистрированных действий (actions). Заметьте, что \lstinline'ReleaseMap' принимает
+типовую переменную \lstinline'base', которая определяет, действия какой монады по
+освобождению ресурсов  будут использоваться.
 % FIXME хрень какая-то. В оригинале which states which monad release actions must live
 % in.
 
-В конце концов, ResourceT является по существу ReaderT, который хранит мутабельную
-ссылку на ReleaseMap. The reference type is determined by the base
+В конце концов, \lstinline'ResourceT' является по существу \lstinline'ReaderT', который
+хранит мутабельную
+ссылку на \lstinline'ReleaseMap'. The reference type is determined by the base
 of the monad in question, as is the cleanup monad. This is why we need to use associated
 types.
 
-Целью оставшейся части кода в модуле Control.Monad.Trans.Resource
-является создание инстансов типа ResourceT.
+Целью оставшейся части кода в модуле \lstinline'Control.Monad.Trans.Resource'
+является создание инстансов типа \lstinline'ResourceT'.
 
 \subsection{Другие классы типов}
 
-Модуля предоставляет ещё три класса типов:
+Модуль предоставляет ещё три класса типов:
    
 ResourceUnsafeIO
 
 Любая монада может втянуть (lift) IO действия в себя, но это может быть небезопасно.
 Первый пример этого --- ST. Care should be taken to
 only lift actions which do not acquire scarce resources and which don't "fire the
-missiles." Другими словами, все обычные предпреждения насчет unsafeIOToST имеют
-справедлиы.
+missiles." Другими словами, все обычные предпреждения насчет \lstinline'unsafeIOToST'
+справедливы.
   
 ResourceThrow
 
-Для действий, которые могут бросить исключение.  Это автоматически приминимо ко всем
-монадам на базе IO. Для ST-монад вы можете использовать трансформер ExceptionT, чтобы
-предоставить возможности пробрасывания исключений. Это потребуется для некоторых функций
+Для действий, которые могут бросать исключение. Автоматически приминимо ко всем
+монадам на базе IO. Для ST-монад вы можете использовать трансформер
+\lstinline'ExceptionT', чтобы
+предоставить возможность пробрасывания исключений. Это потребуется для некоторых функций
 кондуитов, например, декодирование текста.
    
 ResourceIO
@@ -536,37 +546,42 @@ more typing).
 \subsection{Forking}
 
 Может показаться, что ответвление от процесса хронически небезопасно при использовании 
-ResourceT, так как родительский поток процесс может вызвать \verb=runResourceT= в то время
+\lstinline'ResourceT', так как родительский процесс может вызвать
+\lstinline'runResourceT' в то время
 как дочерний использует ресурсы. Это, конечно же, так, если вы используете обычную
-функцию forkIO.
+функцию \lstinline'forkIO'.
 
-Вообще говоря, вы не можете использовать стандартный forkIO, так как он использует монаду
-IO, но вы можете использовать функцию fork из залифченой базовой монады.
-По этой причине пакет regions не предоставляет экземпляр MonadBaseControl для этого
-трансформатора (который очень похож на ResourceT). Однако, назначение ResourceT
+Вообще говоря, вы не можете использовать стандартный \lstinline'forkIO', так как он
+использует монаду
+IO, но вы можете использовать функцию \lstinline'fork' из залифченой базовой монады.
+По этой причине пакет regions не предоставляет экземпляр \lstinline'MonadBaseControl' для
+этого
+трансформатора (который очень похож на \lstinline'ResourceT'). Однако, назначение
+ResourceT
 не запретить программистам стрелять себе в ногу, а только, чтобы было легче писать
 правильно. Поэтому, мы всё же предостовляем экземпляр, даже если он может быть
-использован неправильно. Чтобы решить эту проблему ResourceT включает в себя
-счетчик ссылок. Когда вы образовываете новый поток с помощью resourceForkIO,
-значение RefCount в ReleaseMap инкрементируется. Всякий раз, когда runResourceT
-вызывается, это значение декрементируется. Только когда оно достигент нуля происходят
+использован неправильно. Чтобы решить эту проблему \lstinline'ResourceT' включает в себя
+счетчик ссылок. Когда вы образовываете новый поток с помощью \lstinline'resourceForkIO',
+значение RefCount в ReleaseMap инкрементируется. Всякий раз, когда
+\lstinline'runResourceT'
+вызывается, это значение декрементируется. Только когда оно достигент нуля, происходят
 действия по освобождению ресурсов.
  
 \subsection{Дополнительные функции для удобства}
 
 В дополнение мы расскажем про несколько функций, созданных для удобства.
-%   
+   
 Функции \verb=newRef=, \verb=writeRef=, и \verb=readRef= оборачивают
-функции с HasRef, позволяют им работать с любым ResourceT.
-\verb=withIO= по сути является функцией \verb=with= с ограниченным типом, но она 
+функции с \lstinline'HasRef' и позволяют им работать с любым \lstinline'ResourceT'.
+Функция \verb=withIO= по сути является функцией \verb=with= с ограниченным типом, но она 
 позволяет работать с некоторой вложенностью типов, в то время как при \verb=with=
 пришлось бы продираться в глубину (but working around 
 some of the nastiness with types you would otherwise run into). В общем, вам стоит
-использовать withIO для написания IO кода.
+использовать \lstinline'withIO' для написания IO кода.
 \verb=transResourceT= позволит вам модифицировать в какой монаде исполняется ваш
-\verb=ResourceT=, assuming it keeps the same
+\verb=ResourceT=, assuming it keeps the same base
 \begin{lstlisting}
-    base.transResourceT :: (Base m ~ Base n)
+transResourceT :: (Base m ~ Base n)
                => (m a -> n a)
                -> ResourceT m a
                -> ResourceT n a
@@ -575,7 +590,7 @@ transResourceT f (ResourceT mx) = ResourceT (\r -> f (mx r))
 
 \section{Источники}
 
-Проще всего понять что это такое посмотрев  на типы:
+Проще всего понять что это такое посмотрев на типы:
 \begin{lstlisting}
 data SourceResult m a = Open (Source m a) a | Closed
 data Source m a = Source
@@ -585,8 +600,8 @@ data Source m a = Source
 \end{lstlisting}
 Источник имеет две операции: вы можете запросить ещё данных и вы можете закрыть его (как,
 например, закрыть дескриптор файла). При запросе новых данных вы или получаете немного
-данных и новое  значение типа Source (источник остается открытым), или Nothing (источник
-закрывается) . Давайте посмотрим на простеёшие примеры.
+данных и новое  значение типа \lstinline=Source= (источник остается открытым), или
+\lstinline=Nothing= (источник закрывается). Давайте посмотрим на простейшие примеры.
 \begin{lstlisting}
   -- START
 import Prelude hiding (repeat)
@@ -609,25 +624,25 @@ repeat a = Source
 main :: IO ()
 main = return ()
 \end{lstlisting}
-Эти источники довольно прямолинейны, так как они всегда возвращают одно и то же. К тому
+Эти источники довольно тривиальны, так как они всегда возвращают одно и то же. К тому
 же их функции закрытия ничего не делают. Вам может показаться, что это баг: не должны ли 
-мы возвращать в sourcePull \verb=return Closed= после того, как источник был закрыт? Это
-не является необходимым, since one of the rules of sources is
-that they can never be
-reused. Другими словами:
-
+мы возвращать в \lstinline=sourcePull= \verb=return Closed= после того, как источник был
+закрыт? Это не является необходимым, так как согласно одному из инвариантов для
+источников они никогда не могут быть переиспользованы. Другими словами:
     
-\textit{Если источник вернул Open, то он предоставил вам новый источник, с которым и
-стоит работать, заменив оригинальный. Если источник вернул Closed, тогда, вы больше не
-может выполнять операции над ним.}
+\textit{Если источник вернул \lstinline=Open=, то он предоставил вам новый источник, с
+которым и
+стоит работать, заменив оригинальный. Если источник вернул \lstinline=Closed=, тогда, вы
+больше не может выполнять операции над ним.}
     
 Не стоит очень беспокоиться по поводу сохранения этого инварианта. На практике, вам почти
-не придется вызывать sourcePull или sourceClose самостоятельно. Также, навряд ли вам
-придутся их самостоятельно описывать (для этого существуют sourceState и sourceIO).
+не придется вызывать \lstinline=sourcePull= или \lstinline=sourceClose= самостоятельно.
+Также, навряд ли вам придётся их самостоятельно описывать (для этого существуют
+\lstinline=sourceState= и \lstinline=sourceIO=).
 %In fact, you hardly  even write them yourself either (that's what sourceState and
 % sourceIO are for). FIXME уточнить это предожение
-Идея в том, что мы можем сделать некоторые предположения, когда реализовываем источники. 
- 
+Идея заключается в том, что мы можем сделать некоторые предположения, когда реализовываем
+источники.
 
 \subsection{Состояние}
 
@@ -636,17 +651,18 @@ reused. Другими словами:
 потреуется реализовывать состояние.
 
 Состояние может запросто быть определено вне нашей программы. Например, если мы
-реализовываем источник, который читает данных из дескриптора, нам не нужно вручную
+реализовываем источник, который читает данные из дескриптора, нам не нужно вручную
 указывать никакого состояния, потому что дескриптор имеет состояние сам по себе.
-Будем хранить состояние в источнике путём обновления возвращаемого значения типа Source в
-конструкторе Open. Лучше всего это рассмотреть на примере.
+Будем хранить состояние в источнике путём обновления возвращаемого значения типа
+\lstinline=Source= в конструкторе \lstinline=Open=. Лучше всего это рассмотреть на
+примере.
 
 \begin{lstlisting}
 -- START
 import Data.Conduit
 import Control.Monad.Trans.Resource
 
--- | Provide data from the list, one element at a time.
+-- Выдает данные из списка по одному
 sourceList :: Resource m => [a] -> Source m a
 sourceList list = Source
     { sourcePull =
@@ -664,23 +680,26 @@ main = return ()
 \end{lstlisting}
 
 Всякий раз, когда мы забираем данные из источника, он проверяет список. Если он пуст,
-возвращаем Closed, что разумно. Если не пуст, возвращаем Open со следующим значением
+возвращаем \lstinline=Closed=, что разумно. Если не пуст, возвращаем \lstinline=Open= со
+следующим значением
 списка и новым значением источника, вызванного от хвоста списка.
 
-\subsection{sourceState and sourceIO}
+\subsection{Функции sourceState и sourceIO}
 
 В добавление к возможности манипулировать источниками, мы также имеет несколько функций,
-позволяющих создавать источники более высокоуровнево. sourceState позволяет писать
-код как будто вы используете монаду State. Вы предоставляете начальное состояние,
+позволяющих создавать источники более высокоуровнево. Функция \lstinline=sourceState=
+позволяет писать
+код как будто вы используете монаду \lstinline=State=. Вы предоставляете начальное
+состояние,
 вункцию получения данных от текущего состояния, а она возвращает новое состояние и
-новое значение. Перепишем sourceList с помощью неё:
+новое значение. Перепишем \lstinline=sourceList= с помощью неё:
 
 \begin{lstlisting}
-  -- START
+-- START
 import Data.Conduit
 import Control.Monad.Trans.Resource
 
--- | Provide data from the list, one element at a time.
+-- Выдает данные из списка по одному
 sourceList :: Resource m => [a] -> Source m a
 sourceList state0 = sourceState
     state0
@@ -693,16 +712,17 @@ main :: IO ()
 main = return ()
 \end{lstlisting}
 
-Замечание по использованию конструкторов StateClosed и StateOpen. Они очень похожи на
-Closed и Open, за исключением того, что при указании следующего источника вы указываете и
-следующее состояние (остаток списка).
+Замечание по использованию конструкторов \lstinline=StateClosed= и \lstinline=StateOpen=.
+Они очень похожи на
+\lstinline=Closed= и \lstinline=Open=, за исключением того, что при указании следующего
+источника вы указываете и следующее состояние (остаток списка).
 
-Другое распространенное применение --- аллокация ресурсов ввода-вывода (например,
+Другое распространенное применение --- выделение ресурсов ввода-вывода (например,
 открытие файла), регистрация функции свобождения ресурса (закрытие файла) и
 предоставление функции получения данных из ресура.
 В пакете conduit присутствует встроенная функция \verb=sourceFile=, которая выдает поток
-значений типа ByteString. Давайте напишем совершенно неэффективную альтернативу,
-которая будет возвразать поток символов.
+значений типа \lstinline=ByteString=. Давайте напишем совершенно неэффективную
+альтернативу, которая будет возвращать поток символов.
 
 \begin{lstlisting}
 -- START
@@ -726,24 +746,25 @@ main = return ()
 \end{lstlisting}
 
 Как и \verb=sourceState=, она использует конструкторы \verb*|Open| и \verb*|Closed|.
-Функция sourceIO выполняет несколько действий  для нас:
+Функция \lstinline=sourceIO= выполняет несколько действий  для нас:
 \begin{itemize}
- \item Регистрирует функцию освобождения ресурса, с трансформерос ResourceT,
+ \item Регистрирует функцию освобождения ресурса с трансформером \lstinline=ResourceT=,
 гарантируя, что она будет вызвана даже в случае исключений.
  \item Инициализирует поле sourceClose чтобы освободить ресурс немедленно.
- \item Как только вернется IOClosed, будет вызвано освобождение русурса.
+ \item Как только вернется IOClosed, будет вызвано освобождение ресурса.
 \end{itemize}
   
 \section{Sinks}
 
-Они поглощают потоки данных и генерируют результат. Они должны всегда выдавать результат
-и толтко единичный результат. Это зафиксированно в их типе.
+Они поглащают потоки данных и генерируют результат. Они должны всегда выдавать результат
+и только единичный результат. Это зафиксированно в их типе.
 
-Экземпляр Monad для sink упрощает композицию нескольких sink, в больший sink. Вы также
+Экземпляр \lstinline=Monad= для sink упрощает композицию нескольких sink, в больший sink.
+Вы также
 можете использовать встроенные функции для большинства своих нужд. Как и с источниками,
-вам редко понадобиться погружаться в тонкости реалллизации. Начнем с примера:
-получение строк и потока символов (будет предполагать наличие перевод строк в стиле Unix,
-для простоты).
+вам редко понадобится погружаться в тонкости реализации. Начнем с примера:
+получение строк и потока символов (для простоты, будем предполагать наличие переводов
+строк в стиле Unix).
 
 \begin{lstlisting}
 import Data.Conduit
@@ -752,22 +773,22 @@ import qualified Data.Conduit.List as CL
 -- Get a single line from the stream.
 sinkLine :: Resource m => Sink Char m String
 sinkLine = sinkState
-    id -- initial state, nothing at the beginning of the line
+    id -- Начальное состояние. В начале строки ничего нет
     push
     close
   where
-    -- On a new line, return the contents up until here
+    -- В конце строки возвращаем содержимое до теущего места
     push front '\n' =
         return $ StateDone Nothing $ front []
 
-    -- Just another character, add it to the front and keep going
+    -- Если это другой символ --- добавим его в начало и продолжим
     push front char =
         return $ StateProcessing $ front . (char:)
 
-    -- Got an EOF before hitting a newline, just give what we have so far
+    -- Если встретили конец файла до перевода строки, то выдадим то, что имеем
     close front = return $ front []
 
--- Get all the lines from the stream, until we hit a blank line or EOF.
+-- Выдадим все строчки в файле, до пустой строки или конца файла
 sinkLines :: Resource m => Sink Char m [String]
 sinkLines = do
     line <- sinkLine
@@ -795,32 +816,34 @@ Running this sample produces the expected output:
 This is the first line.
 Here's the second.
 \end{verbatim}
- 
- 
-Функция sinkLine демонстрирует использование sinkState, которая очень похожа только что
-виденную функцию sourceState. Она принимает три параметра: начальное состояние,
-функцию ``добавления`` \verb=push= 
+
+Функция \lstinline=sinkLine= демонстрирует использование \lstinline=sinkState=, которая
+очень похожа только что
+виденную функцию \lstinline=sourceState=. Она принимает три параметра: начальное
+состояние,
+функцию <<добавления>> \verb=push= 
 (принимает текущее состояние и входные данные и возвращает новое состояние и результат)
 и функцию закрытия (принимает текущее состояние и возвращает вывод). Как
-противоположность к sourceState, которая не нуждается в функции закрытия, sink должна
+противоположность к \lstinline=sourceState=, которая не нуждается в функции закрытия, sink
+должна
 всегда возвращать результат.
 
-В нашей функции push две клаузы. Когда она получет символ конца строки, процесс
-заканчивается в состоянии StateDone. Nothing означает, что входных данных не
+В нашей функции \lstinline=push= две клаузы. Когда она получет символ конца строки,
+процесс заканчивается в состоянии \lstinline=StateDone=. \lstinline=Nothing= означает, что
+входных данных не
 осталось (мы обсудим это позднее). Она также выдает все полученные символы. Вторая
 клауза просто добавляет символ к текущему состоянию и соощает, что мы продолжаем работу
-в состоянии StateProcessing. Функция close возвращает все символы.
+в состоянии \lstinline=StateProcessing=. Функция \lstinline=close= возвращает все символы.
 
-Функция sinkLines демонстрирует как мы можем использовать монадический интерфейс,
-чтобы создавать новые sinks. Если вы замените sinkLine на getLine, это будет выглядеть
-как обычный код, который забирает строки и стандартного входного потока. This familiar
-interface should make it easy to get up and running quickly.
-%FIXME
+Функция \lstinline=sinkLines= демонстрирует как мы можем использовать монадический
+интерфейс, чтобы создавать новые sinks. Если вы замените \lstinline=sinkLine= на
+\lstinline=getLine=, это будет выглядеть
+как обычный код, который забирает строки и стандартного входного потока. Этот
+стандартный интефейс должен помочь вам легко освоиться и быстро начать писать код.
 
 \subsection{Типы}
 
 Типы для синков несколько более хитроумны, чем для источников. Давайте взглянем на них:
-
 \begin{lstlisting}
 type SinkPush input m output = input -> ResourceT m (SinkResult input m output)
 type SinkClose m output = ResourceT m output
@@ -837,131 +860,130 @@ data Sink input m output =
         }
   | SinkLift (ResourceT m (Sink input m output))
 \end{lstlisting}  
-% Whenever a sink is pushed to, it can either say it needs more data
-% (Processing) or say it's all done. When still processing, it must provided
-% updated push and close function; when done, it returns any leftover inut and the output.
-% Fairly
-% straight-forward.
-% 
-% The first real "gotcha" is the three constructors for Sink. Why do we need
-% SinkNoData: aren't sinks all about consuming data? The answer is that we need
-% it to efficiently implement our Monad instance. When we use
-% return, we're giving back a value that requires no data in order to compute it.
-% We could model this with the SinkData constructor, with something like:
-% \begin{lstlisting}
-% myReturn a = SinkData (\input -> return (Done (Just input) a)) (return a)
-% \end{lstlisting}
-% But doing so would force reading in an extra bit of input that we don't need right now,
-% and
-% possibly will never need. (Have a look again at the sinkLines example.) So
-% instead, we have an extra constructor to indicate that no input is required. Likewise,
-% SinkLift is provided in order to implement an efficient
-% MonadTrans instance.
-% 
-\subsection{Sinks: no helpers}
-% Let's try to implement some sinks on the "bare metal", without any helper functions.
-% \begin{lstlisting}
-%   -- START
-% import Data.Conduit
-% import System.IO
-% import Control.Monad.Trans.Resource
-% import Control.Monad.IO.Class (liftIO)
-% 
-% -- Consume all input and discard it.
-% sinkNull :: Resource m => Sink a m ()
-% sinkNull =
-%     SinkData push close
-%   where
-%     push _ignored = return $ Processing push close
-%     close = return ()
-% 
-% -- Let's stream characters to a file. Here we do need some kind of
-% -- initialization. We do this by initializing in a push function,
-% -- and then returning a different push function for subsequent
-% -- calls. By using withIO, we know that the handle will be closed even
-% -- if there's an exception.
-% sinkFile :: ResourceIO m => FilePath -> Sink Char m ()
-% sinkFile fp =
-%     SinkData pushInit closeInit
-%   where
-%     pushInit char = do
-%         (releaseKey, handle) <- withIO (openFile fp WriteMode) hClose
-%         push releaseKey handle char
-%     closeInit = do
-%         -- Never opened a file, so nothing to do here
-%         return ()
-% 
-%     push releaseKey handle char = do
-%         liftIO $ hPutChar handle char
-%         return $ Processing (push releaseKey handle) (close releaseKey handle)
-% 
-%     close releaseKey _ = do
-%         -- Close the file handle as soon as possible.
-%         return ()
-% 
-% -- And we'll count how many values were in the stream.
-% count :: Resource m => Sink a m Int
-% count =
-%     SinkData (push 0) (close 0)
-%   where
-%     push count _ignored =
-%         return $ Processing (push count') (close count')
-%       where
-%         count' = count + 1
-% 
-%     close count = return count
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% Nothing is particularly complicated to implement. You should notice a common pattern
+Всякий раз, когда в синк добавляются данные, он может сказать, что ему нужно больше
+данных, или, что всё готово. Если обработка ещё идет, то он должен предоставить
+обновленные функции push and close. Если всё готово, то он возвращает результат и
+необработанные данные. Довольно таки тривиально.
+ 
+Первая настоящая неочевиность ("gotcha") заключается в наличии трех конструкторов у
+типа \lstinline=Sink=. Зачем нам конструктор \lstinline=SinkNoData=: разве синки
+созданы не для поглощения данных? Ответ заключается в том, что нам нужно эффективно
+реализвать наш экземпляр \lstinline=Monad=. Когда мы вызываем \lstinline=return=, мы
+выозвращаем значение, которое не требует данных для вычисления. Мы могли бы сэмулировать
+это с помощью конструктора SinkData как-нибудь так:
+\begin{lstlisting}
+myReturn a = SinkData (\input -> return (Done (Just input) a)) (return a)
+\end{lstlisting}
+Но это бы вызывало чтение лишней части информации из входа, а она нам сейчас не нужна и,
+вероятно, вообще не понадобится. (Взгляните ещё раз на пример с \lstinline=sinkLines=)
+Поэтому мы имеет ещё один конструктор, обозночающий, что никаких входных данных не нужно.
+Подобным образом, \lstinline=SinkLift= предоставляется для более эффективной реализации
+инстанса \lstinline=MonadTrans=.
+
+\subsection{Sinks: без дополнительных функций}
+Попробуем реализовать несколько синков <<в лоб>>.
+\begin{lstlisting}
+  -- START
+import Data.Conduit
+import System.IO
+import Control.Monad.Trans.Resource
+import Control.Monad.IO.Class (liftIO)
+
+-- Прочитать данные целиком и выкинуть их
+sinkNull :: Resource m => Sink a m ()
+sinkNull =
+    SinkData push close
+  where
+    push _ignored = return $ Processing push close
+    close = return ()
+
+-- Запишем поток символов в файл. Нам понадобится что-то вроде инициализации.
+-- . We do this by initializing in a push function,
+-- and then returning a different push function for subsequent
+-- calls. By using withIO, we know that the handle will be closed even
+-- if there's an exception.
+sinkFile :: ResourceIO m => FilePath -> Sink Char m ()
+sinkFile fp =
+    SinkData pushInit closeInit
+  where
+    pushInit char = do
+        (releaseKey, handle) <- withIO (openFile fp WriteMode) hClose
+        push releaseKey handle char
+    closeInit = do
+        -- Never opened a file, so nothing to do here
+        return ()
+
+    push releaseKey handle char = do
+        liftIO $ hPutChar handle char
+        return $ Processing (push releaseKey handle) (close releaseKey handle)
+
+    close releaseKey _ = do
+        -- Close the file handle as soon as possible.
+        return ()
+
+-- And we'll count how many values were in the stream.
+count :: Resource m => Sink a m Int
+count =
+    SinkData (push 0) (close 0)
+  where
+    push count _ignored =
+        return $ Processing (push count') (close count')
+      where
+        count' = count + 1
+
+    close count = return count
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
+Nothing is particularly complicated to implement. You should notice a common pattern
 here:
-% declaring your push and close functions in a where clause, and then
-% using them twice: once for the initial SinkData, and once for the
-% Processing constructor. This can become a bit tedious; that's why
-% we have helper functions.
-% 
-\subsection{Sinks: with helpers}
-% Let's rewrite sinkFile and count to take advantage of the
-% helper functions sinkIO and sinkState, respectively.
-% \begin{lstlisting}
-%   -- START
-% import Data.Conduit
-% import System.IO
-% import Control.Monad.IO.Class (liftIO)
-% 
-% -- We never have to touch the release key directly, sinkIO automatically
-% -- releases our resource as soon as we return IODone from our push function,
-% -- or sinkClose is called.
-% sinkFile :: ResourceIO m => FilePath -> Sink Char m ()
-% sinkFile fp = sinkIO
-%     (openFile fp WriteMode)
-%     hClose
-%     -- push: notice that we are given the handle and the input
-%     (\handle char -> do
-%         liftIO $ hPutChar handle char
-%         return IOProcessing)
-%     -- close: we're also given the handle, but we don't use it
-%     (\_handle -> return ())
-% 
-% -- And we'll count how many values were in the stream.
-% count :: Resource m => Sink a m Int
-% count = sinkState
-%     0
-%     -- The push function gets both the current state and the next input...
-%     (\state _ignored -<
-%         -- and it returns the new state
-%         return $ StateProcessing $ state + 1)
-%     -- The close function gets the final state and returns the output.
-%     (\state -> return state)
-% -- STOP
-% main :: IO ()
-% main = return ()
-% \end{lstlisting}
-% Nothing dramatic, just slightly shorter, less error-prone code. Using these two helper
-% functions is highly recommended, as it ensures proper resource management and state
-% updating.
-%
+declaring your push and close functions in a where clause, and then
+using them twice: once for the initial SinkData, and once for the
+Processing constructor. This can become a bit tedious; that's why
+we have helper functions.
+
+\subsection{Sinks: реализация с дополнительными функциями}
+Let's rewrite sinkFile and count to take advantage of the
+helper functions sinkIO and sinkState, respectively.
+\begin{lstlisting}
+  -- START
+import Data.Conduit
+import System.IO
+import Control.Monad.IO.Class (liftIO)
+
+-- We never have to touch the release key directly, sinkIO automatically
+-- releases our resource as soon as we return IODone from our push function,
+-- or sinkClose is called.
+sinkFile :: ResourceIO m => FilePath -> Sink Char m ()
+sinkFile fp = sinkIO
+    (openFile fp WriteMode)
+    hClose
+    -- push: notice that we are given the handle and the input
+    (\handle char -> do
+        liftIO $ hPutChar handle char
+        return IOProcessing)
+    -- close: we're also given the handle, but we don't use it
+    (\_handle -> return ())
+
+-- And we'll count how many values were in the stream.
+count :: Resource m => Sink a m Int
+count = sinkState
+    0
+    -- The push function gets both the current state and the next input...
+    (\state _ignored -<
+        -- and it returns the new state
+        return $ StateProcessing $ state + 1)
+    -- The close function gets the final state and returns the output.
+    (\state -> return state)
+-- STOP
+main :: IO ()
+main = return ()
+\end{lstlisting}
+Nothing dramatic, just slightly shorter, less error-prone code. Using these two helper
+functions is highly recommended, as it ensures proper resource management and state
+updating.
+
 \subsection{Функции работы со списками}
 
 Можно легко писать собственные sinks, если вы пользуетесь встроенными примитивами из
