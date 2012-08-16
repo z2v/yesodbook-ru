@@ -121,9 +121,9 @@ I think the first place where Haskell really shows its strength is with the xml-
 
 The first tag has a local name of no-namespace, and no namespace or prefix. The second tag (local name: no-prefix) also has no prefix,  but it does have a namespace (first-namespace). first-attr, however, does not inherit that namespace: attribute namespaces must always be explicitly set with a prefix.
 
-\fbox{\begin{minipage}[!h]{.9\linewidth}
+\begin{remark}
 Namespaces are almost always URIs of some sort, though there is nothing in any specification requiring that it be so.
-\end{minipage}}
+\end{remark}
 
 The third tag has a local name of with-prefix, a prefix of foo and a namespace of second-namespace. Its attribute has a second-attr local name and the same prefix and namespace. The xmlns and xmlns:foo attributes are part of the namespace
 specification, and are not considered attributes of their respective elements.
@@ -247,9 +247,9 @@ And that, my friends, is the entire XML data model. For many parsing purposes, y
 
 In addition to the document API, xml-types defines an xml-types:Data.XML.Types:Event datatype. This can be used for constructing streaming tools, which can be much more memory efficient for certain kinds of processing (eg, adding an extra attribute to all elements). We will not be covering the streaming API currently, though it should look very familiar after analyzing the document API.
 
-\fbox{\begin{minipage}[!h]{.9\linewidth}
+\begin{remark}
 You can see an example of the streaming API in the Sphinx case study.
-\end{minipage}}
+\end{remark}
 
 \section{Text.XML}
 
@@ -396,9 +396,9 @@ main = do
 
 Let's step through that. First we get all h2 elements in the document. (\$// gets all descendants of the root element.) Then we filter out only those with class=bar. That >=> operator is actually the standard operator from base:Control.Monad; yet another advantage of the monad instance of lists. precedingSibling finds all nodes that come before our node and share the same parent. (There is also a preceding axis which takes all elements earlier in the tree.) We then take just the h1 elements, and then grab their content.
 
-\fbox{\begin{minipage}[!h]{.9\linewidth}
+\begin{remark}
 The equivalent XPath, for comparison, would be //h2[@class ='bar']/preceding-sibling::h1//text().
-\end{minipage}}
+\end{remark}
 
 While the cursor API isn't quite as succinct as XPath, it has the advantages of being standard Haskell code, and of type safety.
 
