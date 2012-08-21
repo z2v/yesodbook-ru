@@ -18,10 +18,10 @@ $(function() {
     $("h1").click(function(){ alert("Вы кликнули на заголовок!"); });
 });
 |]
-    toWidgetHead [hamlet| <meta name=keywords content="некоторый пример ключевых слов">|]
-    toWidget [hamlet| <h1>Это один способ вложения контента |]
-    [whamlet| <h2>А это другой |]
-    toWidgetBody [julius| alert("Это вложено в сам body"); |]
+    toWidgetHead [hamlet| <meta name=keywords content="некоторые ключевые слова примера">|]
+    toWidget [hamlet| <h1> Это один способ вставки контента |]
+    [whamlet| <h2> А это другой |]
+    toWidgetBody [julius| alert("Это вставлено в само тело"); |]
 
 main = warpDebug 3000 W
 \end{lstlisting}
@@ -40,12 +40,12 @@ $(function() {
     $("h1").click(function(){ alert("Вы кликнули на заголовок!"); });
 });
 </script>
-        <meta name="keywords" content="некоторый пример ключевых слов">
+        <meta name="keywords" content="некоторые ключевые слова примера">
     </head>
     <body>
-        <h1>Это один способ вложения контента </h1>
-        <h2>А это другой </h2>
-        <script> alert("Это вложено в сам body"); </script>
+        <h1> Это один способ вставки контента </h1>
+        <h2> А это другой </h2>
+        <script> alert("Это вставлено в само тело"); </script>
     </body>
 </html>
 \end{lstlisting}
