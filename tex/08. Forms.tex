@@ -168,106 +168,105 @@ main = warpDebug 3000 Synopsis
 
 \section{Типы}
 
-Модуль \lstinline'Yesod.Form.Types' определяет несколько типов.Давайте начнем с самыз
+Модуль \lstinline'Yesod.Form.Types' определяет несколько типов.Давайте начнем с самых
 простых:
 
 \subsection{Enctype}
-
-The encoding type, either UrlEncoded or Multipart. This datatype declares an instance of
-ToHtml, so you can use the enctype directly in Hamlet.
+Тип кодировки: либо \lstinline'UrlEncoded', либо \lstinline'Multipart'. Этот тип данных
+имеет инстанс для монады \lstinline'ToHtml', так что вы можете его использовать
+непосредственно в \lstinline'Hamlet'.
 
 \subsection{Env}
-
-Maps a parameter name to a list of values.
+Отображает имя параметра в список значений.
 
 \subsection{FileEnv}
-
-Maps a parameter name to the associated uploaded file.
+Отображает имя параметра в соответствующий загруженный файл.
 
 \subsection{Ints}
-
-As mentioned in the introduction, yesod-form automatically assigns a unique name to each
-field. Ints is used to keep track of the next number to assign.
+Как было сказано во введении, формы в yesod автоматически генерируют уникальные имена 
+каждому полю. \lstinline'Ints' использоуется для хранения этой информации.
 
 \subsection{FormResult}
+Имеет три состояния: \lstinline'FormMissing' если данные не были переданы,
+\lstinline'FormFailure' если произошла ошибка при разборе формы (например, отсутствует
+обязательное поле, неправильное содержимое) или \lstinline'FormSuccess' когда всё прошло
+гладко.
 
-Has one of three possible states: FormMissing if no data was submitted, FormFailure if
-there was an error parsing the form (e.g., missing a required field, invalid content), or
-FormSuccess if everything went smoothly.
+Три следующих типа данных используются для определения индивидуальных полей.
 
-Next we have three datatypes used for defining individual fields.
-
-A field is a single piece of information, such as a number, a string or an email address.
-Fields are combined together to build forms.
+\emph{Полем называется атомарная часть информации, такая как число, строка или адрес
+email. Поля, соединяясь друг с другом, образуют форму}
 
 \subsection{Field}
-
-Defines two pieces of functionality: how to parse the text input from a user into a
-Haskell value, and how to create the widget to be displayed to the user. yesod-form
-defines a number of individual Fields in Yesod.Form.Fields.
+Определяют два вида функциональности: как преобразовать текстовый вход от пользователя 
+в значение языка Haskell и как создовать виджет, который будет показан пользователю.
+Несколько атомарных полей пакетп \lstinline'yesod-form' определено в модуле
+\lstinline'Yesod.Form.Fields'.
 
 \subsection{FieldSettings}
+Основная информация о том, как поле следует отображать, например отображаемое имя,
+подсказка, и, возможно, захардкоженные ID и имя атрибута. (Если ничего не указано, то они
+генерятся автоматически.)
 
-Basic information on how a field should be displayed, such as the display name, an
-optional tooltip, and possibly hardcoded id and name attributes. (If none are provided,
-they are automatically generated.)
-
-FieldSettings provides an IsString instance, so when you need to provide a FieldSettings
-value, you can actually type in a literal string. That's how we interacted with it in the
-synopsis.
+FieldSettings предоставляет экземпляр IsString, так что, когда вам понадобится указать
+значение типа FieldSettings, вы можете обойтись просто строковым литералом. Так мы
+делали во введении.
 
 \subsection{FieldView}
+Промежуточный формат, содержащий кучу информации о том, как отображать поле. Навряд ли
+это когда-либо понадобится пользователю, мы поговорим об это позже.
 
-An intermediate format containing a bunch of view information on a field. This is hardly
-ever used directly by the user, we'll see more details later.
-
-And finally, we get to the important stuff: the forms themselves. There are three types
-for this: MForm is for monadic forms, AForm for applicative and IForm (declared in IForm)
-for input. MForm is actually a type synonym for a monad stack that provides the following
-features:
+Наконец, мы добрались к важной части нашего рассказа: непосредственно к формам. Существует
+три вида форм: \lstinline'MForm' для монадических, \lstinline'AForm' для аппликативных и
+\lstinline'IForm' (определенная в \lstinline'IForm') для форм ввода
+данных. \lstinline'MForm' часто является синонимом типа стека монад, который позволяет
+следующие действия:
 \begin{itemize}
-\item A Reader monad giving us the parameters (Env and FileEnv), the master site
-argument and the list of languages the user supports. The last two are used for i18n (more
-on this later).
-\item A Writer monad keeping track of the Enctype. A form will always be UrlEncoded,
-unless there is a file input field, which will force us to use multipart instead.
-\item A State monad holding an Ints to keep track of the next unique name to produce.
+\item Монада \lstinline'Reader' предосталяет нам параметры (\lstinline'Env' и 
+\lstinline'FileEnv'), the master site argument и список языков, которые поддерживаются на
+стороне пользователя. Последние два используются в \lstinline'i18n', но об это позже.
+
+\item Монада \lstinline'Writer' заотится о \lstinline'Enctype'. Форма всегда будет в
+закодированна как  \lstinline'UrlEncoded', за исключение случая, когда присутствует
+параметр для загрузке файлов. Тогда у нас форма будет загодирована с помощью multipart.
+\item Монада \lstinline'State' хранит \lstinline'Ints' для обеспечения возможности
+сгенерировать следующее уникально имя.
 \end{itemize}
-An AForm is pretty similar. However, there are a few major differences:
+Форма \lstinline'AForm' устроена сходно. Однако, есть несколько важных различий:
 \begin{itemize}
-\item It produces a list of FieldViews. This allows us to keep an abstract idea of the
-form display, and then at the end of the day choose an appropriate function for laying it
-out on the page. In the synopsis, we used renderDivs, which creates a bunch of div tags.
-Another option would be renderTable.
+\item Она генерирует список \lstinline'FieldViews'. Это позволяет нам оперировать
+абстракцией отображения форм, выбирая соответствующую функцию для отрисовки страницы в
+самом конце. Во введении мы использовали \lstinline'renderDivs', которая создает
+много тегов \lstinline'div'. Другим варианто могла бы быть 
+\lstinline'renderTable'.
 
-\item It does not provide a Monad instance. The goal of Applicative is to allow the entire
-form to run, grab as much information on each field as possible, and then create the final
-result. This cannot work in the context of Monad.
+\item У неё нет экземпляра \lstinline'Monad'. Задача \lstinline'Applicative' заключается
+в том, чтобы позволить форме выполниться целиком, собрать как можно больше информации, и
+выдать результат. Она не может работать в контексте \lstinline'Monad'.
 \end{itemize}
-An IForm is even simpler: it returns either a list of error messages or a result.
+\lstinline'IForm' ещё проще: Она возвращает либо список ошибок, либо результат.
 
-\section{Converting}
+\section{Преобразование}
 
-"But wait a minute," you say. "You said the synopsis uses applicative forms, but I'm sure
-the type signature said MForm. Shouldn't it be Monadic?" That's true, the final form we
-produced was monadic. But what really happened is that we converted an applicative form to
-a monadic one.
+"Погодите-ка," скажете вы. "Вы говорите, что во введении использовались аппликативные
+формы, но я уверен в том, что сигнатуры типов были \lstinline'MForm'. Не были ли
+они монадическими?" Да, верно, в конце сгенерировались монадические формы, но в
+действительности они получились преобразованием из аппликативных.
 
-Again, our goal is to reuse code as much as possible, and minimize the number of functions
-in the API. And Monadic forms are more powerful than Applicative, if more clumsy, so
-anything that can be expressed in an Applicative form could also be expressed in a Monadic
-form. There are two core functions that help out with this: aformToForm converts any
-applicative form to a monadic one, and formToAForm converts certain kinds of monadic forms
-to applicative forms.
+Опять же, наша цель заключается в том, чтобы переиспользовать как можно больше кода и
+минимизировать число функций в API. И  монадические формы являются более
+выразительными, чем аппликативные. Грубо говоря, всё что может быть выражено
+аппликативными формами может быть выражено и монадическими. В этом нам помогут две
+основные функции: \lstinline'aformToForm' преобразует любую аппликативную форму в
+монаическую, а \lstinline'formToAForm' преобразует несколько видов монадических форм в их
+аппликативные варианты.
 
-"But wait another minute," you insist. "I didn't see any aformToForm!" Also true. The
-renderDivs function takes care of that for us.
+<<Минутку>>, скажете вы. <<Я не видел никаких aformToForm!>> Это тоже верно.
+Преобразование произошло в функции \lstinline'renderDivs'.
 
-\subsection{Create AForms}
-
-Now that I've (hopefully) convinced you that in our synopsis we were really dealing with
-applicative forms, let's have a look and try to understand how these things get created.
-Let's take a simple example:
+\subsection{Создание аппликативных форм}
+Теперь, когда (я надеюсь) мы убедились в том, что во введении мы работали с
+аппликативными формами, давать поймем как они создавались. Начнем с простого примера:
 
 \begin{lstlisting}
 data Car = Car
@@ -296,25 +295,27 @@ getCarR = do
     <input type=submit>
 |]
 \end{lstlisting}
+Здесь мы явно разделили аппликативные и монадические формы. В \lstinline'carAForm' мы
+использовали опреаторы \lstinline'<$>' и \lstinline'<*>'. Здесь нечему удивляться, они
+часто используются при аппликативном программировании. И у нас про одной строчке для
+каждой записи в типа \lstinline'Car'. Вероятно вы не удивитесь тому, что мы использовали 
+\lstinline'textField' для записи типа \lstinline'Text' и \lstinline'intField' для записи
+типа \lstinline'Int'.
 
-Here, we've explicitly split up applicative and monadic forms. In carAForm, we use the
-<\$> and <*> operators. This should not be surprising; these are almost always used in
-applicative-style code. And we have one line for each record in our Car datatype. Perhaps
-unsurprisingly, we have a textField for the Text record, and an intField for the Int
-record.
+Давайте взглянем поближе на функцию \lstinline'areq'. Её (упрощенной) сигнатурой является
+\lstinline'Field a -> FieldSettings -> Maybe a -> AForm a'. 
+Так что первый аргумент определяет тип данных поля, как его распарсить и как отрисовать.
+Следующий аргумент, \lstinline'FieldSettings', дает нам метку, подсказку, имя и  ID
+поля. В этом случае мы испльзуем раннее упомянутый экземпляр \lstinline'IsString' для 
+\lstinline'FieldSettings'.
 
-Let's look a bit more closely at the areq function. Its (simplified) type signature is
-Field a -> FieldSettings -> Maybe a -> AForm a. So that first argument is going to
-determine the datatype of this field, how to parse it, and how to render it. The next
-argument, FieldSettings, tells us the label, tooltip, name and ID of the field. In this
-case, we're using the previously-mentioned IsString instance of FieldSettings.
+А что с \lstinline'Maybe a'? Она предоставляет опциональное значение по умолчанию. 
+Например, если мы хватим заполнить форму с помощью <<2007>> как годом машины по
+умолчанию, мы воспользуемся \lstinline'аreq intField "Year" (Just 2007)'. Мы можем даже
+сделать это выше уровнем, так как форма принимает опциональный аргумент для значений по
+умолчанию.
 
-And what's up with that Maybe a? It provides the optional default value. For example, if
-we want our form to fill in "2007" as the default car year, we would use areq intField
-"Year" (Just 2007). We can even take this to the next level, and have a form that takes an
-optional parameter giving the default values.
-
-\subsection{Form with default values}
+\subsection{Формы со значениями по умолчанию}
 
 \begin{lstlisting}
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
@@ -338,12 +339,9 @@ getCarR = do
 |]
 \end{lstlisting}
 
-\section{Optional fields}
-
-Suppose we wanted to have an optional field (like the car color). All we do instead is use
-the aopt function.
-
-\subsection{Optional fields}
+\section{Опциональные поля}
+Предположим, что нам нужно опциональное поле (например цвет машины). Всё что нужно ---
+это воспользоваться функцией \lstinline'aopt'.
 
 \begin{lstlisting}
 data Car = Car
@@ -375,12 +373,12 @@ getCarR = do
 |]
 \end{lstlisting}
 
-And like required fields, the last argument is the optional default value. However, this
-has two layers of Maybe wrapping. This may seem redundant (and it is), but it makes it
-much easier to write code that takes an optional default form parameter, such as in the
-next example.
+Как и в случае обязательных полей, последним аргументом является значение по умолчанию.
+Однако, оно заверруто в тип \lstinline'Maybe' два раза. Это может показаться чрезмерным,
+но это урощает написаное кода, который принимает в параметре формы опциональное значение
+по умолчанию, как в следующем примере
 
-\subsection{Default optional fields}
+\subsection{Опциональные поля по умолчанию}
 
 \begin{lstlisting}
 data Car = Car
@@ -412,13 +410,12 @@ getCarR = do
 |]
 \end{lstlisting}
 
-\section{Validation}
-
-How would we make our form only accept cars created after 1990? If you remember, we said
-above that the Field itself contained the information on what is a valid entry. So all we
-need to do is write a new Field, right? Well, that would be a bit tedious. Instead, let's
-just modify an existing one:
-
+\section{Валидаций}
+Как бы сделать так, чтобы наша форма принимала только машины, созданные после 1990 года?
+Если вы помните, мы говорили выше, что \lstinline'Field' сам по себе содержит информацию 
+о допустимых значениях. Так что, всё что нам надо это использовать новый
+\lstinline'Field', верно же? Да, но это будет несколько утомительно. Вместо этого,
+давайте изменим уже существующее.
 \begin{lstlisting}
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
@@ -451,10 +448,11 @@ getCarR = do
 |]
 \end{lstlisting}
 
-The trick here is the check function. It takes a function (validateYear) that returns
-either an error message or a modified field value. In this example, we haven't modified
-the value at all. That is usually going to be the case. This kind of checking is very
-common, so we have a shortcut:
+Трюк кроется в функции провеки \lstinline'check'. Она принимает функцию 
+(\lstinline'validateYear'), которая возвращает либо сообщение об ошибке, или новое
+значение. В этом примере, мы вообще не модифицировали значение. That is usually going to
+be the case. Такой вид проверки довольно распространён, так что мы можем применить
+сокразение:
 
 \begin{lstlisting}
     carYearField = checkBool (>= 1990) errorMessage intField
@@ -477,17 +475,18 @@ getCarR = do
 |]
 \end{lstlisting}
 
-checkBool takes two parameters: a condition that must be fulfilled, and an error message
-to be displayed if it was not.
+Функция \lstinline'checkBool' принимает два парметра: условие, которое должно быть
+выполнено и сообщение об ошибке, которое следует отобразить если оно не верно.
 
-You may have noticed the explicit Text type signature on errorMessage. In the presence of
-OverloadedStrings, this is necessary. In order to support i18n, messages can have many
-different datatypes, and GHC has no way of determining which instance of IsString you
-intended to use.
+Вы могли заметить явное указание \lstinline'Text' в сигнатуре типа функции
+\lstinline'errorMessage'. При использовании \lstinline'OverloadedStrings' это
+необходимо. Чтобы поддерживать i18n, сообщения могут иметь много различных типов
+данных и GHC никак не может сам определить, котороый экземпляр \lstinline'IsString' вам
+нужен.
 
-It's great to make sure the car isn't too old. But what if we want to make sure that the
-year specified is not from the future? In order to look up the current year, we'll need to
-run some IO. For such circumstances, we'll need checkM:
+Классно, что мы можем быть уверены, что наша машина не очень стара. Но что, если мы хотим
+быть уверенными в том, что указанный год не из будущего? Чтобы получить текущий год, нам
+надо выполнить немного IO. Для таких случаев предназначение функция \lstinline'checkM':
 
 \begin{lstlisting}
     carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
@@ -523,20 +522,22 @@ getCarR = do
 |]
 \end{lstlisting}
 
-inPast is a function that will return an Either result. However, it uses a Handler monad.
-We use liftIO getCurrentYear to get the current year and then compare it against the
-user-supplied year. Also, notice how we can chain together multiple validators.
+Функция \lstinline'inPast' вернет результат типа \lstinline'Either'. Однако, она
+использует монаду \lstinline'Handler'. Мы использует \lstinline'liftIO getCurrentYear',
+чтобы получить текущий год и затем сравнить её с кодом, указанным пользователем. Также,
+обратите внимание как мы несколько валидаторов построили в цепочку.
 
-Since the checkM validator runs in the Handler monad, it has access to a lot of the stuff
-you can normally do in Yesod. This is especially useful for running database actions,
-which we'll cover in the Persistent chapter.
+С тех пор как валидатор \lstinline'checkM' работает в монаде \lstinline'Handler', он
+можете использовать тот же код что и обычно теперь и в \lstinline'Yesod'. Это особенно
+полезно при обращении к базам данных, которые будет рассмотрено в главе
+\lstinline'Persistent'.
+%FIXME: add link
 
-More sophisticated fields
+\section{Более сложные поля}
+Наше поле для ввода цвета довольно приличное, но не очень user-friendly. В
+действительности на нужен выпадающий список.
 
-Our color entry field is nice, but it's not exactly user-friendly. What we really want is
-a drop-down list.
-
-Drop-down lists
+\subsection{Выпадающие списки}
 
 \begin{lstlisting}
 data Car = Car
@@ -591,12 +592,14 @@ getCarR = do
 |]
 \end{lstlisting}
 
-selectFieldList takes a list of pairs. The first item in the pair is the text displayed to
-the user in the drop-down list, and the second item is the actual Haskell value. Of
-course, the code above looks really repetitive; we can get the same result using the Enum
-and Bounded instance GHC automatically derives for us.
+Функция \lstinline'selectFieldList' принимает список пар. Первый элемент пары --- это
+текст, который отобразится пользователю в выпадающем списке, а вторым элементом
+является соответствующее значение из \lstinline'Haskell'. Конечно же код выше выглядит
+солидно, но мы можем получить тот же результат воспользовавшись экземплярами
+\lstinline'Enum' и \lstinline'Bounded', которые GHC автоматически
+выводит нам.
 
-\subsection{Uses Enum and Bounded}
+\subsection{Используя Enum и Bounded}
 
 \begin{lstlisting}
 data Car = Car
@@ -650,14 +653,14 @@ getCarR = do
 |]
 \end{lstlisting}
 
-[minBound..maxBound] gives us a list of all the different Color values. We then apply a
-map and \lstinline'&&&' (a.k.a, the fan-out operator) to turn that into a list of pairs.
+В промежутке \lstinline'[minBound..maxBound]' предоставляет нам список всех различных
+значений типа \lstinline'Color'. Мы может затем применить \lstinline'map' и 
+\lstinline'&&&' (a.k.a, the fan-out operator), превращая его в список пар.
 
-Some people prefer radio buttons to drop-down lists. Fortunately, this is just a one-word
-change. For example, see Radio buttons
+Некоторые люди предпочитаю кнопки radio buttons выпадающим спискам. К счастью, нам надо
+только провести одно изменение. Вот пример.
 
 \subsection{Radio buttons}
-
 \begin{lstlisting}
 data Car = Car
     { carModel :: Text
@@ -710,63 +713,62 @@ getCarR = do
 |]
 \end{lstlisting}
 
-\section{Running forms}
-
-At some point, we're going to need to take our beautiful forms and produce some results.
-There are a number of different functions available for this, each with its own purpose.
-I'll go through them, starting with the most common.
+\section{Выполнение форм}
+А теперь воспользуемся нашими формами, чтобы получить некоторый результат. Для этого
+существует несколько различных функций, каждая имеет своё назначение. Я пройдусь по ним
+всем, ничиная с самых распространённых.
 
 \subsection{runFormPost}
 
 This will run your form against any submitted POST parameters. If this is not a POST
-submission, it will return a FormMissing. This automatically inserts a security token as a
-hidden form field to avoid CSRF attacks.
+submission, it will return a FormMissing. Токен безопасности вставится автоматически
+как скрытое поле во избежание CSRF-аттак.
 
 \subsection{runFormGet}
-
-Same as runFormPost, for GET parameters. In order to distinguish a normal GET page load
-from a GET submission, it includes an extra \lstinline'_hasdata' hidden field in the form.
+То же, что и \lstinline'runFormPost' для GET-параметров. Чтобы различать обычную
+загрузку страницы через GET от отправки GET формы, она включает дополнительное скрытое
+поле \lstinline'_hasdata' в форме.
 
 \subsection{runFormPostNoNonce}
-
-Same as runFormPost, but does not include (or require) the CSRF security token.
+То же, что и \lstinline'runFormPost', но без включения токена безопасности CSRF.
 
 \subsection{generateFormPost}
-
-Instead of binding to existing POST parameters, acts as if there are none. This can be
-useful when you want to generate a new form after a previous form was submitted, such as
-in a wizard.
+Вместо связывания существующих POST параметров, действует так, будто их нет. Может
+быть полезно когда вам нужно сгенерировать новую форму после того, как предыдущая была
+отправлена, such as in a wizard.
 
 \subsection{generateFormGet}
 
-Same as generateFormPost, but for GET.
+То же, что и \lstinline'generateFormPost', но через GET.
 
-The return type from the first three is ((FormResult a, Widget), Enctype). The Widget will
-already have any validation errors and previously submitted values.
+Возвращаемым значением первых трёх является \lstinline'((FormResult a, Widget), Enctype)'.
+\lstinline'Widget' уже будет иметь ошибки валидации и предыдущие тправленные значения.
+Widget will already have any validation errors and previously submitted values.
 
 \section{i18n}
-
-There have been a few references to i18n in this chapter. The topic will get more thorough
-coverage in its own chapter, but since it has such a profound effect on yesod-form, I
-wanted to give a brief overview. The idea behind i18n in Yesod is to have data types
-represent messages. Each site can have an instance of RenderMessage for a given datatype
-which will translate that message based on a list of languages the user accepts. As a
-result of all this, there are a few things you should be aware of:
+Здесь будет просто несколько ссылок к i18n. Эта тема подробнее освещена в своей
+собтсвенной главе
+%
+но так как она напрямую связана с формами, я хочу дать краткий обзор. 
+Идея по поддержке i18n в Yesod состоит в том, чтобы иметь типы данных для представляения
+сообщений. Каждый сайт может иметь экземпляр \lstinline'RenderMessage' для конкретного
+типа данных, который будет переводить сообщение в сообтветствии со списком языков,
+доступных на клиенте. В результате это есть несколько вещей, о которых вам стоит знать:
 \begin{itemize}
-\item  There is an automatic instance of RenderMessage for Text in every site, so you can
-just use plain strings if you don't care about i18n support. However, you may need to use
-explicit type signatures occassionally.
-\item yesod-form expresses all of its messages in terms of the FormMessage datatype.
-Therefore, to use yesod-form, you'll need to have an appropriate RenderMessage instance. A
-simple one that uses the default English translations would be:
-\end{itemize}
-
+\item  Для каждого сайта автоматически создается экземпляр \lstinline'RenderMessage' для
+типа \lstinline'Text', так что вы можете просто использовать простые строки , если не
+хотите заботиться о поддержке i18n. ОДнако, вам неожиданно можгут понадобиться явные
+сигнатуры типов.
+\item Все сообщения в yesod-form выражаются в терминах типа \lstinline'FormMessage'.
+Поэтому, для использования yesod-form вам нужен соответствующий экземпляр 
+\lstinline'RenderMessage'. Наипростейший, который использует перевод на английсий по
+умолчанию, будет выглядеть так:
 \begin{lstlisting}
 instance RenderMessage MyApp FormMessage where
     renderMessage _ _ = defaultFormMessage
 \end{lstlisting}
-
 This is provided automatically by the scaffolded site.
+\end{itemize}
 
 \section{Monadic Forms}
 
