@@ -1,18 +1,20 @@
-Blog: i18n, authentication, authorization, and database
+Блог: i18n, аутентификация, авторизация и база данных
 
-This is a simple blog app. It allows an admin to add blog posts via a rich text editor (nicedit), allows logged-in users to comment, and has full i18n support. It is also a good example of using a Persistent database, leveraging Yesod's authorization system, and templates.
+Это приложение простой блог. Оно позволяет администратору добавлять записи в блог с помощью текстового редактора (nicedit), позволяет комментировать зарегистрированным пользователям и имеет полную поддержку i18n. Это также хороший пример использования базы данных Persistent, используя систему авторизации Yesod, и шаблоны.
 
-While in general we recommend placing templates, Persist entity definitions, and routing in separate files, we'll keep it all in one file here for convenience. The one exception you'll see below will be i18n messages.
+Хотя в целом мы рекомендуем размещать шаблоны, определения сущностей Persist (Persist entity definitions) и маршрутизацию в отдельных файлах, мы для удобства будем держать всё это в одном файле. Единственным исключением как вы увидите ниже будут сообщения i18n.
 
-We'll start off with our language extensions. In scaffolded code, the language extensions are specified in the cabal file, so you won't need to put this in your individual Haskell files.
-
+Мы начнем с нашего расширений языка. В сгенерированом (scaffolded) коде, расширений языка указываются в файле cabal, так что вам не нужно будет указывать это в ваших Haskell файлах.
+ 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, GADTs, FlexibleContexts,
              MultiParamTypeClasses #-}
+\end{lstlisting}
+ 
+Теперь импорт. 
 
-Now our imports.
-
+\begin{lstlisting} 
 import Yesod
 import Yesod.Auth
 import Yesod.Form.Nic (YesodNic, nicHtmlField)
@@ -27,37 +29,37 @@ import Data.Time (UTCTime, getCurrentTime)
 import Control.Applicative ((<$>), (<*>), pure)
 \end{lstlisting}
 
-First we'll set up our Persistent entities. We're going to both create our data types (via mkPersist) and create a migration function, which will automatically create and update our SQL schema. If you were using the MongoDB backend, migration would not be needed.
+Сначала мы настроим наши сущности Persistent. Мы собираемся создать наши типы данных (через mkPersist) и функцию миграции, которая будет автоматически создавать и обновлять нашу SQL-схему. Если вы используете сервер MongoDB, миграция не будет необходима.
 
 \begin{lstlisting}
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 \end{lstlisting}
-
-Keeps track of users. In a more robust application, we would also keep account creation date, display name, etc.
-
+ 
+Отслеживаем пользователей. В более надежных приложений, мы будем также сберегать дату регистрации, отображаемое имя, и т.д.
+ 
 \begin{lstlisting}
 User
    email Text
    UniqueUser email
 \end{lstlisting}
-
-An individual blog entry (I've avoided using the word "post" due to the confusion with the request method POST).
-
+ 
+Отдельные записи в блоге. 
+ 
 \begin{lstlisting}
 Entry
    title Text
    posted UTCTime
    content Html
 \end{lstlisting}
-
-We need to tack on this "deriving" line since Html doesn't specify instances for Read, Show or Eq. If you get an error message about "cannot derive" in your own code, try adding the deriving statement.
-
+ 
+Мы должны добавить этот "deriving" поскольку Html не определяет екземляры для Read, Show или Eq. Если вы получаете сообщение об ошибке "cannot derive" в своём собственном коде, попробуйте добавить deriving.
+ 
 \begin{lstlisting}
    deriving
 \end{lstlisting}
-
-And a comment on the blog post.
-
+ 
+И комментарий к записи в блоге. 
+ 
 \begin{lstlisting}
 Comment
    entry EntryId
@@ -67,23 +69,23 @@ Comment
    text Textarea
 |]
 \end{lstlisting}
-
-Every site has a foundation datatype. This value is initialized before launching your application, and is available throughout. We'll store a database connection pool and HTTP connection manager in ours. See the very end of this file for how those are initialized.
-
+ 
+Каждый сайт имеет тип основание (foundation datatype). Это значение инициализируется перед запуском приложения, и доступна в течении всего времени работы. В нашем мы будем хранить пул соединений с базой данных и менеджер HTTP-соединения. Смотрите как они будут инициализированы в конце этого файла.
+ 
 \begin{lstlisting}
 data Blog = Blog
    { connPool :: ConnectionPool
    , httpManager :: Manager
    }
 \end{lstlisting}
-
-To make i18n easy and translator friendly, we have a special file format for translated messages. There is a single file for each language, and each file is named based on the language code (e.g., en, es, de-DE) and placed in that folder. We also specify the main language file (here, "en") as a default language.
-
+ 
+Для того, чтобы сделать i18n легким и дружественным переводчику, у нас есть специальный формат файлов для перевода сообщений. Существует отдельный файл для каждого языка, и каждый файл называется на основе кода языка (например, en, es, de-DE) и помещаются в эту папку. Мы также указываем основной языковой файл (в данном случае, "en") в качестве языка по умолчанию.
+ 
 \begin{lstlisting}
 mkMessage "Blog" "../messages-blog" "en"
 \end{lstlisting}
-
-Our en message file contains the following content:
+ 
+Наш файл сообщений en содержит следующее содержание: 
 
 \begin{lstlisting}
     NotAnAdmin: You must be an administrator to access this page.
@@ -116,8 +118,8 @@ Our en message file contains the following content:
     BlogArchiveTitle: Blog Archive
 \end{lstlisting}
 
-Now we're going to set up our routing table. We have four entries: a homepage, an entry list page (BlogR), an individual entry page (EntryR) and our authentication subsite. Note that BlogR and EntryR both accept GET and POST methods. The POST methods are for adding a new blog post and adding a new comment, respectively.
-
+А сейчас мы собираемся создать наши таблицы маршрутизации. У нас есть четыре элемента: домашняя страница, страница список записей (BlogR), отдельную страницу для записи (EntryR) и наш дочерний сайт аутентификации. Обратите внимание, что BlogR и EntryR оба принимают GET и POST методы. Методы POST для добавления новой записи в блог и добавления нового комментария, соответственно.
+ 
 \begin{lstlisting}
 mkYesod "Blog" [parseRoutes|
 / RootR GET
@@ -126,24 +128,24 @@ mkYesod "Blog" [parseRoutes|
 /auth AuthR Auth getAuth
 |]
 \end{lstlisting}
-
-Every foundation needs to be an instance of the Yesod typeclass. This is where we configure various settings.
-
+ 
+Каждый тип основание должен быть экземпляром класса типов Yesod. Здесь мы настраиваем различные параметры.
+ 
 \begin{lstlisting}
 instance Yesod Blog where
 \end{lstlisting}
-
-The base of our application. Note that in order to make BrowserID work properly, this must be a valid URL.
-
+ 
+Основа нашего приложения. Обратите внимание, что для того, чтобы BrowserID работал правильно, это должен быть правильный URL.
+ 
 \begin{lstlisting}
     approot = ApprootStatic "http://localhost:3000"
 \end{lstlisting}
+ 
+Наша схема авторизации. Мы хотим чтобы соблюдались следующие правила:
 
-Our authorization scheme. We want to have the following rules:
-
-* Only admins can add a new entry.
-* Only logged in users can add a new comment.
-* All other pages can be accessed by anyone.
+* Только администраторы могут добавлять новую запись. 
+* Только зарегистрированные пользователи могут добавлять комментарии. 
+* Все остальные страницы могут быть доступны любому.  
 
 We set up our routes in a RESTful way, where the actions that could make changes are always using a POST method. As a result, we can simply check for whether or not a request is a write request, given by the True in the second field.
 
