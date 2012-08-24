@@ -14,10 +14,10 @@
 можем безопасно работать с ресурсами, зная, что они будут гарантированно освобождены даже
 в случае исключений.
 
-В этом приложении рассматривается пакет conduit версии \verb=0.2=.
+В этом приложении рассматривается пакет 
+\foothref{http://hackage.haskell.org/package/conduit}{conduit} версии \verb=0.2=.
 
 \section{Кондуиты в двух словах}
-
 Хотя понимание низкоуровневой механики кондуитов рекомендуется, вы можете далеко
 продвинуться и без неё. Давайте начнем  с нескольких  высокоуровневых 	 примеров.  Не
 беспокойтесь, если некоторые детали      вам   будут       сейчас	  непонятны -- 
@@ -28,11 +28,11 @@
  \item \emph{Источник (source)} генерирует данные. Они могут быть в файле, прийти из
 сокета или лежать списком в памяти. Мы будем обращаться к этим данным, забирая их из
 источника.
- \item \emph{Синки (sinks)} потребляет данные. Основные примеры будут о функции
-суммирования
+ \item \emph{Синки (sinks)} потребляют данные. 
+ \marginpar{Я хз как переводить на рускийэтот термин}
+ Основные примеры будут о функции суммирования
 (сложение чисел из потока), файловом канале (пишет все пришедшие байты в файл) или
 сокете. В конце обработки данных возвращается какое-то значение.
-% FIXME: как sink на русский переводить?
  \item \emph{Кондуиты} преобразуют данные. В простейшем примере это будет функция
 \lstinline=map=,
 хотя бывает много других. Мы добавляем данные в кондуит также как и в sink. Но вместо
@@ -120,7 +120,8 @@ sumTenFibs =
     $$ sumSink
 \end{lstlisting}
 Мы также можем скомбинировать кондуит и sink, поменяв местами некоторые операторы.
-\begin{lstlisting}sumTenFibs2 :: Int
+\begin{lstlisting}
+sumTenFibs2 :: Int
 sumTenFibs2 =
        runST
      $ runResourceT
@@ -150,7 +151,7 @@ textify2 = conduitState
 Сделаем кондуит \lstinline=unlines=, который будет добавлять перевод строки в конце каждого блока
 входных данных. Воспользуемся функцией \lstinline=CL.map=. feel free to write it with
 conduitState as
-well for practice.
+well for practice. \marginpar{Смело реализуйте это через conduitState для тренировки?}
 \begin{lstlisting}
 unlines' :: Resource m => Conduit Text m Text
 unlines' = CL.map $ \t -> t `T.append` "\n"
@@ -194,7 +195,7 @@ someIntLines count =
   =$= unlines'
   =$= CT.encode CT.utf8
 \end{lstlisting}
-Теперь воспользуемся этим кондуитом
+Теперь воспользуемся этим кондуитом:
 \begin{lstlisting}
 writeFibs3 :: Int -> FilePath -> IO ()
 writeFibs3 count dest =
@@ -303,11 +304,12 @@ main = runResourceT $ sourceFile "input.txt" $$ sinkFile "output.txt"
 \begin{lstlisting}
 register :: IO () -> ResourceT IO ReleaseKey
 \end{lstlisting}
+\begin{remark}
 Полиморфность этой функции и остальных ниже не используется в полную силу. На самом деле
 они могут работать с другими монадами кроме IO. По факту, почти любой траснсформер над
 IO, также как на любым другим ST стэком, будет работать. Мы разъясним детали познее.
-
-Эта функция региструет кусок кода, утверждения которого будут выполнены. Она также
+\end{remark}
+Эта функция регистрирует кусок кода, который будет выполнен. Она также
 возвращает \lstinline'ReleaseKey', которое используется в следующей функции:
 
 \begin{lstlisting}
@@ -375,7 +377,7 @@ main = runResourceT $ do
 действия в IO. Это позволит легко втягивать (lift) наш стэк (т.е. добавлять новый
 трансформер в середину стэка) и избегать проблем about the
 threading of other monadic side-effects.
-% FIXME я не уверен что такое тут threading
+ \marginpar{я не уверен что такое тут threading}
 \item Какой-то способ гарантировать, что действие будет выполнено даже в случае
 исключений. Отсюда следует небходимать функции а-ля корзина.
 \end{itemize}
@@ -423,7 +425,8 @@ why bother
 with
 ResourceT at all then for ST. The answer is that there is a
 lot you can do with conduits without allocating scarce resources, and ST is a
-great way to do this in a pure way. But more on this later. }
+great way to do this in a pure way. But more on this later. 
+\marginpar{Я ничего не понял}}
 
 
 Пункт номер 2: нам надо как-то работать с монадой Base. Опять же, мы можем
@@ -458,7 +461,8 @@ resourceBracket_ :: Base m a -> Base m b -> m c -> m c
 в реализации трансформеров. Нам не нужно
 предоставлять инстанс \lstinline'HasRef', а инстанс \lstinline'Resource' --- нужно.
 Хитрость нужна в допустимой реализации функции \lstinline'resourceBracket_'. Здесь мы
-воспользовалсиь некоторыми функциями для управления монадами (monad-control):
+воспользовалсиь некоторыми функциями для управления монадами 
+(\foothref{http://hackage.haskell.org/package/monad-control}{monad-control}):
 
 \begin{lstlisting}
 instance (MonadTransControl t, Resource m, Monad (t m))
@@ -474,8 +478,9 @@ instance (MonadTransControl t, Resource m, Monad (t m))
 Для всякого трансформера, его база является базой внутренней монады. Аналогично, мы можем
 добраться до базовой монады, втянув внутреннюю монаду и добравшись до её базы. Хитрость
 понадобилась при реализации \verb=resourceBracket_=. Я не буду вдаваться в подробные
-объяснения, чтобы, случайно, не выставить себя идиотом.
-I will not go into a detailed explanation, as I would simply make a fool of myself.
+объяснения, чтобы, случайно, не выставить себя идиотом. 
+\marginpar{Нелитературно. В оригинале:
+I will not go into a detailed explanation, as I would simply make a fool of myself.}
 
 \subsection{Определение ResourceT}
 
@@ -507,14 +512,14 @@ newtype ResourceT m a =
 зарегистрированных действий (actions). Заметьте, что \lstinline'ReleaseMap' принимает
 типовую переменную \lstinline'base', которая определяет, действия какой монады по
 освобождению ресурсов  будут использоваться.
-% FIXME хрень какая-то. В оригинале which states which monad release actions must live
-% in.
+\marginpar{хрень какая-то. В оригинале which states which monad release actions must live
+in.}
 
 В конце концов, \lstinline'ResourceT' является по существу \lstinline'ReaderT', который
 хранит мутабельную
 ссылку на \lstinline'ReleaseMap'. The reference type is determined by the base
 of the monad in question, as is the cleanup monad. This is why we need to use associated
-types.
+types. \marginpar{Я ничего не понял}
 
 Целью оставшейся части кода в модуле \lstinline'Control.Monad.Trans.Resource'
 является создание инстансов типа \lstinline'ResourceT'.
@@ -527,7 +532,7 @@ types.
 Любая монада может втянуть (lift) IO действия в себя, но это может быть небезопасно.
 Первый пример этого --- ST. Care should be taken to
 only lift actions which do not acquire scarce resources and which don't "fire the
-missiles." Другими словами, все обычные предпреждения насчет \lstinline'unsafeIOToST'
+missiles." \marginpar{Я ничего не понял} Другими словами, все обычные предпреждения насчет \lstinline'unsafeIOToST'
 справедливы.
   
 \subsubsection{ResourceThrow}
@@ -540,7 +545,7 @@ missiles." Другими словами, все обычные предпреж
    
 \subsubsection{ResourceIO}
 
-Включает в себя несколько тайпклассов, в том числе два
+Включает в себя несколько классов типов, в том числе два
 упомянутых выше. Он создан только для удобства, мы можем получить тот же результат без
 него, потребуется только внимательнее оперировать типами (you'd just have to do a lot
 more typing).
@@ -552,7 +557,7 @@ more typing).
 \lstinline'runResourceT' в то время
 как дочерний использует ресурсы. Это, конечно же, так, если вы используете обычную
 функцию \lstinline'forkIO'.
-
+\begin{remark}
 Вообще, вы не можете использовать стандартный \lstinline'forkIO', так как он
 использует монаду
 IO, но вы можете использовать функцию \lstinline'fork' из залифченой базовой монады.
@@ -562,7 +567,9 @@ IO, но вы можете использовать функцию \lstinline'fo
 \lstinline'ResourceT' заключается не в запрещении 
 программистам стрелять себе в ногу, а только в облегчении написания
 правильного кода. Поэтому, мы всё же предостовляем этот экземпляр, даже если он может быть
-использован неправильно. Чтобы решить эту проблему \lstinline'ResourceT' включает в себя
+использован неправильно. 
+\end{remark}
+Чтобы решить эту проблему \lstinline'ResourceT' включает в себя
 счетчик ссылок. Когда вы образовываете новый поток с помощью \lstinline'resourceForkIO',
 значение \lstinline'RefCount' в \lstinline'ReleaseMap' инкрементируется. Всякий раз, когда
 \lstinline'runResourceT'
@@ -577,7 +584,7 @@ IO, но вы можете использовать функцию \lstinline'fo
 функции с \lstinline'HasRef' и позволяют им работать с любым \lstinline'ResourceT'.
 Функция \verb=withIO= по сути является функцией \verb=with= с ограниченным типом, но она 
 позволяет работать с некоторой вложенностью типов, в то время как при \verb=with=
-пришлось бы продираться в глубину (but working around 
+пришлось бы продираться в глубину \marginpar{Нелитературно. в оригинале: but working around 
 some of the nastiness with types you would otherwise run into). В общем, вам стоит
 использовать \lstinline'withIO' для написания IO кода.
 Функция \verb=transResourceT= позволит вам модифицировать в какой монаде исполняется ваш
@@ -592,7 +599,7 @@ transResourceT f (ResourceT mx) = ResourceT (\r -> f (mx r))
 
 \section{Источники}
 
-Проще всего понять что это такое посмотрев на их типы:
+Проще всего понять, что это такое посмотрев на их типы:
 \begin{lstlisting}
 data SourceResult m a = Open (Source m a) a | Closed
 data Source m a = Source
@@ -642,8 +649,7 @@ main = return ()
 не придется вызывать \lstinline=sourcePull= или \lstinline=sourceClose= самостоятельно.
 Также, навряд ли вам придётся их самостоятельно описывать (для этого существуют
 \lstinline=sourceState= и \lstinline=sourceIO=).
-%In fact, you hardly  even write them yourself either (that's what sourceState and
-% sourceIO are for). FIXME уточнить это предожение
+\marginpar{уточнить это предожение (In fact, you hardly  even write them yourself either (that's what sourceState and sourceIO are for).}
 Идея заключается в том, что мы можем сделать некоторые предположения, когда реализовываем
 источники.
 
@@ -651,10 +657,11 @@ main = return ()
 В двух примерах источников выше есть кое-что общее: они всегда возвращают то же самое
 значение. Другими словами, у них не состояния. Для более-менее серьёзных источников нам
 потребуется реализовывать состояние.
-
+\begin{remark}
 Состояние может запросто быть определено вне нашей программы. Например, если мы
 реализуем источник, который читает данные из дескриптора, нам не нужно вручную
 указывать никакого состояния, потому что дескриптор имеет состояние сам по себе.
+\end{remark}
 Будем хранить состояние в источнике путём обновления возвращаемого значения типа
 \lstinline=Source= в конструкторе \lstinline=Open=. Лучше всего это рассмотреть на
 примере.
@@ -867,7 +874,7 @@ data Sink input m output =
 обновленные функции push и close. Если всё готово, то он возвращает результат и
 необработанные данные. Довольно таки тривиально.
  
-Первая настоящая неочевиность ("gotcha") заключается в наличии трех конструкторов у
+Первая настоящая неочевиность ("gotcha") \marginpar{Правильно же?} заключается в наличии трех конструкторов у
 типа \lstinline=Sink=. Зачем нам конструктор \lstinline=SinkNoData=: разве синки
 созданы не для поглощения данных? Ответ заключается в том, что нам нужно эффективно
 реализовать наш экземпляр \lstinline=Monad=. Когда мы вызываем \lstinline=return=, мы
@@ -988,9 +995,11 @@ main = return ()
 
 \subsection{Функции работы со списками}
 Можно легко писать собственные синки, если вы пользуетесь встроенными примитивами из
-модуля \verb*|Data.Conduit.List|. Там есть аналоги для типичных функций работы со
+модуля 
+\foothref{http://hackage.haskell.org/packages/archive/conduit/latest/doc/html/Data.Conduit.List.html}{Data.Conduit.List}. Там есть аналоги для типичных функций работы со
 списками, например, свертки. (Там так же есть некоторые кондуиты,
-например, \lstinline'conduit:Data.Conduit.List:map'.)
+например, 
+\foothref{http://hackage.haskell.org/packages/archive/conduit/latest/doc/html/Data-Conduit-List.html#v:map}{conduit:Data.Conduit.List:map}.)
 
 Если вы желаете поупражняться в кондуитах, то реализовать функции из модуля 
 \lstinline'List' (с хэлперами и без) будет для начала неплохо.
@@ -1083,7 +1092,7 @@ main = runResourceT $ do
 проблему
 потери данных. Это важная тема, которую стоило бы хорошенько обсудить. К сожалению,
 сейчас мы не сможем полностью её осветить, так как мы не обсудили главного виновника
-драмы: \lstinline'Conduits' (тип, не пакет). % FIXME добавить ссылку
+драмы: \lstinline'Conduits' (тип, не пакет). 
 
 Но если говорить кратко, то оставшееся значение не всегда игнорируется. Экземпляр Monad,
 например, использует его для передачи данных из одной синки в другую по цепочке.
@@ -1374,7 +1383,8 @@ three
 чтобы избегать потерь данных.
 % To put all this another way: conduits avoid chunking to get away from data loss. 
 Эта проблема встречается не только при использовании кондуитов. Если вы 
-взглянете на реализацию \lstinline'concatMapM' для енумераторов, вы увидете что 
+взглянете на реализацию \lstinline'concatMapM' для 
+\foothref{http://hackage.haskell.org/package/enumerator}{енумераторов}, вы увидете, что 
 там элементы обрабатываются по одному. В кондуитах мы выбираем решать эту 
 проблему на уровне типов.
 %(In conduits, we opted to force the issue at the type level).
@@ -1469,11 +1479,11 @@ three
 Буферизация была одной из главный причин для создания кондуитов. Чтобы понять её 
 важность, расмотрим подход, который мы видели не так давно, который приведет к 
 инверсии управления.
-
+\begin{remark}
 Инверсия управления в разных контекстах может означать разное. Если вы возражаете 
 против использования этого термина здесь, то можете называть это 
 "тёплой пушистой штуковиной" --- я не буду возражать.
-
+\end{remark}
 Предположим, что вы хотите посчитать, как много переводов строки в файле. При 
 стандартном императивном подходе вы бы действовали примерно так:
 \begin{itemize}  
@@ -1513,12 +1523,12 @@ three
 <<блока>> кода. Обычно, это и не нужно, просто мы должны осмыслить, что это 
 изменение повлияет на структуру наших программ. Однако, в сложных окружениях 
 становится непросто управлять этим, а порою просто не возможно. 
-
-% FIXME: Что-то я тут не совсем понял.
-% Usually this works
-% out just fine, but we need to recognize that this is a change in how we structure our
-% programs. Often times, with simple examples, this is a minor change. However, in larger
-% settings this can become very difficult to manage, bordering on impossible at times.
+\marginpar{
+Что-то я тут не совсем понял.
+Usually this works
+out just fine, but we need to recognize that this is a change in how we structure our
+programs. Often times, with simple examples, this is a minor change. However, in larger
+settings this can become very difficult to manage, bordering on impossible at times.}
 
 \subsection{Веб-сервер}
 Давайте напишем веб-сервер. Нам понадобятся следующие низкоуровневые операции:
@@ -1628,9 +1638,9 @@ main = return ()
 завернутоe в монаду \lstinline'IO'. 
 Оно не имеет доступа к входному потоку данных.
 
-Это можно легко исправить, завернув значение типа Application в монаду Sink. 
+Это можно легко исправить, завернув значение типа \lstinline'Application' в монаду Sink. 
 Это тот же самый трюк, который мы использовали в enumerator-based WAI 0.4. 
-% FIXME? WAi? WTF?
+\marginpar{WAi? WTF?}
 Однако, есть две проблемы:
 
 \begin{itemize}
@@ -1644,17 +1654,15 @@ main = return ()
 Существует ещё один недостаток инверсии управления. Наш код желает быть 
 управляемым. Он желает, чтобы ему дали что-то откуда можно брать данные, что-то 
 куда их можно сложить и запуститься от них. Нам нужно какое-то решение этой проблемы.
-
-Если вы считаете, что описанная проблема не так критична, то это потому, что вы не до конца погрузились в детали. Нам надо также учитывать, что тело запроса это тоже поток,
+\begin{remark}
+Если вы считаете, что описанная проблема не так критична, то это потому, что вы не до
+ конца погрузились в детали. Нам надо также учитывать, что тело запроса это тоже поток,
 работа с которым произодит и на клиентской, и на серверной стороне.
-%If you think that the situation I described with the proxy isn't so bad, it's because I've
-%gone easy on the details. We also need to take into account streaming the response body,
-%and the streaming needs to happen on both the client and server side.
-
+\end{remark}
 Простым решением было бы создание нового источника, и передача его в приложение.
-К сожалению, это влечет проблемы с буферизацией. You
-see, when we connect our source to the parseRequestLine and
-parseRequestHeaders sinks, it made a call to recv. 
+К сожалению, это влечет проблемы с буферизацией. Вы видите, что когда мы соединяем 
+наш источник с кинками \lstinline'parseRequestLine' и \lstinline'parseRequestHeaders',
+происходит вызов функции \lstinline'recv'.
 Если прочитанных данных будет недостаточно, чтобы разобрать все заголовки, то 
 состоится ещё один вызов. Когда будет достаточно данных, процесс остановится. 
 Однако, очевидно, что он остановится не строго в конце заголовков. Некотороые 
@@ -1709,13 +1717,13 @@ bsrc $$ sinkFile output2
 Вместо этого, оператор \verb#$$# не закрывает файл. Следовательно, вы можете 
 передавать буферизованый источник для выполнения тех действий, которые вам 
 нужны, не заботясь, что дескриптор файла будет закрыт без вашего ведома.
-
+\begin{remark}
 Как мы упоминали ранее, инвариант гласит, что из источника невозможно забрать 
 данные, если он вернул Closed. Чтобы облегчить работу с буферизоваными 
 источниками, это инвариант здесь не выполняется. Ответственность о закрытии 
 соответствующего источника, а также о том, что он больше не будет исопльзоваться
 лежит на реализации \lstinline'BufferedSource'.
-
+\end{remark}
 Будьте осторожны: когда вы закончили работу с буферизованым источником, вам 
 следует вручную вызывать \lstinline'bsourceClose'. Однако, это обычно является 
 оптимизацией, так как источник будет автоматически закрываться по окончанию 
