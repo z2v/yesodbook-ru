@@ -722,7 +722,7 @@ getCarR = do
 |]
 \end{lstlisting}
 
-\section{Выполнение форм}
+\section{Выполнение форм}\marginpar{В оригинале --- running. Не уверен, что подобрал качественный термин.}
 А теперь воспользуемся нашими формами, чтобы получить некоторый результат. Для этого
 существует несколько различных функций, каждая имеет своё назначение. Я пройдусь по ним
 всем, ничиная с самых распространённых.
@@ -780,11 +780,11 @@ This is provided automatically by the scaffolded site.
 \end{itemize}
 
 \section{Monadic Forms}
+Чаще всего необходимо получить формы с простой версткой, и в этом случае аппликативные формы 
+вполне справляются. Однако, иногда может понадобиться несколько кастомизированный 
+внешний вид форм.
 
-Often times, a simple form layout is adequate, and applicative forms excel at this
-approach. Sometimes, however, you'll want to have a more customized look to your form.
-
-\subsection{A non-standard form layout}
+\subsection{Нестандартный макет формы}
 \begin{remark}
 \begin{figure}[tbph]
   \centering
@@ -792,10 +792,10 @@ approach. Sometimes, however, you'll want to have a more customized look to your
   \includegraphics{08-forms-image-01.png}
 \end{figure}
 \end{remark}
-For these use cases, monadic forms fit the bill. They are a bit more verbose than their
-applicative cousins, but this verbosity allows you to have complete control over what the
-form will look like. In order to generate the form above, we could code something like
-this.
+В таких случаях следует использовать монадические формы. Они несколько более 
+многословны чем их аппликативные родственники, но эта многословность позволяет нам
+получать полный контроль над тем, как форма будет выглядеть. Чтобы получить такую же
+форму, как приведенная выше, мы должны написать что-то подобное этому.
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
@@ -854,21 +854,23 @@ getRootR = do
 main :: IO ()
 main = warpDebug 3000 MFormExample
 \end{lstlisting}
-
-Similar to the applicative areq, we use mreq for monadic forms. (And yes, there's also
-mopt for optional fields.) But there's a big difference: mreq gives us back a pair of
-values. Instead of hiding away the 
+Подобно тому, как мы использовали \lstinline'areq' в аппликативном случае, мы используем 
+\lstinline'mreq' в монадическом. (И да, также можно использовать \lstinline'mopt' для опциональных полей).
+Но здесь есть существенное различие: \lstinline'mreq' выдает нам пару значений. 
+Вместо того, чтобы скрываеть значение типа 
 \foothref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod-Form-Types.html#t:FieldView}{FieldView}
- value and automatically inserting it into a
-widget, we get the control to insert it as we see fit.
+и автоматически вставлять его в виджет, мы получаем возможность вставить его 
+туда, куда хотим.
 
-FieldView has a number of pieces of information. The most important is fvInput, which is
-the actual form field. In this example, we also use fvId, which gives us back the HTML id
-attribute of the input tag. In our example, we use that to specify the width of the field.
+Значение типа \lstinline'FieldView' содержит немало информации. Самой важной является 
+\lstinline'fvInput', которая описывает поле формы. В этом примере мы также использовали
+\lstinline'fvId', которое содержит HTML id элемента эправления для ввода данных. Мы
+его сипользовали для того, чтобы указать ширину поля.
 
-You might be wondering what the story is with the "this is not used" and "neither is this"
-values. mreq takes a FieldSettings as its second argument. Since FieldSettings provides an
-IsString instance, the strings are essentially expanded by the compiler to:
+Вы можете заинтересоваться назначением значений "this is not used" и "neither is this".
+Функция \lstinline'mreq' принимает вторым аргументом значение типа \lstinline'FieldSettings'.
+Так как для \lstinline'FieldSettings' сущетвует экземпляр \lstinline'IsString', такие строки 
+по сути раскрываются компилятором в:
 
 \begin{lstlisting}
 fromString "this is not used" == FieldSettings
@@ -880,45 +882,45 @@ fromString "this is not used" == FieldSettings
     }
 \end{lstlisting}
 
-In the case of applicative forms, the fsLabel and fsTooltip values are used when
-constructing your HTML. In the case of monadic forms, Yesod does not generate any of the
-"wrapper" HTML for you, and therefore these values are ignored. However, we still keep the
-FieldSettings parameter to allow you to override the id and name attributes of your fields
-if desired.
+В случае аппликативных форм, значения \lstinline'fsLabel' и \lstinline'fsTooltip'
+использовались при построении HTML. В монадических, Yesod не генерирует для нас
+никаких HTML-обёрток и по этой причине эти значения игнорируются. ОДнако, мы храним 
+параметр типа \lstinline'FieldSettings' для того, чтобы мы могли, когда нам захочется, переопределять атрибуты id или name у наших полей.
 
-The other interesting bit is the extra value. GET forms include an extra field to indicate
-that they have been submitted, and POST forms include a security tokens to prevent CSRF
-attacks. If you don't include this extra hidden field in your form, Yesod will not accept
-it.
+Другим интересным моментом является дополнительное значение. Формы типа GET используют
+его, чтобы обозначить, что они были отправлены, а POST формы включают токены бызеопасности
+во избежание 
+\foothref{http://en.wikipedia.org/wiki/Cross-site_request_forgery}{CSRF}-атак. 
+Если вы не включите это дополнительное поле, то Yesod не примет вашу форму.
 
-Other than that, things are pretty straight-forward. We create our personRes value by
-combining together the nameRes and ageRes values, and then return a tuple of the person
-and the widget. And in the getRootR function, everything looks just like an applicative
-form. In fact, you could swap out our monadic form with an applicative one and the code
-would still work.
+Оставльные вещи довольно-таки тривиальны. Мы создаем наше значение типа 
+\lstinline'personRes' из значений \lstinline'nameRes' и \lstinline'ageRes', а 
+затем возвращаем пару, описывающую человека и виджет. А функции \lstinline'getRootR'
+всё происходит так, будто мы используем аппликативные формы. В дейсвтительности, вы можете 
+заменить монадическую реализацию формы на аппликативную, а этот код будет всё ещё работать.
 
-\section{Input forms}
+\section{Формы ввода данных}
+Аппликативные и понадические формы занимаются и генерацией HTML, и разбором данных.
+Иногда вам нужно только последнее, например, когда где-то уже создана форма, или если вы
+хотите сгененрировать форму динамически, используя Javascript. В этих случаях вам пригодятся
+формы ввода данных.
 
-Applicative and monadic forms handle both the generation of your HTML code and the parsing
-of user input. Sometimes, you only want to do the latter, such as when there's an
-already-existing form in HTML somewhere, or if you want to generate a form dynamically
-using Javascript. In such a case, you'll want input forms.
-
-These work mostly the same as applicative and monadic forms, with some differences:
+Они похожи на аппликативные и монадические, но есть некоторые различия:
 \begin{itemize}
- \item You use runInputPost and runInputGet.
- \item You use ireq and iopt. These functions now only take two arguments: the field type
-and the name (i.e., HTML name attribute) of the field in question.
- \item  After running a form, it returns the value. It doesn't return a widget or an
-encoding type.
- \item  If there are any validation errors, the page returns an "invalid arguments" error
-page.
+ \item Вы используете runInputPost и runInputGet.
+ \item Вы используете ireq и iopt. Эти функции теперь принимают только 2 аргумента:
+ тип поля и его имя (т.е. значение HTML атбрибута name) of the field in question.
+ \item После выполнения формы, она возвращает значение. 
+ Она не возвращает виджет или тип кодировки.
+ \item В случае ошибок проверки данных, страница перенаправится на странцу 
+ с сообщением ошибке <<invalid arguments>>.
 \end{itemize}
-You can use input forms to recreate the previous example. Note, however, that the input
-version is less user friendly. If you make a mistake in an applicative or monadic form,
-you will be brought back to the same page, with your previously entered values in the
-form, and an error message explaning what you need to correct. With input forms, the user
-simply gets an error message.
+Вы можете переписать предыдущий пример с помощью форм ввода данных. Однака, стоит 
+заметить, что они менее user friendly. Если вы допустите ошибку при заполнении 
+аппликативной или монадической формы, то вы будете перенаправлены на ту же 
+страницу, где предыдущие введенные данные сохранятся, а сообщение об ошибке 
+укажет, что надо справить. Для форм ввода данных пользователей получит только 
+сообщение об ошибке.
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
@@ -967,40 +969,42 @@ main = warpDebug 3000 Input
 \end{lstlisting}
 
 \section{Custom fields}
-
-The fields that come built-in with Yesod will likely cover the vast majority of your form
-needs. But occassionally, you'll need something more specialized. Fortunately, you can
-create new forms in Yesod yourself. The Field datatype has two records: fieldParse takes a
-list of values submitted by the user and returns one of three results:
+Поля, которые встроены в Yesod наверняка покроют большинство ваших нужд по 
+работе с формами. Но иногда вам может понадобиться что-то более специализированное.
+К счастью, вы можете создавать новые формы в Yesod самостоятельно. Тип данных
+\lstinline'Field' имеет две записи. Первая, \lstinline'fieldParse', принимает 
+список значений, отправленных пользователем, и возвращает один из трех результатов:
 \begin{enumerate}
- \item An error message saying validation failed.
- \item The parsed value.
- \item Nothing, indicating that no data was supplied.
+ \item Сообщение об ошибке в случае, если проверка данных провалилась.
+ \item Разобранное значение.
+ \item \lstinline'Nothing', сообщая, что данные не были предоставлены.
 \end{enumerate}
 
-That last case might sound surprising: shouldn't Yesod automatically know that no
-information is supplied when the input list is empty? Well, no actually. Checkboxes, for
-instance, indicate an unchecked state by sending in an empty list.
+Последний случай может несколько удивить: разве Yesod не может автоматически понять,
+что информации не было предоставлено, если входной список пуст? Не совсем. Чекбоксы,
+например, сообщают о сброшенном соостоянии, посылая пустой список.
 
 Also, what's up with the list? Shouldn't it be a Maybe? Well, that's also not the case.
 With grouped checkboxes and multi-select lists, you'll have multiple widgets with the same
 name. We also use this trick in our example below.
 
-The second record is fieldView, and it renders a widget to display to the user. This
-function has four arguments: the id attribute, the name attribute, the result and a Bool
-indicating if the field is required.
+Вторая запись называется \lstinline'fieldView' и она отвечает за отрисовку виджета
+пользователю. У этой функции 4 аргумента: атрибут id, атрибут name, результат и булевый флаг, 
+для случая, когда поле является обязательным\marginpar{Что-то здесь не так с этим словом}.
 
-What did I mean by result? It's actually an Either, giving either the unparsed input (when
-parsing failed) or the successfully parsed value. intField is a great example of how this
-works. If you type in 42, the value of result will be Right 42. But if you type in turtle,
-the result will be Left "turtle". This lets you put in a value attribute on your input tag
+Что мы подразумеваем под результатом? В действительности он типа \lstinline'Either'
+и выдает либо неразобранные входные данные, когда разбор не удался, либо успешно 
+разобранное значение.Великолепный пример этому --- поле \lstinline'intField'.
+Если вы введете 42, то в результате будет \lstinline'Right 42'. Но если вы введёте
+слово <<turtle>>, результатом будет \lstinline'Left 'turtle"'. Это позволит вам
+put in a value attribute on your input tag
 that will give the user a consistent experience.
 
-As a small example, we'll create a new field type that is a password confirm field. This
-field has two text inputs- both with the same name attribute- and returns an error message
-if the values don't match. Note that, unlike most fields, it does not provide a value
-attribute on the input tags, as you don't want to send back a user-entered password in
-your HTML ever.
+В это маленьком примере вы создадим новое поле для подтверждения пароля. В нём будет
+два элемента управления для ввода текста --- оба с одним и тем же значением атрибута name 
+--- и он будет возвращать сообщение об ошибке, если пароли не совпадают. Заметьте, что
+здесь не указываются атрибуты value для полей ввода, так как нам не нужно пересылать 
+на сервер введенный пользователем пароль.
 
 \begin{lstlisting}
 passwordConfirmField :: Field sub master Text
@@ -1036,14 +1040,14 @@ main = warpDebug 3000 Password
 \section{Заключение}
 
 Формы в Yesod делятся на три вида. Аппликативные используются чаще всего, так как
-предоставляют красивый интерфейс и простой для использование API. Монадические форма дают
+предоставляют красивый интерфейс и простой для использование API. Монадические формы дают
 больше возможностей, но их сложнее использовать. Формы ввода данных полезны, когда вам
 надо просто принять данные пользователя, не генерируя сложных виджетов.
 
 Из коробки Yesod предоставляет несколько видов полей для форм. Для использования
 форм вам придется определиться, какую форму вы хотите и является поле опциональным или
-обязательным. Итого мы имеет шесть дополнительных функций: areq, aopt, mreq, mopt, ireq,
-и iopt.
+обязательным. Итого мы имеет шесть дополнительных функций: \lstinline'areq', \lstinline'aopt', \lstinline'mreq', \lstinline'mopt', \lstinline'ireq',
+и \lstinline'iopt'.
 
 Формы довольно-таки мощны. Они могут автоматически вставлять код на Javascript, чтобы
 получаять более красивые элементы управляения, например, для выбора даты из библиотеки 
