@@ -147,10 +147,11 @@ instance Yesod Blog where
 * Только зарегистрированные пользователи могут добавлять комментарии. 
 * Все остальные страницы могут быть доступны любому.  
 
-We set up our routes in a RESTful way, where the actions that could make changes are always using a POST method. As a result, we can simply check for whether or not a request is a write request, given by the True in the second field.
 
-First, we'll authorize requests to add a new entry.
+Мы сконфигурировали наши маршруты в RESTful манере, когда действия, которые могут вносить изменения всегда используют метод POST. В результате, мы можем легко проверить, является ли запрос запросом на запись, если вторым параметром передано True.
 
+Во-первых, мы будем авторизировать запросы на добавление новой записи. 
+ 
 \begin{lstlisting}
     isAuthorized BlogR True = do
         mauth <- maybeAuth
@@ -161,8 +162,8 @@ First, we'll authorize requests to add a new entry.
                 | otherwise    -> unauthorizedI MsgNotAnAdmin
 \end{lstlisting}
 
-Now we'll authorize requests to add a new comment.
-
+Также мы будем авторизировать запросы на добавление нового комментария. 
+ 
 \begin{lstlisting}
     isAuthorized (EntryR _) True = do
         mauth <- maybeAuth
@@ -170,33 +171,33 @@ Now we'll authorize requests to add a new comment.
             Nothing -> return AuthenticationRequired
             Just _  -> return Authorized
 \end{lstlisting}
-
-And for all other requests, the result is always authorized.
-
+ 
+Всех остальные запросы авторизируем всегда.
+ 
 \begin{lstlisting}
     isAuthorized _ _ = return Authorized
 \end{lstlisting}
-
-Where a user should be redirected to if they get an AuthenticationRequired.
-
+ 
+Указываем куда должен быть перенаправлен пользователь, если он получает AuthenticationRequired. 
+ 
 \begin{lstlisting}
     authRoute _ = Just (AuthR LoginR)
 \end{lstlisting}
-
-This is where we define our site look-and-feel. The function is given the content for the individual page, and wraps it up with a standard template.
-
+ 
+Здесь мы определяем наш сайт вид и ощущение.  Функции с учетом содержания для отдельных страниц, и заключает его со стандартным шаблоном. 
+ 
 \begin{lstlisting}
     defaultLayout inside = do
 \end{lstlisting}
-
-Yesod encourages the get-following-post pattern, where after a POST, the user is redirected to another page. In order to allow the POST page to give the user some kind of feedback, we have the getMessage and setMessage functions. It's a good idea to always check for pending messages in your defaultLayout function.
-
+ 
+Yesod поощряет get-following-post подход, когда после POST, пользователь перенаправляется на другую страницу. Для того, чтобы позволить POST странице дать пользователю какую-то отдачу (feedback), у нас есть функции getMessage и setMessage. Это хорошая идея --- всегда проверять сообщения, находящиеся в вашей функции defaultLayout. 
+ 
 \begin{lstlisting}
         mmsg <- getMessage
 \end{lstlisting}
-
-We use widgets to compose together HTML, CSS and Javascript. At the end of the day, we need to unwrap all of that into simple HTML. That's what the widgetToPageContent function is for. We're going to give it a widget consisting of the content we received from the individual page (inside), plus a standard CSS for all pages. We'll use the Lucius template language to create the latter.
-
+ 
+Чтобы объеденить вместе HTML, CSS и Javascript мы используем виджеты. В конце концов, мы должны развернуть все это в простой HTML. Для этого есть функция widgetToPageContent. Мы дадим ей виджет, состоящий из содержимого которое мы получили от отдельных страниц (inside) и стандартного CSS для всех страниц. Для его (виджета) создания будем использовать язык шаблонов Lucius. 
+ 
 \begin{lstlisting}
         pc <- widgetToPageContent $ do
             toWidget [lucius|
@@ -215,9 +216,9 @@ textarea {
 |]
             inside
 \end{lstlisting}
-
-And finally we'll use a new Hamlet template to wrap up the individual components (title, head data and body data) into the final output.
-
+ 
+И, наконец, мы будем использовать новый шаблон Hamlet, что бы обернуть отдельные компоненты (title, head data and body data) в конечный результат. 
+ 
 \begin{lstlisting}
         hamletToRepHtml [hamlet|
 $doctype 5
@@ -231,16 +232,16 @@ $doctype 5
         ^{pageBody pc}
 |]
 \end{lstlisting}
-
-This is a simple function to check if a user is the admin. In a real application, we would likely store the admin bit in the database itself, or check with some external system. For now, I've just hard-coded my own email address.
-
+ 
+Это простая функция для проверки, является ли пользователь администратором. В реальных приложениях, мы, скорее всего будем хранить флажок администратора в базе данных, или проверять через некоторые внешние системами. А сейчас, я всего лишь задам адрес своей электронной почты. 
+ 
 \begin{lstlisting}
 isAdmin :: User -> Bool
 isAdmin user = userEmail user == "michael@snoyman.com"
 \end{lstlisting}
-
-In order to access the database, we need to create a YesodPersist instance, which says which backend we're using and how to run an action.
-
+ 
+Чтобы получить доступ к базе данных, нам нужно создать экземпляр YesodPersist, который указвыет, какой сервер мы используем и как запускать действия. 
+ 
 \begin{lstlisting}
 instance YesodPersist Blog where
    type YesodPersistBackend Blog = SqlPersist
@@ -249,28 +250,28 @@ instance YesodPersist Blog where
        let pool = connPool master
        runSqlPool f pool
 \end{lstlisting}
-
-This is a convenience synonym. It is defined automatically for you in the scaffolding.
-
+ 
+Это синоним типа для удобства. Он определяется автоматически при генерации. 
+ 
 \begin{lstlisting}
 type Form x = Html -> MForm Blog Blog (FormResult x, Widget)
 \end{lstlisting}
-
-In order to use yesod-form and yesod-auth, we need an instance of RenderMessage for FormMessage. This allows us to control the i18n of individual form messages.
-
+ 
+Для того чтобы использовать yesod-form и yesod-auth, мы нужен экземпляр RenderMessage для FormMessage. Это позволит нам контролировать i18n для сообщений отдельных форм. 
+ 
 \begin{lstlisting}
 instance RenderMessage Blog FormMessage where
     renderMessage _ _ = defaultFormMessage
 \end{lstlisting}
-
-In order to use the built-in nic HTML editor, we need this instance. We just take the default values, which use a CDN-hosted version of Nic.
-
+ 
+Для того, чтобы использовать встроенный редактор HTML nic, нам нужен этот экземпляр. Мы просто берем значения по умолчанию, которые использует CDN-hosted версия Nic. 
+ 
 \begin{lstlisting}
 instance YesodNic Blog
 \end{lstlisting}
-
-In order to use yesod-auth, we need a YesodAuth instance.
-
+ 
+Для того чтобы использовать yesod-auth, нам нужен екземпляр YesodAuth. 
+ 
 \begin{lstlisting}
 instance YesodAuth Blog where
     type AuthId Blog = UserId
@@ -278,15 +279,15 @@ instance YesodAuth Blog where
     logoutDest _ = RootR
     authHttpManager = httpManager
 \end{lstlisting}
-
-We'll use [BrowserID](https://browserid.org/), which is a third-party system using email addresses as your identifier. This makes it easy to switch to other systems in the future, locally authenticated email addresses (also included with yesod-auth).
-
+ 
+Мы будем использовать [BrowserID](https://browserid.org/), которая является сторонней системой ипользующей адрес электронной почты в качестве вашего идентификатора. Это позволит в будущем легко перейти на другие системы, для локально аутентифицированых адресов электронной почты (также входит в yesod-auth). 
+ 
 \begin{lstlisting}
     authPlugins _ = [authBrowserId]
 \end{lstlisting}
-
-This function takes someone's login credentials (i.e., his/her email address) and gives back a UserId.
-
+ 
+Эта функция берёт логин (login credentials) (то есть, адрес электронной почты) и возвращает UserId. 
+ 
 \begin{lstlisting}
     getAuthId creds = do
         let email = credsIdent creds
@@ -294,9 +295,9 @@ This function takes someone's login credentials (i.e., his/her email address) an
         res <- runDB $ insertBy user
         return $ Just $ either entityKey id res
 \end{lstlisting}
-
-Homepage handler. The one important detail here is our usage of \lstinline'`setTitleI`', which allows us to use i18n messages for the title. We also use this message with a \lstinline'`_{Msg...}`' interpolation in Hamlet.
-
+ 
+Обработчик домашней страницы. Одна важная деталь здесь это использование \lstinline'`setTitleI`', что позволяет использовать i18n сообщения в title. Мы также используем это сообщение \lstinline'`_{Msg...}`' интерполяции в Hamlet. 
+ 
 \begin{lstlisting}
 getRootR :: Handler RepHtml
 getRootR = defaultLayout $ do
@@ -307,9 +308,9 @@ getRootR = defaultLayout $ do
    <a href=@{BlogR}>_{MsgSeeArchive}
 |]
 \end{lstlisting}
-
-Define a form for adding new entries. We want the user to provide the title and content, and then fill in the post date automatically via \lstinline'`getCurrentTime`'.
-
+ 
+Определяем форму для добавления новых записей. Мы хотим, чтобы пользователь заполнил заголовок и содержание, а дату записи заполним автоматически с помощью \lstinline'`getCurrentTime`'. 
+ 
 \begin{lstlisting}
 entryForm :: Form Entry
 entryForm = renderDivs $ Entry
@@ -317,9 +318,9 @@ entryForm = renderDivs $ Entry
     <*> aformM (liftIO getCurrentTime)
     <*> areq nicHtmlField (fieldSettingsLabel MsgNewEntryContent) Nothing
 \end{lstlisting}
-
-Get the list of all blog entries, and present an admin with a form to create a new entry.
-
+ 
+Получаем список всех записей, и для администратора отобразим форму для создания новой записи. 
+ 
 \begin{lstlisting}
 getBlogR :: Handler RepHtml
 getBlogR = do
@@ -337,9 +338,9 @@ $else
             <li>
                 <a href=@{EntryR entryId}>#{entryTitle entry}
 \end{lstlisting}
-
-We have three possibilities: the user is logged in as an admin, the user is logged in and is not an admin, and the user is not logged in. In the first case, we should display the entry form. In the second, we'll do nothing. In the third, we'll provide a login link.
-
+ 
+У нас есть три варианта: пользователь вошёл в систему в качестве администратора, пользователь вошёл и не администратор, и пользователь не вошёл в систему. В первом случае, мы должны отобразить форму записи. Во втором, мы ничего не делаем. В третьем, мы предоставим ссылку для входа. 
+ 
 \begin{lstlisting}
 $maybe Entity _ user <- muser
     $if isAdmin user
@@ -352,9 +353,9 @@ $nothing
         <a href=@{AuthR LoginR}>_{MsgLoginToPost}
 |]
 \end{lstlisting}
-
-Process an incoming entry addition. We don't do any permissions checking, since isAuthorized handles it for us. If the form submission was valid, we add the entry to the database and redirect to the new entry. Otherwise, we ask the user to try again.
-
+ 
+Обработаем добавление новой записи. Мы не делаем никакой проверки авторизации, так как isAuthorized делает это за нас. Если форма была верной (form submission was valid), мы добавляеи запись в базу данных и перенаправляем на новую запись. В противном случае, мы просим пользователей попробовать еще раз. 
+ 
 \begin{lstlisting}
 postBlogR :: Handler RepHtml
 postBlogR = do
@@ -373,9 +374,9 @@ postBlogR = do
         <input type=submit value=_{MsgNewEntry}>
 |]
 \end{lstlisting}
-
-A form for comments, very similar to our entryForm above. It takes the EntryId of the entry the comment is attached to. By using pure, we embed this value in the resulting Comment output, without having it appear in the generated HTML.
-
+ 
+Форма для комментариев, очень похожий на entryForm выше. Она принимает EntryID записи к которой относиться комментарий. Используя pure, мы вкладываем это значение в результирующее значение Comment, не позволяя ему появиться в сгенерированном HTML. 
+ 
 \begin{lstlisting}
 commentForm :: EntryId -> Form Comment
 commentForm entryId = renderDivs $ Comment
@@ -385,9 +386,9 @@ commentForm entryId = renderDivs $ Comment
     <*> areq textField (fieldSettingsLabel MsgCommentName) Nothing
     <*> areq textareaField (fieldSettingsLabel MsgCommentText) Nothing
 \end{lstlisting}
-
-Show an individual entry, comments, and an add comment form if the user is logged in.
-
+ 
+Показать отдельную запись, комментарии и, для зарегистрированых пользователей, форму комментариев.
+ 
 \begin{lstlisting}
 getEntryR :: EntryId -> Handler RepHtml
 getEntryR entryId = do
@@ -425,9 +426,9 @@ getEntryR entryId = do
                     <a href=@{AuthR LoginR}>_{MsgLoginToComment}
 |]
 \end{lstlisting}
-
-Receive an incoming comment submission.
-
+ 
+Получаем комментарий (submission). 
+ 
 \begin{lstlisting}
 postEntryR :: EntryId -> Handler RepHtml
 postEntryR entryId = do
@@ -447,15 +448,15 @@ postEntryR entryId = do
         <input type=submit value=_{MsgAddCommentButton}>
 |]
 \end{lstlisting}
-
-Finally our main function.
-
+ 
+Наконец наша главная функция. 
+ 
 \begin{lstlisting}
 main :: IO ()
 main = do
-    pool <- createSqlitePool "blog.db3" 10 -- create a new pool
+    pool <- createSqlitePool "blog.db3" 10 -- создаём новый пул
     -- perform any necessary migration
     runSqlPool (runMigration migrateAll) pool
-    manager <- newManager def -- create a new HTTP manager
-    warpDebug 3000 $ Blog pool manager -- start our server
+    manager <- newManager def -- создаём новый менеджер HTTP
+    warpDebug 3000 $ Blog pool manager -- стартуем наш сервер
 \end{lstlisting}
