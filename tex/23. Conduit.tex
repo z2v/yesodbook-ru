@@ -15,7 +15,7 @@
 в случае исключений.
 
 В этом приложении рассматривается пакет 
-\foothref{http://hackage.haskell.org/package/conduit}{conduit} версии \verb=0.2=.
+\footnotehref{http://hackage.haskell.org/package/conduit}{conduit} версии \verb=0.2=.
 
 \section{Кондуиты в двух словах}
 Хотя понимание низкоуровневой механики кондуитов рекомендуется, вы можете далеко
@@ -111,8 +111,9 @@ fibs = sourceState
 \end{lstlisting}
 Посчитаем сумму первых 10 чисел Фибоначчи. Мы можем использовать кондуит \lstinline=isolate=,
 чтобы быть уверенными, что sink суммирования приняла только 10 значений.
-\begin{lstlisting}sumTenFibs :: Int
-sumTenFibs =
+\begin{lstlisting}
+   sumTenFibs :: Int
+   sumTenFibs =
        runST -- прекрасно работает при чистом коде
      $ runResourceT
      $ fibs
@@ -462,7 +463,7 @@ resourceBracket_ :: Base m a -> Base m b -> m c -> m c
 предоставлять инстанс \lstinline'HasRef', а инстанс \lstinline'Resource' --- нужно.
 Хитрость нужна в допустимой реализации функции \lstinline'resourceBracket_'. Здесь мы
 воспользовалсиь некоторыми функциями для управления монадами 
-(\foothref{http://hackage.haskell.org/package/monad-control}{monad-control}):
+(\footnotehref{http://hackage.haskell.org/package/monad-control}{monad-control}):
 
 \begin{lstlisting}
 instance (MonadTransControl t, Resource m, Monad (t m))
@@ -585,7 +586,7 @@ IO, но вы можете использовать функцию \lstinline'fo
 Функция \verb=withIO= по сути является функцией \verb=with= с ограниченным типом, но она 
 позволяет работать с некоторой вложенностью типов, в то время как при \verb=with=
 пришлось бы продираться в глубину \marginpar{Нелитературно. в оригинале: but working around 
-some of the nastiness with types you would otherwise run into). В общем, вам стоит
+some of the nastiness with types you would otherwise run into}. В общем, вам стоит
 использовать \lstinline'withIO' для написания IO кода.
 Функция \verb=transResourceT= позволит вам модифицировать в какой монаде исполняется ваш
 \verb=ResourceT=, в предположении, что база одна и та же.
@@ -996,10 +997,10 @@ main = return ()
 \subsection{Функции работы со списками}
 Можно легко писать собственные синки, если вы пользуетесь встроенными примитивами из
 модуля 
-\foothref{http://hackage.haskell.org/packages/archive/conduit/latest/doc/html/Data.Conduit.List.html}{Data.Conduit.List}. Там есть аналоги для типичных функций работы со
+\footnotehref{http://hackage.haskell.org/packages/archive/conduit/latest/doc/html/Data.Conduit.List.html}{Data.Conduit.List}. Там есть аналоги для типичных функций работы со
 списками, например, свертки. (Там так же есть некоторые кондуиты,
 например, 
-\foothref{http://hackage.haskell.org/packages/archive/conduit/latest/doc/html/Data-Conduit-List.html#v:map}{conduit:Data.Conduit.List:map}.)
+\footnotehref{http://hackage.haskell.org/packages/archive/conduit/latest/doc/html/Data-Conduit-List.html\#v:map}{conduit:Data.Conduit.List:map}.)
 
 Если вы желаете поупражняться в кондуитах, то реализовать функции из модуля 
 \lstinline'List' (с хэлперами и без) будет для начала неплохо.
@@ -1384,7 +1385,7 @@ three
 % To put all this another way: conduits avoid chunking to get away from data loss. 
 Эта проблема встречается не только при использовании кондуитов. Если вы 
 взглянете на реализацию \lstinline'concatMapM' для 
-\foothref{http://hackage.haskell.org/package/enumerator}{енумераторов}, вы увидете, что 
+\footnotehref{http://hackage.haskell.org/package/enumerator}{енумераторов}, вы увидете, что 
 там элементы обрабатываются по одному. В кондуитах мы выбираем решать эту 
 проблему на уровне типов.
 %(In conduits, we opted to force the issue at the type level).
