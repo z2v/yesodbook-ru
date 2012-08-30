@@ -96,7 +96,7 @@ $(function() {
 
 \section{Комбинирование Виджетов}
 Вся идея виджетов~--- это повышение компонуемости. Вы можете взять отдельные части HTML, CSS и Javascript, скомбинировать их вместе в нечто более сложное, и затем скомпоновать эти большие сущности в законченную страницу. Это всё работает, естественно, через экземпляр класса \lstinline'Monad' для \lstinline'Widget', и значит вы можете использовать do-нотацию для комбинирования частей вместе.
-\begin{lstlisting}[title={Комбинирование Виджетов}]
+\begin{lstlisting}[caption={Комбинирование Виджетов}]
 myWidget1 = do
     toWidget [hamlet|<h1>My Title|]
     toWidget [lucius|h1 { color: green } |]
@@ -120,7 +120,7 @@ myWidget' = myWidget1 >> myWidget2
 Если мы здесь по настоящему хотим переиспользовать код, мы со временем получим конфликт имен. Скажем, что есть две вспомогательные библиотеки, обе используют имя класса <<\lstinline'foo'>>, чтобы повлиять на стилистику. Мы хотим избежать такой возможности. Вследствие этого, мы имеет \lstinline'newIdent' функцию.  Эта функция автоматически генерирует слово, такое что оно уникально для этого обработчика.
 
 
-\begin{lstlisting}[title={Использование newIdent}]
+\begin{lstlisting}[caption={Использование \lstinline'newIdent'}]
 getRootR = defaultLayout $ do
     headerClass <- lift newIdent
     toWidget [hamlet|<h1 .#{headerClass}>My Header|]
