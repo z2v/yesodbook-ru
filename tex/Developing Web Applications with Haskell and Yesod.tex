@@ -32,7 +32,7 @@
 \usepackage{caption}
 \usepackage{subcaption}
 
-\usepackage{color}
+\usepackage[dvipsnames]{xcolor}
 
 
 % for JSON
@@ -68,10 +68,17 @@
 % set listings default parameters
 \lstset{language=Haskell,
 	extendedchars=true,
+	breaklines=true,
+	prebreak=↩,
+	frame=shadowbox,
+	rulesepcolor=\color{gray},
+	frameround=tttt,
+	captionpos=b,
 	keepspaces=true,
 	inputencoding=utf8,
 	basicstyle=\ttfamily % using monospaced font for listings
 }
+\renewcommand*{\lstlistingname}{Листинг}
 
 % avoiding math minus symbol in listings
 \makeatletter
