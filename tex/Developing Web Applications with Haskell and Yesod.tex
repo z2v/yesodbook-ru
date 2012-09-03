@@ -90,10 +90,10 @@
 \usepackage{hyperref}
 
 % helper for remarks
-\usepackage{adjustbox}
-\newenvironment{remark}
-{\begin{adjustbox}{minipage=.9\linewidth, fbox, center}}
-{\end{adjustbox}}
+\usepackage{fancybox}
+\newenvironment{remark}%
+{\begin{Sbox}\begin{minipage}[!h]{.9\linewidth}}%
+{\end{minipage}\end{Sbox}\fbox{\TheSbox}}
 
 % use long spaces to remove overfull a la Word
 \sloppy
