@@ -127,21 +127,23 @@ main = warpDebug 3000 Synopsis
 три типа
 форм:
 
-\subsection{Аппликативные}
+\begin{description}
+\item[Аппликативные] \hfill \\
 Наиболее широко используемые (см. пример выше). Аппликативные формы
 позволяют нам объединять сообщения об ошибках друг с другом, сохраняя при этом
 декларативный высокоуровневый подход. Более детальную информацию об аппликативном подходе
 можно почерпнуть в 
 \footnotehref{http://www.haskell.org/haskellwiki/Applicative\_functor}{Haskell-вики}.
 
-\subsection{Монадические}
+\item[Монадические] \hfill \\
 Более мощная альтернатива аппликативным. Гибкость достигается за счет несколько большей
 многословности. Бывают полезны, если необходимо создать форму, которая не укладывается в
 стандартный двухстолбцовый формат.
 
-\subsection{Для ввода}
+\item[Для ввода] \hfill \\
 Используются только для ввода данных. Не генерируют никакого HTML для получения ввода
 пользователя. Полезны для взаимодействия с уже существующими формами.
+\end{description}
 
 
 К тому же, существует некоторое число переменных для каждого вида формы и поля,
@@ -173,26 +175,28 @@ main = warpDebug 3000 Synopsis
 Модуль \footnotehref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod.Form.Types.html}{\lstinline'Yesod.Form.Types'} 
 определяет несколько типов. Давайте начнем с самых простых:
 
-\subsection{Enctype}
+\begin{description}
+\item[Enctype] \hfill \\
 Тип кодировки: либо \lstinline'UrlEncoded', либо \lstinline'Multipart'. Этот тип данных
 имеет экземпляр для монады \lstinline'ToHtml', так что вы можете его использовать
 непосредственно в \lstinline'Hamlet'-ах.
 
-\subsection{Env}
+\item[Env] \hfill \\
 Отображает имя параметра в список значений.
 
-\subsection{FileEnv}
+\item[FileEnv] \hfill \\
 Отображает имя параметра в соответствующий загруженный файл.
 
-\subsection{Ints}
+\item[Ints] \hfill \\
 Как было сказано во введении, формы в Yesod автоматически генерируют уникальные имена 
 каждому полю. \lstinline'Ints' используется для хранения этой информации.
 
-\subsection{FormResult}
+\item[FormResult] \hfill \\
 Имеет три состояния: \lstinline'FormMissing' если данные не были переданы,
 \lstinline'FormFailure' если произошла ошибка при разборе формы (например, отсутствует
 обязательное поле или неправильное содержимое) или \lstinline'FormSuccess', когда всё прошло
 гладко.
+\end{description}
 
 Три следующих типа данных используются для определения индивидуальных
 \marginpar{Не нравится мне этот термин, но пока не придумал замену. Может быть
@@ -203,13 +207,14 @@ main = warpDebug 3000 Synopsis
 email. Поля, соединяясь друг с другом, образуют форму.
 \end{remark}
 
-\subsection{Field}
+\begin{description}
+\item[Field] \hfill \\
 Определяют два вида функциональности: как преобразовать текстовый вход от пользователя 
 в значение языка Haskell и как создавать виджет, который будет показан пользователю.
 Несколько атомарных полей пакета \lstinline'yesod-form' определено в модуле
 \footnotehref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod.Form.Fields.html}{\lstinline'Yesod.Form.Fields'} .
 
-\subsection{FieldSettings}
+\item[FieldSettings] \hfill \\
 Основная информация о том, как поле следует отображать, например: отображаемое имя,
 подсказка, и, возможно, захардкоженные ID и имя атрибута. (Если ничего не указано, то они
 генерируются автоматически.)
@@ -220,10 +225,10 @@ email. Поля, соединяясь друг с другом, образуют
 обойтись просто строковым литералом. Так мы делали во введении.
 \end{remark}
 
-\subsection{FieldView}
+\item[FieldView] \hfill \\
 Промежуточный формат, содержащий кучу информации о том, как отображать поле. 
 Навряд ли это когда-либо понадобится пользователю, мы поговорим об этом позже.
-
+\end{description}
 
 
 Наконец, мы добрались к важной части нашего рассказа: непосредственно к формам. Существует
@@ -276,7 +281,7 @@ email. Поля, соединяясь друг с другом, образуют
 <<Ещё минутку>>, скажете вы. <<Я не видел никаких aformToForm!>> Это тоже верно.
 Преобразование произошло в функции \lstinline'renderDivs'.
 
-\subsection{Создание аппликативных форм}
+\section{Создание аппликативных форм}
 Теперь, когда (я надеюсь) мы убедились в том, что во введении мы работали с
 аппликативными формами, давайте поймем как они создавались. Начнем с простого примера:
 
@@ -327,10 +332,7 @@ getCarR = do
 сделать это выше уровнем, так как форма принимает опциональный аргумент для значений по
 умолчанию.
 
-\subsection{Формы со значениями по умолчанию}
-\begin{remark}
-% FIXME: По идее subsection надо включить в ремарку, но можно ли?
-\begin{lstlisting}
+\begin{lstlisting}[caption={Формы со значениями по умолчанию}]
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
     <$> areq textField "Model" (carModel <$> mcar)
@@ -351,14 +353,11 @@ getCarR = do
     <input type=submit>
 |]
 \end{lstlisting}
-\end{remark}
 
-\section{Опциональные поля}
+\subsection{Опциональные поля}
 Предположим, что нам нужно опциональное поле (например цвет машины). Всё что нужно ---
 это воспользоваться функцией \lstinline'aopt'.
-\begin{remark}
-%FIXME то же самое
-\begin{lstlisting}
+\begin{lstlisting}[caption={Опциональные поля}]
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -387,14 +386,12 @@ getCarR = do
     <input type=submit>
 |]
 \end{lstlisting}
-\end{remark}
 Как и в случае обязательных полей, последним аргументом является значение по умолчанию.
 Однако, оно завернуто в тип \lstinline'Maybe' два раза. Это может показаться чрезмерным,
 но оно урощает написаное кода, который принимает в параметре формы опциональное значение
 по умолчанию, как в следующем примере.
 
-\subsection{Опциональные поля по умолчанию}
-\begin{lstlisting}
+\begin{lstlisting}[caption={Опциональные поля по умолчанию}]
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -553,9 +550,7 @@ getCarR = do
 \marginpar{надо как-то переводить на русский}. В
 действительности нам нужен выпадающий список.
 
-\subsection{Выпадающие списки}
-
-\begin{lstlisting}
+\begin{lstlisting}[caption={Выпадающие списки}]
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -615,9 +610,7 @@ getCarR = do
 \lstinline'Enum' и \lstinline'Bounded', которые GHC автоматически
 предоставляет нам.
 
-\subsection{Используя Enum и Bounded}
-
-\begin{lstlisting}
+\begin{lstlisting}[caption={Используя Enum и Bounded}]
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -676,8 +669,7 @@ getCarR = do
 Некоторые люди предпочитаю кнопки radio buttons\marginpar{забыл как по-русски} 
 выпадающим спискам. К счастью, нам надо только провести одно изменение. Вот пример.
 
-\subsection{Radio buttons}
-\begin{lstlisting}
+\begin{lstlisting}[caption={Radio buttons}]
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -791,11 +783,10 @@ instance RenderMessage MyApp FormMessage where
 вполне справляются. Однако, иногда может понадобиться несколько кастомизированный 
 внешний вид форм.
 
-\subsection{Нестандартный макет формы}
 \begin{figure}[tbph]
   \centering
-  \caption{}
-  \includegraphics{08-forms-image-01.png}
+  \includegraphics[width=\textwidth]{08-forms-image-01.png}
+  \caption{Нестандартный макет формы}
 \end{figure}
 В таких случаях следует использовать монадические формы. Они несколько более 
 многословны чем их аппликативные родственники, но эта многословность позволяет нам
