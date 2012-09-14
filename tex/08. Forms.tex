@@ -488,6 +488,7 @@ getCarR = do
 
 Функция \lstinline'checkBool' принимает два параметра: условие, которое должно быть
 выполнено, и сообщение об ошибке, которое следует отобразить, если условие не верно.
+
 \begin{remark}
 Вы могли заметить явное указание \lstinline'Text' в сигнатуре типа функции
 \lstinline'errorMessage'. При использовании \lstinline'OverloadedStrings' это
@@ -495,6 +496,7 @@ getCarR = do
 данных и GHC никак не может сам определить, который экземпляр \lstinline'IsString' вам
 нужен.
 \end{remark}
+
 Классно, что мы можем быть уверены, что наша машина не очень стара. Но что, если мы хотим
 быть уверенными в том, что указанный год не из будущего? Чтобы получить текущий год, нам
 надо выполнить немного IO. Для таких случаев предназначение функция \lstinline'checkM':
@@ -726,29 +728,30 @@ getCarR = do
 существует несколько различных функций, каждая из которых имеет своё назначение. Я
 пройдусь по всем, ничиная с самых распространённых.
 
-\subsection{runFormPost}
-
+\begin{description}
+\item[runFormPost] \hfill \\
 This will run your form against any submitted POST parameters.
 \marginpar{Я ничего не понял} If this is not a POST
 submission, it will return a FormMissing. Токен безопасности вставится автоматически
 как скрытое поле во избежание 
 \footnotehref{http://en.wikipedia.org/wiki/Cross-site\_request\_forgery}{CSRF}-атак.
 
-\subsection{runFormGet}
+\item[runFormGet] \hfill \\
 То же, что и \lstinline'runFormPost' для GET-параметров. Чтобы различать обычную
 загрузку страницы через GET от отправки GET формы, она включает дополнительное скрытое
 поле \lstinline'_hasdata' в форме.
 
-\subsection{runFormPostNoNonce}
+\item[runFormPostNoNonce] \hfill \\
 То же, что и \lstinline'runFormPost', но без включения токена безопасности CSRF.
 
-\subsection{generateFormPost}
+\item[generateFormPost] \hfill \\
 Вместо связывания существующих POST параметров, действует так, будто их нет. Может
 быть полезно когда вам нужно сгенерировать новую форму после того, как предыдущая была
 отправлена, such as in a wizard.
 
-\subsection{generateFormGet}
+\item[generateFormGet] \hfill \\
 То же, что и \lstinline'generateFormPost', но через GET.
+\end{description}
 
 Возвращаемым значением первых трёх является \lstinline'((FormResult a, Widget), Enctype)'.
 \lstinline'Widget' уже будет иметь ошибки валидации и предыдущие отправленные значения.
