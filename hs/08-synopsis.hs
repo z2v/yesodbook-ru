@@ -54,14 +54,14 @@ data Person = Person
 -- Для целей обучения лучше видеть полную версию
 personForm :: Html -> MForm Synopsis Synopsis (FormResult Person, Widget)
 personForm = renderDivs $ Person
-    <$> areq textField "Name" Nothing
+    <$> areq textField "Имя" Nothing
     <*> areq (jqueryDayField def
         { jdsChangeYear = True -- выпадающий список
         , jdsYearRange = "1900:-5" -- от 1900 года до пятилетней давности
-        }) "Birthday" Nothing
-    <*> aopt textField "Favorite color" Nothing
-    <*> areq emailField "Email address" Nothing
-    <*> aopt urlField "Website" Nothing
+        }) "Дата рождения" Nothing
+    <*> aopt textField "Любимый цвет" Nothing
+    <*> areq emailField "Адрес Email" Nothing
+    <*> aopt urlField "Сайт" Nothing
 
 -- Обработчик GET-запроса отображает форму
 getRootR :: Handler RepHtml
@@ -69,11 +69,11 @@ getRootR = do
     -- генерируем форму, которую будем отображать
     (widget, enctype) <- generateFormPost personForm
     defaultLayout [whamlet|
-<p>The widget generated contains only the contents of the form, not the form tag itself.
-So...
+<p>Сгенерированный виджет включает только содержимое формы, без тега form.
+Поэтому...
 <form method=post action=@{PersonR} enctype=#{enctype}>
     ^{widget}
-    <p>It also doesn't include the submit button.
+    <p>В нём также нет кнопки отправки формы.
     <input type=submit>
 |]
 
@@ -86,7 +86,7 @@ postPersonR = do
     case result of
         FormSuccess person -> defaultLayout [whamlet|<p>#{show person}|]
         _ -> defaultLayout [whamlet|
-<p>Invalid input, let's try again.
+<p>Некорректный ввод, попробуйте ещё раз.
 <form method=post action=@{PersonR} enctype=#{enctype}>
     ^{widget}
     <input type=submit>
