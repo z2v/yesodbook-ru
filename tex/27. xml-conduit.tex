@@ -1,12 +1,14 @@
 \chapter{xml-conduit}
 
+%TODO: перевести both a streaming and DOM-based approach во втором абзаце
+
 Многих разработчиков трясет от одной только мысли о работе с XML файлами. XML имеет репутацию формата, имеющего излишне усложненную модель данных, запутанные библиотеки и толстый слой сложностей, находящихся между разработчиком и его целью. Но я смею заверить, что многое из этого относятся скорее к проблемам языков программирования и библиотек, чем формата XML.
 
-Как я уже отмечал, система типов языка Haskell позволяет нам с легкостью свести любую проблему к ее самой базовой форме. The xml-types package neatly deconstructs the XML data model (both a streaming and DOM-based approach) into some simple ADTs. Haskell's standard immutable data structures make it easier to apply transforms to documents, and a simple set of functions makes parsing and rendering a breeze.
+Как я уже отмечал, система типов языка Haskell позволяет нам с легкостью свести любую проблему к ее самой базовой форме. Пакет xml-types аккуратно предобразует модель данных XML (both a streaming and DOM-based approach) в простые АТД. Стандартные неизменяемые структуры данных языка Haskell упрощают преобразование документов, а простой набор функций делает их парсинг и рендеринг легкими и непренужденными. % a simple set of functions makes parsing and rendering a breeze.
 
-We're going to be covering the xml-conduit package. Under the surface, this package uses a lot of the approaches Yesod in general does for high performance: blaze-builder, text, conduit and attoparsec. But from a user perspective, it provides everything from the simplest APIs (readFile/writeFile) through full control of XML event streams.
+Рассмотрим пакет xml-conduit. Под его капотом используется множество подходов, которые Yesod обычно применяет для высокой производительности: blaze-builder, text, conduit и attoparsec. С точки зрения пользователя он предоставляет все, начиная с простейших API (readFile/writeFile) и заканчивая полным контролем над потоками событий XML.
 
-In addition to xml-conduit, there are a few related packages that come into play, like xml-hamlet and xml2html. We'll cover both how to use all these packages, and when they should be used.
+В дополнение к xml-conduit, в игру вступает еще несколько связанных пакетов, например xml-hamlet и xml2html. Мы рассмотрим, как должны использоваться эти пакеты, а также когда это следует делать.
 
 \section{Краткое содержание} % Synopsis
 
@@ -109,9 +111,9 @@ goElem (Element name attrs children) =
 
 \section{Типы} % Types
 
-Let's take a bottom-up approach to analyzing types. This section will also serve as a primer on the XML data model itself, so don't worry if you're not completely familiar with it.
+Воспользуемся восходящим подходом для анализа типов. Также этот раздел будет служить введением в саму модель данных XML, так что не беспокойтесь, если вы не вполне знакомы с ней.
 
-I think the first place where Haskell really shows its strength is with the xml-types:Data.XML.Types:Name datatype. Many languages (like Java) struggle with properly expressing names. The issue is that there are in fact three components to a name: its local name, its namespace (optional), and its prefix (also optional). Let's look at some XML to explain:
+Я думаю, первое место, где Haskell по-настоящему показывает свою силу, это тип данных xml-types:Data.XML.Types:Name. Многие языки программирования (например Java) сопротявляются введению выразительных имен. Проблема заключается в том, что на самом деле имя состоит из трех частей: локального имени, пространства имен (опционально), а также префикса (также опционально). Для наглядности рассмотрим следующий кусок XML документа:
 
 \begin{lstlisting}[language=XML]
 <no-namespace/>
@@ -119,16 +121,15 @@ I think the first place where Haskell really shows its strength is with the xml-
 <foo:with-prefix xmlns:foo="second-namespace" foo:second-attr="value2"/>
 \end{lstlisting}
 
-The first tag has a local name of no-namespace, and no namespace or prefix. The second tag (local name: no-prefix) also has no prefix,  but it does have a namespace (first-namespace). first-attr, however, does not inherit that namespace: attribute namespaces must always be explicitly set with a prefix.
+Первый тэг имеет локальное имя no-namespace, но не имеет префикса и не принадлежит пространству имен. Второй тэг (с локальным именем no-prefix) также не имеет префикса, но он принадлежит пространству имен first-namespace. Однако first-attr не наследует это пространство имен: пространства имен атрибутов всегда должны точно задаваться с помощью префикса.
 
 \begin{remark}
-Namespaces are almost always URIs of some sort, though there is nothing in any specification requiring that it be so.
+Пространства имен почти всегда представляют собой своего рода URI, хотя ничего подобного не требуется ни в одной спецификации.
 \end{remark}
 
-The third tag has a local name of with-prefix, a prefix of foo and a namespace of second-namespace. Its attribute has a second-attr local name and the same prefix and namespace. The xmlns and xmlns:foo attributes are part of the namespace
-specification, and are not considered attributes of their respective elements.
+Трегий тэг имеет локальное имя with-prefix, префикс foo и принадлежит пространству имен second-namespace. Его атрибут имеет локальное имя second-attr, имеет тот же префикс и принадлежит тому же пространству имен. Атрибуты xmlns и xmlns:foo являются частью спецификации пространства имен и не рассматриваются в качестве атрибутов соответствующих элементов.
 
-So let's review what we need from a name: every name has a local name, and it can optionally have a prefix and namespace. Seems like a simple fit for a record type:
+Итак, из чего состоит имя? Каждое имя имеет локальное имя, а также опциональные префикс и пространство имен. Похоже на подходящий случай для применения записей:
 
 \begin{lstlisting}
 data Name = Name
@@ -138,9 +139,9 @@ data Name = Name
     }
 \end{lstlisting}
 
-According the the XML namespace standard, two names are considered equivalent if they have the same localname and namespace. In other words, the prefix is not important. Therefore, xml-types defines Eq and Ord instances that ignore the prefix.
+Согласно стандарту пространств имен в XML, два имени считаются эквивалентными, если они имеют одинаковое локальное имя и принадлежат одному пространству имен. Другими словами, префикс неважен. Потому в пакете xml-types определены экземпляры классов Eq и Ord, игнорирующие префиксы.
 
-The last class instance worth mentioning is IsString. It would be very tedious to have to manually type out Name "p" Nothing Nothing every time we want a paragraph. If you turn on OverloadedStrings, "p" will resolve to that all by itself! In addition, the IsString instance recognizes something called Clark notation, which allows you to prefix the namespace surrounded in curly brackets. In other words:
+Последний экземпляр класса, который следует упомянуть, это IsString. Было бы очень утомительно печатать Name "p" Nothing Nothing каждый раз, когда нам нужен новый параграф. Если вы включите OverloadedStrings, "p" будет преобразовываться во все это хозяйство самостоятельно! Кроме того, экземлпяр IsString распознает нечто, называемое нотацией Кларка, что позволяет вам использовать в именах префикс с пространством имен в фигурных скобочках. Другими словами:
 
 \begin{lstlisting}
 "{namespace}element" == Name "element" (Just "namespace") Nothing
@@ -149,25 +150,25 @@ The last class instance worth mentioning is IsString. It would be very tedious t
 
 \section{Четыре типа узлов} % The Four Types of Nodes
 
-XML documents are a tree of nested nodes. There are in fact four different types of nodes allowed: elements, content (i.e., text), comments, and processing instructions.
+XML-документы представляют собой дерево вложенных узлов. В действительности существует четыре различных типа узлов --- элементы, содержание (например, текст), комментарии, а также инструкции по обработке (processing instructions).
 
 \begin{remark}
-You may not be familiar with that last one, it's less commonly used. It is marked
-up as:
+Вероятно, вы не знакомы с последними, поскольку они используются довольно редко. Они обозначаются следующим образом:
 
 \begin{lstlisting}[language=XML]
 <?target data?>
 \end{lstlisting}
 
-There are two surprising facts about processing instructions (PIs):
+Есть два удивительных факта об инструкциях по обработке:
 
 \begin{itemize}
-\item PIs don't have attributes. While often times you'll see processing instructions that appear to have attributes, there are in fact no rules about that data of an instruction.
-\item The <?xml ...?> stuff at the beginning of a document is not a processing instruction. It is simply the beginning of the document (known as the XML declaration), and happens to look an awful lot like a PI. The difference though is that the <?xml ...?> line will not appear in your parsed content.
+\item Инструкции по обработке не имеют атрибутов. Несмотря на то, что вам могут попастся инструкции, имеющие атрибуты, на самом деле не существует никаких правил относительно этих данных в инструкциях. % While often times you'll see processing instructions that appear to have attributes, there are in fact no rules about that data of an instruction.
+\item <?xml ...?> не является инструкцией по обработке. Это просто начало документа (также известное, как объявление XML), и так получилось, что оно выглядит поразительно похожим на инструкции по обработке. Разница заключается в том, что строка <?xml ...?> не появится в разобранных данных (parsed content).
 \end{itemize}
+
 \end{remark}
 
-Since processing instructions have two pieces of text associated with them (the target and the data), we have a simple data type:
+Учитывая, что инструкции имеют два куска текста, связанных с ним (target и data), получает очень простой тип данных:
 
 \begin{lstlisting}
 data Instruction = Instruction
@@ -176,11 +177,11 @@ data Instruction = Instruction
     }
 \end{lstlisting}
 
-Comments have no special datatype, since they are just text. But content is an interesting one: it could contain either plain text or unresolved entities (e.g., \&copyright-statement;).  xml-types keeps those unresolved entities in all the data types in order to completely match the spec. However, in practice, it can be very tedious to program against those data types. And in most use cases, an unresolved entity is going to end up as an error anyway.
+Комментариям не соответствует специального типа данных, потому что они представляют собой обычный текст. Зато содержание (content) куда интереснее --- оно может состоять из простого текста и неразрешенных сущностей (например, \&copyright-statement;). Пакет xml-types оставляет эти сущности неразрешенными во всех типах данных, чтобы полностью соответствовать спецификации. Однако на практике может быть очень трудно работать с такими типами данных. И в большинстве случаев неразрешенная сущность в конечном итоге приведет к возникновению ошибки.
 
-So the xml-conduit:Text.XML module defines its own set of datatypes for nodes, elements and documents that removes all unresolved entities. If you need to deal with unresolved entities instead, you should use the xml-conduit:Text.XML.Unresolved module. From now on, we'll be focusing only on the Text.XML data types, though they are almost identical to the xml-types versions.
+По этой причине модуль xml-conduit:Text.XML определяет собственный набор типов данных для узлов, элементов и документов, в которых удаляются все неразрешенные сущности. Если вам нужно работать с неразрешенными сущностями, используйте модуль xml-conduit:Text.XML.Unresolved. Начиная с этого момента мы сосредоточимся на типах данных модуля Text.XML, поскольку они почти идентичны версиям из пакета xml-types.
 
-Anyway, after that detour: content is just a piece of text, and therefore it too does not have a special datatype. The last node type is an element, which contains three pieces of information: a name, a list of attributes and a list of children nodes. An attribute has two pieces of information: a name and a value. (In xml-types, this value could contain unresolved entities as well.) So our Element is defined as:
+В связи с вышесказанным, содержание также представляет собой обычный текст и потому у него также нет специального типа данных. Последним типом узлов является элемент, который состоит из имени, списка атрибутов и списка дочерних узлов. Атрибут состоит из двух частей - имени и значения. (В пакете xml-types, значение также может содержать неразрешенные сущности.) Итак, определим Element следующим образом:
 
 \begin{lstlisting}
 data Element = Element
@@ -190,7 +191,7 @@ data Element = Element
     }
 \end{lstlisting}
 
-Which of course begs the question: what does a Node look like? This is where Haskell really shines: its sum types model the XML data model perfectly.
+Возникает закономерный вопрос --- а как долже нвыглядеть тип данных Node? Вот где Haskell по-настоящему рулит: % This is where Haskell really shines: its sum types model the XML data model perfectly.
 
 \begin{lstlisting}
   data Node
@@ -201,8 +202,8 @@ Which of course begs the question: what does a Node look like? This is where Has
 \end{lstlisting}
 
 \section{Документы} % Documents
- 
-So now we have elements and nodes, but what about an entire document? Let's just lay out the datatypes:
+
+Итак, у нас есть элементы и узлы, но как на счет целых документов? Рассмотрим следующие типы данных: % Let's just lay out the datatypes:
 
 \begin{lstlisting}
 data Document = Document
@@ -231,9 +232,9 @@ data ExternalID
     | PublicID Text Text
 \end{lstlisting}
 
-The XML spec says that a document has a single root element (documentRoot). It also has an optional doctype statement. Before and after both the doctype and the root element, you are allowed to have comments and processing instructions. (You can also have whitespace, but that is ignored in the parsing.)
+В спецификации XML сказано, что документ может иметь только один корневой элемент (documentRoot). Он также может содержать опциональное объявление типа документа (doctype. Перед и после как типа документа, так и корневого элемента, разрешается иметь комментарии и инструкции по обработке. (Также можно иметь пробелы, но они и так игнорируются во время парсинга.)
 
-So what's up with the doctype? Well, it specifies the root element of the document, and then optional public and system identifiers. These are used to refer to DTD files, which give more information about the file (e.g., validation rules, default attributes, entity resolution). Let's see some examples:
+Так что там на счет типа документа? Он определяет корневой элемент документа, а затем, опционально, публичный (public) и системый (system) идентификаторы. Они используются для ссылок на DTD-файлы, которые предоставляют больше информации о файле (например, правила валидации, атрибуты по-умолчанию, разрешения сущностей). Рассмотрим несколько примеров:
 
 \begin{lstlisting}[language=HTML]
 <!DOCTYPE root> <!-- no external identifier -->
@@ -241,7 +242,7 @@ So what's up with the doctype? Well, it specifies the root element of the docume
 <!DOCTYPE root PUBLIC "My Root Public Identifier" "root.dtd"> <!-- public identifiers have a system ID as well -->
 \end{lstlisting}
 
-And that, my friends, is the entire XML data model. For many parsing purposes, you'll be able to simply ignore the entire Document datatype and go immediately to the documentRoot.
+Это, друзья мои, и есть вся модель данных XML. На практике, в большинстве случаев вы можете просто игнорировать тип данных Document и переходить сразу к documentRoot.
 
 \section{События} % Events
 
