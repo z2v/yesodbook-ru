@@ -1,14 +1,12 @@
 \chapter{xml-conduit}
 
-%TODO: перевести both a streaming and DOM-based approach во втором абзаце
-
 Многих разработчиков трясет от одной только мысли о работе с XML файлами. XML имеет репутацию формата, имеющего излишне усложненную модель данных, запутанные библиотеки и толстый слой сложностей, находящихся между разработчиком и его целью. Но я смею заверить, что многое из этого относятся скорее к проблемам языков программирования и библиотек, чем формата XML.
 
-Как я уже отмечал, система типов языка Haskell позволяет нам с легкостью свести любую проблему к ее самой базовой форме. Пакет xml-types аккуратно предобразует модель данных XML (both a streaming and DOM-based approach) в простые АТД. Стандартные неизменяемые структуры данных языка Haskell упрощают преобразование документов, а простой набор функций делает их парсинг и рендеринг легкими и непренужденными. % a simple set of functions makes parsing and rendering a breeze.
+Как я уже отмечал, система типов языка Haskell позволяет нам с легкостью свести любую проблему к ее самой базовой форме. Пакет xml-types аккуратно предобразует модель данных XML (поддерживается работа как с целыми документами, так и с потоком данных) в простые абстрактные типы данных. Стандартные неизменяемые структуры данных языка Haskell упрощают преобразование документов, а простой набор функций делает их парсинг и рендеринг легкими и непренужденными. % a simple set of functions makes parsing and rendering a breeze.
 
 Рассмотрим пакет xml-conduit. Под его капотом используется множество подходов, которые Yesod обычно применяет для высокой производительности: blaze-builder, text, conduit и attoparsec. С точки зрения пользователя он предоставляет все, начиная с простейших API (readFile/writeFile) и заканчивая полным контролем над потоками событий XML.
 
-В дополнение к xml-conduit, в игру вступает еще несколько связанных пакетов, например xml-hamlet и xml2html. Мы рассмотрим, как должны использоваться эти пакеты, а также когда это следует делать.
+В дополнение к xml-conduit, в игру вступает еще несколько связанных пакетов, например, xml-hamlet и xml2html. Мы рассмотрим, как должны использоваться эти пакеты, а также когда это следует делать.
 
 \section{Краткое содержание} % Synopsis
 
@@ -113,7 +111,7 @@ goElem (Element name attrs children) =
 
 Воспользуемся восходящим подходом для анализа типов. Также этот раздел будет служить введением в саму модель данных XML, так что не беспокойтесь, если вы не вполне знакомы с ней.
 
-Я думаю, первое место, где Haskell по-настоящему показывает свою силу, это тип данных xml-types:Data.XML.Types:Name. Многие языки программирования (например Java) сопротявляются введению выразительных имен. Проблема заключается в том, что на самом деле имя состоит из трех частей: локального имени, пространства имен (опционально), а также префикса (также опционально). Для наглядности рассмотрим следующий кусок XML документа:
+Я думаю, первое место, где Haskell по-настоящему показывает свою силу, это тип данных Name. Многие языки программирования (например, Java) сопротявляются введению выразительных имен. Проблема заключается в том, что на самом деле имя состоит из трех частей: локального имени, пространства имен (опционально), а также префикса (также опционально). Для наглядности рассмотрим следующий кусок XML документа:
 
 \begin{lstlisting}[language=XML]
 <no-namespace/>
@@ -150,7 +148,7 @@ data Name = Name
 
 \section{Четыре типа узлов} % The Four Types of Nodes
 
-XML-документы представляют собой дерево вложенных узлов. В действительности существует четыре различных типа узлов --- элементы, содержание (например, текст), комментарии, а также инструкции по обработке (processing instructions).
+XML-документы представляют собой дерево вложенных узлов. В действительности существует четыре различных типа узлов --- элементы, содержание (то есть, текст), комментарии, а также инструкции по обработке (processing instructions).
 
 \begin{remark}
 Вероятно, вы не знакомы с последними, поскольку они используются довольно редко. Они обозначаются следующим образом:
@@ -179,7 +177,7 @@ data Instruction = Instruction
 
 Комментариям не соответствует специального типа данных, потому что они представляют собой обычный текст. Зато содержание (content) куда интереснее --- оно может состоять из простого текста и неразрешенных сущностей (например, \&copyright-statement;). Пакет xml-types оставляет эти сущности неразрешенными во всех типах данных, чтобы полностью соответствовать спецификации. Однако на практике может быть очень трудно работать с такими типами данных. И в большинстве случаев неразрешенная сущность в конечном итоге приведет к возникновению ошибки.
 
-По этой причине модуль xml-conduit:Text.XML определяет собственный набор типов данных для узлов, элементов и документов, в которых удаляются все неразрешенные сущности. Если вам нужно работать с неразрешенными сущностями, используйте модуль xml-conduit:Text.XML.Unresolved. Начиная с этого момента мы сосредоточимся на типах данных модуля Text.XML, поскольку они почти идентичны версиям из пакета xml-types.
+По этой причине модуль Text.XML определяет собственный набор типов данных для узлов, элементов и документов, в которых удаляются все неразрешенные сущности. Если вам нужно работать с неразрешенными сущностями, используйте модуль Text.XML.Unresolved. Начиная с этого момента мы сосредоточимся на типах данных модуля Text.XML, поскольку они почти идентичны версиям из пакета xml-types.
 
 В связи с вышесказанным, содержание также представляет собой обычный текст и потому у него также нет специального типа данных. Последним типом узлов является элемент, который состоит из имени, списка атрибутов и списка дочерних узлов. Атрибут состоит из двух частей - имени и значения. (В пакете xml-types, значение также может содержать неразрешенные сущности.) Итак, определим Element следующим образом:
 
@@ -246,54 +244,52 @@ data ExternalID
 
 \section{События} % Events
 
-In addition to the document API, xml-types defines an xml-types:Data.XML.Types:Event datatype. This can be used for constructing streaming tools, which can be much more memory efficient for certain kinds of processing (eg, adding an extra attribute to all elements). We will not be covering the streaming API currently, though it should look very familiar after analyzing the document API.
+В дополнение к API для работы с документами, пакет xml-types также определяет тип данных Event. Он может быть использован для конструирования поточных инструментов, которые могут потреблять намного меньше оперативной памяти при решении множества задач (например, добавления нового атрибута всем элементам). Сейчас мы не будем рассматривать поточный API, однако он должен показаться вам очень знакомым после изучения API для работы с документами.
 
 \begin{remark}
-You can see an example of the streaming API in the Sphinx case study.
+Вы можете найти пример использования поточного API в главе 21, посвященой работе со Sphinx.
 \end{remark}
 
-\section{Text.XML}
+\section{Модуль Text.XML}
 
-The recommended entry point to xml-conduit is the xml-conduit:Text.XML module. This module exports all of the datatypes you'll need to manipulate XML in a DOM fashion, as well as a number of different approaches for parsing and rendering XML content. Let's start with the simple
+Рекомендуемой точкой входа в пакет xml-conduit является модуль Text.XML. Этот модуль экспортирует все типы данных, которые могут вам потредоваться для манипулирования XML в DOM-стиле (Document Object Model, объектная модель документа), а также предоставляет несколько походов к парсингу и рендеренгу XML-документов. Начнем с простого:
 
 \begin{lstlisting}
-ones:readFile :: ParseSettings  -> FilePath -> IO Document
+readFile :: ParseSettings -> FilePath -> IO Document
 writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 \end{lstlisting}
 
-This introduces the ParseSettings and RenderSettings datatypes. You can use these to modify the behavior of the parser and renderer, such as adding character entities and turning on pretty (i.e., indented) output. Both these types are instances of the data-default:Data.Default:Default typeclass, so you can simply use def when these need to be supplied. That is how we will supply these values through the rest of the chapter; please see the API docs for more information.
+Здесь вы видите типы данных ParseSettings и RenderSettings. Вы можете использовать их для изменения поведения парсера или рендерера, например, добавления сущностей или включения оформленного (то есть, с отступами) вывода. Оба типа являются экземплярами класса типов Default, так что вы можете просто использовать функцию def в тех случаях, когда требуется предоставить значение одного из них. Собственно, так мы и собираемся поступать до конца этой главы. Дополнительную информацию вы можете найти в документации на Hackage: http://goo.gl/FPV1J.
 
-It's worth pointing out that in addition to the file-based API, there is also a text- and bytestring-based API. The bytestring-powered functions all perform intelligent encoding detections, and support UTF-8, UTF-16 and UTF-32, in either big or little endian, with and without a Byte-Order Marker (BOM). All output is generated in UTF-8.
+Следует также отметить что в дополнение к API для работы с файлами, также имеются API для работы с текстом и байтовыми строками (bytestring). В функциях для работы с байтовыми строками реализовано интеллектуальное определение кодировки. Поддерживаются кодировки UTF-8, UTF-16 и UTF-32, с прямым (little endian) и обратным (big endian) порядком байт, как с BOM (Byte-Order Marker), так и без. Весь вывод генерируется в UTF-8.
 
-For complex data lookups, we recommend using the higher-level cursors API. The standard Text.XML API not only forms the basis for that higher level, but is also a great API for simple XML transformations and for XML generation. See the synopsis for an example.
+Для комплексного поиска данных мы рекомендуем использовать API более высокого уровня для работы с курсорами. Стандартный API модуля Text.XML не только формирует базис для этого более высокого уровня. Он также предоставляет отличный API для простого преобразования и простой генерации XML. Пример его использования вы можете найти в разделе <<Краткое содержание>> этой главы.
 
 \section{Замечание относительно путей к файлам} % A note about file paths
 
-In the type signature above, we have a type FilePath. However, {\bf this isn't Prelude.FilePath}. The standard Prelude defines a type synonym type FilePath = [Char]. Unfortunately, there are many limitations to using such an approach, including confusion of filename character encodings and differences in path separators.
+В приведенных выше сигнатурах функций вы видели тип FilePath. Однако {\bf это не Prelude.FilePath}. В модуле Prelude определяется синоним type FilePath = [Char]. К сожалению, данный подход имеет множество ограничений, включая неопределенность кодировки файла, а также возможность использования различных символов в качестве разделителей в пути к файлу.
 
-Instead, xml-conduit uses the system-filepath package, which defines an abstract FilePath type. I've personally found this to be a much nicer approach to work with. The package is fairly easy to follow, so I won't go into details here. But I do want to give a few quick explanations of how to use it:
+Вместо этого в xml-conduit используется пакет system-filepath, в котором определяется абстрактный тип FilePath. Я лично нахожу такой подход более удобным. Пакет очень прост в использовании, так что здесь я не буду останавливаться на деталях. Вместо этого я приведу лишь краткое пояснение относительно его использования:
 
 \begin{itemize}
-\item Since a FilePath is an instance of IsString, you can type in regular strings and they will be treated properly, as long as the OverloadedStrings extension is enabled. (I highly recommend enabling it anyway, as it makes dealing with Text values much more pleasant.)
-\item If you need to explicitly convert to or from Prelude's FilePath, you should use the encodeString and decodeString, respectively. This takes into account file path encodings.
-\item Instead of manually splicing together directory names and file names with extensions, use the operators in the Filesystem.Path.CurrentOS module, e.g. myfolder </> filename <.> extension.
+\item Поскольку FilePath является экземпляром класса IsString, вы можете вводить обычные строки и они будут интерпретированы правильно до тех пор, пока используется расширение OverloadedStrings. (Я настоятельно рекомендую использовать его в любом случае, поскольку это делает работу со значениями типа Text намного приятнее.)
+\item Если вам требуется преобразование в или из FilePath модуля Prelude, вы должны использовать функцию encodeString или decodeString соответсвенно. Таким образов в рассчет будет принята кодировка пути к файлу.
+\item Вместо того, чтобы вручную соединять имена директорий, имена файлов и их расширения, используйте операторы из модуля Filesystem.Path.CurrentOS, например myfolder </> filename <.> extension.
 \end{itemize}
   
-\section{Курсор} % Cursor
+\section{Курсоры} % Cursor
 
-Suppose you want to pull the title out of an XHTML document. You could do so with the Text.XML interface we just described, using standard pattern matching on the children of elements. But that would get very tedious, very quickly. Probably the gold standard for these kinds of lookups is XPath, where you would be able to write /html/head/title. And that's exactly what inspired the design of the xml-conduit:Text.XML.Cursor combinators.
+Допустим, вы хотите получить заголовок из XHTML-документа. Вы можете сделать это с помощью интерфейса модуля Text.XML, который мы только что описали, используя стандартное сопоставление с образцом потомков элементов. Но такая работы станет утомительной очень быстро. Вероятно, золотым стандартом для такого типа поиска является XPath, который позволяет вам обращаться к элементам, используя пути типа /html/head/title. Именно это и послужило вдохновением для дизайна комбинаторов из модуля Text.XML.Cursor.
 
-A cursor is an XML node that knows its location in the tree; it's able to traverse upwards, sideways, and downwards. (Under the surface, this is achieved by tying the knot.) There are two functions available for creating cursors from Text.XML types: fromDocument and fromNode.
+Кусрор представляет собой узел, который помнит свое положение в дереве; он может перемещаться вверх, в сторону или вниз. (Это реализовано путем использования "уз брака"\footnote{http://www.haskell.org/haskellwiki/Tying_the_Knot}.) Есть две функции, позволяющие преобразовывать типы модуля Text.XML в курсоры --- fromDocument и fromNode.
 
-We also have the concept of an Axis, defined as type Axis = Cursor -> [Cursor]. It's easiest to get started by looking at example axes: child returns zero or more cursors that are the child of the current one, parent returns the single parent cursor of the input, or an empty list if the input is the root element,
-and so on.
+Также имеется концепция оси, реализованная как type Axis = Cursor -> [Cursor]. Проще всего понять ее на примере. Функция child возвращает ноль или больще курсоров, которые являются потомками текущего курсора, функция parent возвращает одиночный родительский курсор входного курсора или пустой список для корневого элемента, и так далее.
 
-In addition, there are some axes that take predicates. element is a commonly used function that filters down to only elements which match the given name. For example, element "title" will return the input element if its name is "title", or an empty list otherwise.
+Кроме того, некоторые оси используют предикаты. Так функция element обычно используется для фильтрации элементов по имени. Например, element "title" вернет входной элемент только в том случае, если он имеет имя "title", иначе будет возвращен пустой список.
 
-Another common function which isn't quite an axis is content :: Cursor -> [Text]. For all content nodes, it returns the contained text; otherwise, it returns an
-empty list.
+Еще одна функция, которая не вполня является осью, это content :: Cursor -> [Text]. Для всех узлов с неким содержимым она возвращает содержимый текст, иначе возвращается пустой список.
 
-And thanks to the monad instance for lists, it's easy to string all of these together. For example, to do our title lookup, we would write the following program:
+Благодаря тому, что списки являются монадами, не составляет труда объединить все вышесказанное воедино. Например, следующая программа предназначена для поиска заголовка XHTML-документа:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -311,18 +307,18 @@ main = do
                          >>= element "title" >>= descendant >>= content
 \end{lstlisting}
 
-What this says is:
+В переводе на русский тут написано:
 
 \begin{itemize}
-\item Get me all the child nodes of the root element
-\item Filter down to only the elements named "head"
-\item Get all the children of all those head elements
-\item Filter down to only the elements named "title"
-\item Get all the descendants of all those title elements. (A descendant is a child, or a descendant of a child. Yes, that was a recursive definition.)
-\item Get only the text nodes.
+\item Найти все дочерние узлы корневого элемента;
+\item Отфильтровать элементы, оставив лишь элементы с именем <<head>>;
+\item Найти всех потомков (child) элементов, полученных на предыдущем шаге;
+\item Отфильтровать элементы, оставив лишь элементы с именем <<title>>;
+\item Найти всех наследников (descendant) полученных элементов. (Наследник - это потомок или наследник потомка. Да, это рекурсивное определение.)
+\item Оставить только текстовые узлы.
 \end{itemize}
 
-So for the input document:
+Итак, для входного документа:
 
 \begin{lstlisting}[language=HTML]
   <html>
@@ -335,7 +331,7 @@ So for the input document:
 </html>
 \end{lstlisting}
 
-We end up with the output My Title. This is all well and good, but it's much more verbose than the XPath solution. To combat this verbosity, Aristid Breitkreuz added a set of operators to the Cursor module to handle many common cases. So we can rewrite our example as:
+Мы получим вывод <<My Title>>. Это все, конечно, здорово и замечательно, но вообще-то тут намного больше кода, чем в случае использования XPath. Для борьбы с этой многословностью Aristid Breitkreuz добавил в модуль Cursor набор операторов для обработки больщинства случаев. С их помощью мы можем переписать наш пример следующим образом:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -352,9 +348,9 @@ main = do
         cursor $/ element "head" &/ element "title" &// content
 \end{lstlisting}%$
 
-\$/ says to apply the axis on the right to the children of the cursor on the left. \&/ is almost identical, but is instead used to combine two axes together. This is a general rule in Text.XML.Cursor: operators beginning with \$ directly apply an axis, while \& will combine two together. \&// is used for applying an axis to all descendants.
+Оператор \$/ говорит применить ось справа к потомкам (children) курсора слева. Оператор \&/ практически идентичен, только используется он для комбинирования двух осей. Общее правило в модуле Text.XML.Cursor таково: операторы, начинающиеся со знака \$, напрямую применяют ось, а начинающиеся со знака \& объединяют две оси. Оператор \&// используется для применения оси ко всем наследникам (descendants).
 
-Let's go for a more complex, if more contrived, example. We have a document that looks like:
+Рассмотрим более сложный (или более надуманный?) пример. Имеется следующий документ:
 
 \begin{lstlisting}[language=HTML]
   <html>
@@ -374,7 +370,7 @@ Let's go for a more complex, if more contrived, example. We have a document that
 </html>
 \end{lstlisting}
 
-We want to get the content of all the h1 tags which precede an h2 tag with a class attribute of "bar". To perform this convoluted lookup, we can write:
+Мы хотим получить содержимое все тэгов h1, которые предшествуют тэгу h2 с атрибутом class, имеющим значение <<bar>>. Для выполнения этого запутанного поиска мы можем написать:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -395,17 +391,17 @@ main = do
                &// content
 \end{lstlisting}%$
 
-Let's step through that. First we get all h2 elements in the document. (\$// gets all descendants of the root element.) Then we filter out only those with class=bar. That >=> operator is actually the standard operator from base:Control.Monad; yet another advantage of the monad instance of lists. precedingSibling finds all nodes that come before our node and share the same parent. (There is also a preceding axis which takes all elements earlier in the tree.) We then take just the h1 elements, and then grab their content.
+Давайте попробуем разобраться, что здесь происходит. Сначала мы получаем все элементы h2 в документе. (Оператор \$// получает всех наследников корневого элемента.) Из них мы оставляем только те, что имеют атрибут class со значением <<bar>>. Оператор >=> на самом деле является стандартным оператором из модула Control.Monad; вот еще одно преимущество того, что списки являются монадами. Функция precedingSibling находит все узлы, что идут перед заданным и имеют с ним общего родителя. (Имеется также предшествующая ось, с помощью которой мы ранее получили все элементы в дереве.) Затем мы просто берем все элементы h1 и получаем их содержимое.
 
 \begin{remark}
-The equivalent XPath, for comparison, would be //h2[@class ='bar']/preceding-sibling::h1//text().
+Эквивалентный XPath, для сравнения, будет //h2[@class ='bar']/preceding-sibling::h1//text().
 \end{remark}
 
-While the cursor API isn't quite as succinct as XPath, it has the advantages of being standard Haskell code, and of type safety.
+Хоть API курсоров и уступает XPath в краткости, зато он является стандарным кодом на Haskell и обеспечивает безопасность типов.
 
 \section{xml-hamlet}
 
-Thanks to the simplicity of Haskell's data type system, creating XML content with the Text.XML API is easy, if a bit verbose. The following code:
+Благодаря простоте системы типов языка Haskell, создание XML-документов с помощью API модуля Text.XML является крайне простым, хотя и несколько многословным. Следующий код:
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings #-}
@@ -433,7 +429,7 @@ main =
         ]
 \end{lstlisting}
 
-produces
+генерирует:
 
 \begin{lstlisting}[language=XML]
 <?xml version="1.0" encoding="UTF-8"?>
