@@ -113,9 +113,10 @@ instance MonadBaseControl IO m => PersistBackend SqlPersist m
 \begin{remark}
 Это не всегда было так. Перед Yesod 0.10, Yesod был построен на базе пакета enumerators, 
 который не поддерживает \lstinline'MonadBaseControl'. В Yesod 0.10, мы перешли к пакету 
-\hyperref[chap:intro]{conduit},
+\href{http://hackage.haskell.org/package/conduit}{conduit}\footnotemark,
 который значительно упрощает всё, что мы здесь обсуждаем.
 \end{remark}
+\footnotetext{\href{http://hackage.haskell.org/package/conduit}{\texttt{http://hackage.haskell.org/package/conduit}}}
 
 Для того, чтобы упростить обращение к соответствующим Persistent трансформаторам, пакет 
 \footnotehref{http://hackage.haskell.org/package/yesod-persistent}{yesod-persistent}
