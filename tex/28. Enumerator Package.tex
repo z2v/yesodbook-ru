@@ -41,7 +41,7 @@ getNumber = do
     if x == "q"
         then return Nothing
         else return $ Just $ read x
-\end{lstlisting}
+\end{lstlisting}%$
 
 Мы можем написать новую функцию суммы так:
 
@@ -54,7 +54,7 @@ sum2 = do
         Just num -> do
             rest <- sum2
             return $ num + rest
-\end{lstlisting}
+\end{lstlisting}%$
 
 Довольно неудобно быть вынужденным писать две разные функции суммы только потому, что изменился наш источник данных. В идеале, мы бы хотели немного обобщить сущности. Начнем с того, что выделим сходство между этими двумя функциями: они обе возвращают значения только тогда, когда чисел больше нет. В случае sum1 мы проверяем пустой ли список, в sum2 мы проверяем на Nothing.
 
@@ -85,7 +85,7 @@ sum3 = do
             let nums' = sum nums
             rest <- sum3
             return $ nums' + rest
-\end{lstlisting}
+\end{lstlisting}%$
 
 Нельзя сказать, что этот способ гораздо лучше чем sum2, но по крайней мере он демонстрирует использование типа данных Stream. Здесь проблема в том, что мы по-прежнему явно ссылаемся на функцию getNumber2, жёстко задавая источник данных.
 
@@ -101,7 +101,7 @@ sum4 getNum = do
             let nums' = sum nums
             rest <- sum4 getNum
             return $ nums' + rest
-\end{lstlisting}
+\end{lstlisting}%$
 
 Это все хорошо, но давайте представим, что мы хотим иметь два источника данных для суммирования: значения которые пользователь вводит в командной строке, и,  допустим, числа которые мы читаем через соединение HTTP. Здесь перед нами задача контроля: sum4 управляет процессом вызывая getNum. Это модель вытягивания данных (pull data model). В enumerators используется модель инверсии управления, или же модель продавливания (inversion of control/push model), назначая ответсвенным enumerator. Это позволяет делать классные вещи, наподобии потребления данных из нескольких источников, а также становится проще писать enumerators, которые правильно работают с выделением ресурсов.
 
@@ -164,11 +164,11 @@ sum5 =
         Iteratee $ return $ Continue $ go runningSum'
     -- Произвести конечный результат
     go runningSum EOF = Iteratee $ return $ Yield runningSum EOF
-\end{lstlisting}
+\end{lstlisting}%$
 
-Для того, чтобы запустить этот код, вы можете использовать \lstinline'run_ $ enumList 8 [1 .. 10] sum5'. Но это использует чёрную магию Enumerator которую мы рассмотрим позже.
+Для того, чтобы запустить этот код, вы можете использовать \lstinline'run\_ \$ enumList 8 [1 .. 10] sum5'. Но это использует чёрную магию Enumerator которую мы рассмотрим позже.
 
-Первая "настоящая" строка (\lstinline'Continue $ go 0') инициализирует наш iteratee в начальное состояние. Как и во всех других функциях суммирования мы должны явно заявить, что мы начинаем с 0. Настоящая рабочая лошадка это функция \lstinline'go'. Обратите внимание, как мы передаём состояние iteratee в качестве первого аргумента \lstinline'go': это тоже очень распространенная подход в програмировании iteratee.
+Первая "настоящая" строка (\lstinline'Continue \$ go 0') инициализирует наш iteratee в начальное состояние. Как и во всех других функциях суммирования мы должны явно заявить, что мы начинаем с 0. Настоящая рабочая лошадка это функция \lstinline'go'. Обратите внимание, как мы передаём состояние iteratee в качестве первого аргумента \lstinline'go': это тоже очень распространенная подход в програмировании iteratee.
 
 Мы должны обрабатывать два разных случая: когда получаем EOF, функция \lstinline'go' должна произвести значение Yield. (Она также может произвести Error, но определенно не может Continue.) В этом случае, мы просто возвращаем текущую сумму и говорим, что данных не осталось. Когда же мы получаем некоторые входные данные через Chunks, мы просто складываем их с текущей суммой и создаём новое Continue основаное на той же функции \lstinline'go'.
 
@@ -183,20 +183,20 @@ returnI = Iteratee . return
 
 \begin{lstlisting}
 go runningSum EOF = Iteratee $ return $ Yield runningSum EOF
-\end{lstlisting}
+\end{lstlisting}%$
 
 становится
 
 \begin{lstlisting}
 go runningSum EOF = returnI $ Yield runningSum EOF
-\end{lstlisting}
+\end{lstlisting}%$
 
 Но даже это достаточно обычно, что бы захотеть вспомогательную функцию:
 
 \begin{lstlisting}
 yield :: Monad m => b -> Stream a -> Iteratee a m b
 yield x chunk = returnI $ Yield x chunk
-\end{lstlisting}
+\end{lstlisting}%$
 
 так наша строка становиться
 
@@ -208,13 +208,13 @@ go runningSum EOF = yield runningSum EOF
 
 \begin{lstlisting}
 Iteratee $ return $ Continue $ go runningSum'
-\end{lstlisting}
+\end{lstlisting}%$
 
 становиться
 
 \begin{lstlisting}
 continue $ go runningSum'
-\end{lstlisting}
+\end{lstlisting}%$
 
 Екземпляр Monad для Iteratee
 
@@ -231,7 +231,7 @@ sum6 = do
         Just i -> do
             rest <- sum6
             return $ i + rest
-\end{lstlisting}
+\end{lstlisting}%$
 
 Функция head не из Prelude, она из модуля Data.Enumerator. Вот её сигнатура типа:
 
@@ -270,7 +270,7 @@ interleaved = do
         Just line -> do
             liftIO $ putStrLn line
             interleaved
-\end{lstlisting}
+\end{lstlisting}%$
 
 Функция liftIO из пакета transformers, она просто продвигает действие в монаде IO в любое произвольное действие в MonadIO. Обратите внимание, что мы не отслеживаем состояние в этом iteratee: мы не заботимся о результате, только о побочных эффектах.
 
@@ -324,9 +324,9 @@ extract (Iteratee mstep) = do
                 Error e -> return $ Left e
         Yield b _ -> return $ Right b
         Error e -> return $ Left e
-\end{lstlisting}
+\end{lstlisting}%$
 
-К счастью, вам не нужно переопределять это самостоятельно: enumerator уже содержит функции \lstinline'run' и \lstinline'run_'. Давайте пойдем дальше и воспользуемся этим в нашей sum6 функции:
+К счастью, вам не нужно переопределять это самостоятельно: enumerator уже содержит функции \lstinline'run' и \lstinline'run\_'. Давайте пойдем дальше и воспользуемся этим в нашей sum6 функции:
 
 \begin{lstlisting}
 main = run_ sum6 >>= print
@@ -347,7 +347,7 @@ sum7 :: Monad m => Iteratee Int m Int
 sum7 = Iteratee $ do
     Continue k <- runIteratee sum6
     runIteratee $ k $ Chunks [1..10]
-\end{lstlisting}
+\end{lstlisting}%$
 
 Но в общем случае, мы не будем знать какой конструктор мы встретим, и должны как положено обрабатывать Continue, Yield и Error. Мы увидели, что делать с Continue: скормить ему данные. С Yield и Error, в общем случее, правильным действием будет ничего не делать, поскольку мы уже прибыли в наше конечное состояние (это или успешный Yield или Error). Таким образом, "правильный" способ записи функции выше:
 
@@ -358,7 +358,7 @@ sum8 = Iteratee $ do
     case step of
         Continue k -> runIteratee $ k $ Chunks [1..10]
         _ -> return step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Синоним типа Enumerator
 
@@ -371,7 +371,7 @@ sum9 orig = Iteratee $ do
     case step of
         Continue k -> runIteratee $ k $ Chunks [1..10]
         _ -> return step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Так как мы всегда просто хотим развернуть значение Iteratee, более естественно сделать аргумент типа Step, а именно:
 
@@ -379,7 +379,7 @@ sum9 orig = Iteratee $ do
 sum10 :: Monad m => Step Int m Int -> Iteratee Int m Int
 sum10 (Continue k) = k $ Chunks [1..10]
 sum10 step = returnI step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Эта сигнатура типа (взять Step, вернуть Iteratee) оказывается очень распространена:
 
@@ -400,7 +400,7 @@ applyEnum :: Monad m => Enumerator a m b -> Iteratee a m b -> Iteratee a m b
 applyEnum enum iter = Iteratee $ do
     step <- runIteratee iter
     runIteratee $ enum step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Позвольте мне повторить, на интуитивном уровне, Enumerator трансформирует Iteratee из его исходного состояния в новое состояние, скармливая ему данные. Для того, чтобы использовать эту функцию, мы можем написать:
 
@@ -414,21 +414,21 @@ run_ (applyEnum sum10 sum6) >>= print
 sum11 :: Monad m => Enumerator Int m Int
 sum11 (Continue k) = k $ Chunks [11..20]
 sum11 step = returnI step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Тогда мы можем просто применить оба enumerator:
 
 \begin{lstlisting}
 run_ (applyEnum sum11 $ applyEnum sum10 sum6) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
-И мы получим результат 210. (Да, (1 + 20) * 10 = 210), но не волнуйтесь, вам не нужно писать функцию applyEnum самим: enumerator предоставляет оператор \lstinline'$$', который делает то же самое. Его сигнатура типа немного страшнее, так как это обобщение applyEnum, но он работает так же, и даже делает код более читабельным:
+И мы получим результат 210. (Да, (1 + 20) * 10 = 210), но не волнуйтесь, вам не нужно писать функцию applyEnum самим: enumerator предоставляет оператор \lstinline'\$\$', который делает то же самое. Его сигнатура типа немного страшнее, так как это обобщение applyEnum, но он работает так же, и даже делает код более читабельным:
 
 \begin{lstlisting}
 run_ (sum11 $$ sum10 $$ sum6) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
-\lstinline'$$' это синоним для \lstinline'==<<', который просто \lstinline'flip >>=='. Я нахожу \lstinline'$$' наиболее читаемым, но для вас это может быть по другому.
+\lstinline'\$\$' это синоним для \lstinline'==<<', который просто \lstinline'flip >>=='. Я нахожу \lstinline'\$\$' наиболее читаемым, но для вас это может быть по другому.
 
 Некоторые встроенные enumerator
 
@@ -438,7 +438,7 @@ run_ (sum11 $$ sum10 $$ sum6) >>= print
 sum12 :: Monad m => [Int] -> Enumerator Int m Int
 sum12 nums (Continue k) = k $ Chunks nums
 sum12 _ step = returnI step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Но в нашей функции нет ничего Int специфичного и мы могли бы её легко обобщить до:
 
@@ -446,13 +446,13 @@ sum12 _ step = returnI step
 genericSum12 :: Monad m => [a] -> Enumerator a m b
 genericSum12 nums (Continue k) = k $ Chunks nums
 genericSum12 _ step = returnI step
-\end{lstlisting}
+\end{lstlisting}%$
 
 А в самом деле, в пакете enumerator есть встроеная функция enumList, которая это делает. Функция enumList также принимает аргумент типа Integer, который указывает максимальное количество элементов в блоке. Например, мы можем написать:
 
 \begin{lstlisting}
 run_ (enumList 5 [1..30] $$ sum6) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
 (Если вы считаете, то результатом будет 465.) Первый аргумент enumList никогда не должен влиять на результат, хотя он может иметь некоторое влияние на производительность.
 
@@ -464,7 +464,7 @@ run_ (concatEnums
         , enumList 1 [11..20]
         , enumList 1 [21..30]
         ] $$ sum6) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
 Это тоже выведет 465.
 
@@ -488,7 +488,7 @@ sum2 = do
         Just num -> do
             rest <- sum2
             return $ num + rest
-\end{lstlisting}
+\end{lstlisting}%$
 
 Мы говорили об этом как о модели вытягивания данных: sum2 вытаскивал каждое значению из getNumber. Давайте посмотрим, сможем ли мы переписать getNumber так, что бы она была в роли толкателя (pusher), а не пасивного источника (pullee).
 
@@ -530,7 +530,7 @@ intsToStrings = (unlines . map show) `fmap` consume
 \begin{lstlisting}
 run_ (getNumberEnum $$ sum6) >>= print
 run_ (getNumberEnum $$ intsToStrings) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
 Enumeratee
 
@@ -561,7 +561,7 @@ lineEnum step = returnI step
 Круто, давайте используем это с нашей функции sumIter (я переименовал функции sum6 из двух предыдущих частей):
 \begin{lstlisting}
 lineEnum $$ sumIter
-\end{lstlisting}
+\end{lstlisting}%$
 
 На самом деле, это проходит проверку типа: lineEnum производит String, а sumIter хочет Int. Нам нужно как-то изменить одну из них.
 
@@ -578,7 +578,7 @@ sumIterString = Iteratee $ do
         let ints = fmap read strings :: Stream Int
         step <- runIteratee $ k ints
         return $ go step
-\end{lstlisting}
+\end{lstlisting}%$
 
 То что мы тут сделали, это обернули вокруг оригинального iteratee. Как обычно, нам в первую очередь необходимо развернуть конструктор Iteratee и монаду, чтобы добраться до сердца значения Step. Как только мы получим значение innerStep, мы передаем его функции go, которая просто преобразовывает значения в значении Stream, из String в Int.
 
@@ -598,13 +598,13 @@ mapIter f innerIter = Iteratee $ do
         let ints = fmap f strings
         step <- runIteratee $ k ints
         return $ go step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Это можно вызывать так:
 
 \begin{lstlisting}
 run_ (lineEnum $$ mapIter read sumIter) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
 Здесь нет ничего особенного, это в общем-то идентично предыдущей версии. Что интересно, это то, что в пакете enumerator есть  функция \lstinline'map', чтобы как раз делать это, но у неё значительно отличается сигнатура типа:
 
@@ -632,7 +632,7 @@ map :: Monad m => (aOut -> aIn) -> Step aIn m b -> Iteratee aOut m (Step aIn m b
 
 \begin{lstlisting}
 map read $$ sumIter
-\end{lstlisting}
+\end{lstlisting}%$
 
 Но сигнатура типа оказывается немного странной:
 
@@ -661,13 +661,13 @@ unnest outer = do -- используем экземпляр Monad для Iterat
 
 \begin{lstlisting}
 run_ (lineEnum $$ unnest $ map read $$ sumIter) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
 На самом деле функция unnest доступна в Data.Enumerator, и там она называется joinI. Таким образом, мы действительно должны писать:
 
 \begin{lstlisting}
 run_ (lineEnum $$ joinI $ map read $$ sumIter) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
 Пропуск значений
 
@@ -684,7 +684,7 @@ skip (Continue k) = do
             newStep <- lift $ runIteratee $ k $ Chunks [y]
             skip newStep
 skip step = return step
-\end{lstlisting}
+\end{lstlisting}%$
 
 Что интересно в этом подходе, это то как он похож на Enumerator. Мы делаем много тех же вещей: проверяем, или значение Step это Continue; если это не так, то просто возвращаем его. Затем мы пользуемся тем, что Iteratee является экземпляром Monad, используя функцию head извлекаем два значения из потока. Если данных больше нет, мы возвращаем исходное значение Continue: как и с Enumerator, мы не возвращаем EOF, чтобы мы позже смогли скормить ещё данные в iteratee. Если есть данные, мы передаем их в iteratee, получаем наше новое значение Step, и затем зацикливаемся.
 
@@ -692,7 +692,7 @@ skip step = return step
 
 \begin{lstlisting}
 run_ (lineEnum $$ joinI $ skip $$ joinI $ map read $$ sumIter) >>= print
-\end{lstlisting}
+\end{lstlisting}%$
 
 Здесь мы читаем строки, пропускаем каждую вторую, преобразуем String в Int и суммируем.
 
@@ -718,7 +718,7 @@ let decompress x =
             then joinI $ ungzip $$ x
             else x
 run_ $ socketEnumerator $$ parseBody $ decompress $ bodyIteratee
-\end{lstlisting}
+\end{lstlisting}%$
 
 Мы создаем цепочку: данные с сервера поступает в функцию parseBody. В случае блочного кодирования, данные обрабатываются соответствующим образом, и затем заголовки отфильтровуються. Если мы имеем дело с длинной содержимого, то считываем только указанное количество байт. А в случае, ни одного из этих вариантов, parseBody является пустой операцией (no-op).
 
@@ -734,6 +734,6 @@ run_ $ socketEnumerator $$ parseBody $ decompress $ bodyIteratee
 
 * Enumeratee является конвеером связывающим enumerator с iteratee.
 * Странная сигнатура типа Enumeratee скрывает множество мощных возможностей. Особенно обратите внимание, как схожа его сигнатура типа с Enumerator.
-* Вы можете слить Enumeratee в Iteratee используя \lstinline'joinI $ enumeratee $$ iteratee'.
+* Вы можете слить Enumeratee в Iteratee используя \lstinline'joinI \$ enumeratee \$\$ iteratee'.
 * Не забывайте, что вы можете использовать экземпляр Monad для Iteratee при создании собственных enumeratees.
 * Вы всегда можете составить несколько enumeratee вместе, как например в http-enumerator.
