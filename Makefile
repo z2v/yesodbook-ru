@@ -44,6 +44,7 @@ TEXOPTS += -output-directory=$(OUTPUT_DIR)
 all: tmp-dir $(YESODBOOK)
 
 $(YESODBOOK): tex/$(MASTER_TEX) $(TEXSRCS) $(HSSRCS) $(IMAGES)
+	rm -f $(YESODBOOK)
 	cd tex && \
 	$(TEX) $(TEXOPTS) $(MASTER_TEX) && \
 	$(TEX) $(TEXOPTS) $(MASTER_TEX) && \
