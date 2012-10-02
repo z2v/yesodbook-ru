@@ -202,12 +202,16 @@ as we discussed some of the special implementations of Yesod typeclass methods.
 
 \section{widgetFile}
 
-It's very common to want to include CSS and Javascript specific to a page. You don't want to have to remember to include those Lucius and Julius files manually every time you refer to a Hamlet file. For this, the site template provides the widgetFile function.
-If you have a handler function:
+Достаточно часто хочется включать CSS и Javascript специфичный для страницы (!).
+И вам не надо помнить, что нужно подклюить Lucius и Julius файлы вручную каждый раз,
+когда ы обращаетесь к Hamlet файлу. Для этого шаблон сайта предоставляет 
+функцию \lstinline!widgetFile!.
+
+Если у вас есть функция обработчик:
 \begin{lstlisting}
 getHomeR = defaultLayout $(widgetFile "homepage")
 \end{lstlisting}
-, Yesod will look for the following files:
+, Yesod обратиться к следующим файлам:
 \begin{lstlisting}
 templates/homepage.hamlet
 templates/homepage.lucius
@@ -215,25 +219,58 @@ templates/homepage.cassius
 templates/homepage.julius
 \end{lstlisting}
 
-If any of those files are present, they will be automatically included in the output.
-Due to the nature of how this works, if you launch your app with yesod devel, and then create a new file (e.g., templates/homepage.julius), the contents will not be included until the file calling widgetFile is recompiled. In such a case, you may need to force a save of that file to get yesod devel to recompile.
-defaultLayout
+Если какой-то из них существует, то он будет автоматически включен в вывод.
 
-One of the first things you're going to want to customize is the look of your site. The layout is actually broken up into two files:
-templates/default-layout-wrapper.hamlet contains just the basic shell of a page. This file is interpreted as plain Hamlet, not as a Widget, and therefore cannot refer to other widgets, embed i18n strings, or add extra CSS/JS.
-templates/default-layout.hamlet is where you would put the bulk of your page. You must remember to include the widget value in the page, as that contains the per-page contents. This file is interpreted as a Widget.
-Also, since default-layout is included via the widgetFile function, any Lucius, Cassius, or Julius files named default-layout.* will automatically be included as well.
-\section{Static files}
+В связи с nature особенностями работы, если вы запустите приложение через
+yesod evel, и затем создадите новый файл (e.g. \texttt{templates/homepage.julius}),
+его содержимое не будет подключено до тех пор пока widgetFile не будет переособран.
+В этом случае, вы можете force a save of that file для того, чтобы yesod devel
+пересобрал проект.
 
-The scaffolded site automatically includes the static file subsite, optimized for serving files that will not change over the lifetime of the current build. What this means is that:
-When your static file identifiers are generated (e.g., static/mylogo.png becomes mylogo\_png), a query-string parameter is added to it with a hash of the contents of the file. All of this happens at compile time.
-When yesod-static serves your static files, it sets expiration headers far in the future, and incldues an etag based on a hash of your content.
-Whenever you embed a link to mylogo\_png, the rendering includes the query-string parameter. If you change the logo, recompile, and launch your new app, the query string will have changed, causing users to ignore the cached copy and download a new version.
-Additionally, you can set a specific static root in your Settings.hs file to serve from a different domain name. This has the advantage of not requiring transmission of cookies for static file requests, and also lets you offload static file hosting to a CDN or a service like Amazon S3. See the comments in the file for more details.
-Another optimization is that CSS and Javascript included in your widgets will not be included inside your HTML. Instead, their contents will be written to an external file, and a link given. This file will be named based on a hash of the contents as well, meaning:
-Caching works properly.
-Yesod can avoid an expensive disk write of the CSS/Javascript file contents if a file with the same hash already exists.
-Finally, all of your Javascript is automatically minified via hjsmin.
+\section{defaultLayout}
+
+Одна из первых вещей, которую вы захотике настрокить это то, как выглядит ваш сайт.
+Раскладка на самом деле разделена на два файл:
+\begin{enumerate}
+  \item \texttt{templates/default-layout-wrapper.hamlet} содержит базовый скелет
+      страницы. Этот файл интерпретируется как простой Hamlet, а не Widget, и поэтому
+      не может обращаться к другим виджетам, вложенным i18n строкам или дополнительному CSS/JS.
+  \item \texttt{templates/default-layout.hamlet} то, куда вы будете класть нполнение (bulk) 
+      вашей страницы. Вы должны не забыть вложить widget value в страницу, это будет содержание
+      каждой страницы. Этот файл интерпретируется как виджет.
+\end{enumerate}
+
+Также, поскольку default-layout влючен с помощью функции widgetFile, то любой Lucius, 
+Cassius или Julius файл названный default-layout.* будет автоматически включен.
+
+\section{Статические файлы}
+
+Шаблон стайта, автоматически включает подсайт со статическими файлами, оптимизироанный пож просмотр 
+файлов, которые не изменяются на протяжении текущей сборки. Что это значит, так то что:
+при генерации идентификаторов статических файлов (например, static/mylogo.png превращается  mylogo\_png), 
+в парметр запроса, который добавляется к нему !!! добавляется хэш файла. И всё это происходит
+во время компиляции.
+При отдаче статических файло сервер устанавливает заголовок expiration в далекое будущее
+и включает etag основанный на хэше контента.
+Пока вы используете ссылку на mylogo\_png, обработчик включает query-string параметр. Если
+вы изменяете логотип, пересобираете и запускаете ваше новое приложение, строка запроса
+изменится, засталяя пользоателя игнорироать сохранённую копию и скачивать новую версию файла.
+
+В дополнение, вы можете установить specific static root в файле Settings.hs, для того, чтобы
+отдавать файлы  с другого доменного имени. Это позволяет получить advantage от отсутсвия 
+передачи cookie файлов для статических файло и также позволяет вам выложить файлы на 
+CDN хостинг или на сервисы наподобие Amazon S3. Смотрите комментарии для уточнения (?!)
+
+Другая оптимизация заключается в том, что CSS и Javascript загружаемый в виджетах не будет
+включен нутрь HTML кода. Наоборот их содержимое будет записано во внешние файлы и дана ссылка.
+Имена этих файлов так же основаны на хэше содержимого, что значит что кэширование работает 
+правильно.
+
+Есод позволяет избежать частой записи на диск CSS/Javascript файло, если файл с требуемым 
+именем уже существует.
+
+И наконец, все яаскрипт файлы автоматичесски минимифицируются через hjsmin.
+
 \section{Заключение}
 
 The purpose of this chapter was not to explain every line that exists in the scaffolded site, but instead to give a general overview to how it works. The best way to become more familiar with it is to jump right in and start writing a Yesod site with it.
