@@ -269,7 +269,8 @@ renderBuilder :: Resource m => RenderSettings -> Conduit Event m Builder b
 
 Кстати говоря, а как должен выглядеть наш XML-документ? Он довольно прост, имеется родительский элемент \lstinline'sphinx:docset', элемент \lstinline'sphinx:schema', содержащий одиночный элемент \lstinline'sphinx:field' (который определяет элемент с содержимым документа), а затем по одному элементу \lstinline'sphinx:document' для каждого документа в базе данных. Эти элементы будут содержать атрибут id и дочерний элемент \lstinline'content':
 
-\begin{lstlisting}[language=XML] % Пример xmlpipe-документа / Sample xmlpipe document
+% Пример xmlpipe-документа / Sample xmlpipe document
+\begin{lstlisting}[language=XML]
 <sphinx:docset xmlns:sphinx="http://sphinxsearch.com/">
     <sphinx:schema>
         <sphinx:field name="content"/>

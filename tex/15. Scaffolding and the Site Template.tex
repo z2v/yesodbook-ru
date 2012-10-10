@@ -1,4 +1,4 @@
-\chapter{Создание каркаса сайта}\label{ch:scaffolding}
+\chapter{Создание каркаса сайта}\label{chap:scaffolding}
 
 Вы уже устали запускать маленькие примеры и готовы написать настоящий сайт?
 Тогда вы читаете нужную главу. Даже при наличии библиотеки Yesod \marginpar{at your fingertips},
@@ -68,5 +68,174 @@ Tiny это не движок базы данных, это указание, ч
 к исходным файлам, конфигурационным файлам, шаблонам так же создаются статические файлы.
 
 \subsection{Кабал файл}
+
+Независимо от того используете ли вы cabal или yesod devel, сборка вашего кода всегда 
+использует cabal файл. Если вы откроете файл, то увидите что там есть два блока для
+библиотеки и для исполняемого файла. При построении используется только одна, в зависимости
+от того, утановлен ли флаг library-only. Если флаг library-only включен, то собирается только
+библиотека, это скособ которым yesod devel запускает приложение. Иначе собирается исполняемый файл
+
+Флаг library-only должен использоваться только yesod devel; вы никогда не должны передавать его в 
+cabal явно. Так же есть дополнительный флаг dev, который позволяет cabal-у собирать исполняемый файл,
+но включает некоторые возможности library-only флага, т.е. отключение оптимизаций перезапуск
+верский Shakespearean шаблонов
+
+В общем случае вы будете использовать следующую сборку:
+\begin{itemize}
+    \item при разработке использовать только yesod devel
+    \item при боевой сборке вызывайте \lstinline!cabal clean && cabal configure && cabal build!. И вы
+        создадите оптимизованный исполняемый файл в директории \texttt{dist}. Раньше использовался флаг
+        \lstinline!-fproduction!, поэтому если вы создали каркас сайта ранее вы должны использовать этот
+        флаг для боевой сборки.
+\end{itemize}
+
+Вы также заметите, что мы указали все расширения языка в кабал файле. Расширения указаны дважды:
+один раз для исполняемого файла, и другой для библиотеки. Если вы будете добавлять расширения, то
+добавляйте их в оба блока.
+
+Вы можете быть удивлены увидев расширение \texttt{NoImplicitPredude}. Мы его включили поскольку сайт 
+включет свой специальный модуль \lstinline!Import!, с некоторыми изменениями в Prelude, это позволяет
+сделать работу с Yesod более convenient.
+
+И напоследок, следует отметить список экспортируемых модулей. Если вы добавите какой-либо модуль в 
+ваше приложение, то вы должны обновить список для корректной работы yesod devel. К сожалению,
+ни Cabal, ни GHC не выдадут предупреждение о том, что вы забыли сделать это обновление, и вместо этого
+вы получите жутко выглядющую ошибку от yesod devel. Одно из планируемых улучшений это позволять yesod
+devel проверять наличие неуказанных модулей.
+
+\section{Маршруты и entities}
+
+Множество раз на протяжении книги вы видели комментарии вида ,,Мы определяем пути/entities квазицитированием для простоты. 
+На рабочем сайте, вам следует использовать внешний файл``. Каркас сайта, как раз и использует внешние файлы.
+Маршруты определяются в файле \texttt{config/routes}, а entities в \texttt{config/models} соотвественно. Эти файлы
+имеют в точности такой же синтаксис как и квазицитирование, которое вы видели на протяжении книги, и yesod devel 
+автоматически пересобирает соотвествующие модули при изменении этих файлов.
+
+The models files is referenced by \texttt{Model.hs}. В этом файле вы можете определять все, что угодно,
+вот некоторые guidelines:
+\begin{itemize}
+    \item все типы данных использующиеся в entities должны быть импортированы, декларированы в \texttt{Model.hs}, 
+        перед вызовом \lstinline!persistFile!.
+    \item вспомогательные утилиты должны быть определены в \texttt{Import.hs} или, если они относятся к модели,
+        то в фале в каталоге \texttt{Model} и импортированы в \texttt{Import.hs}.
+\end{itemize}
+
+\section{Основание и модули приложения}
+
+Функция \lstinline!mkYesod! которую мы использовали на протяжении книги определяют несколько вещей:
+
+\begin{itemize}
+  \item тип маршрута
+  \item функцию отображения
+  \item функцию диспетчечризации
+\end{itemize}
+
+Функиця диспетчеризации refers ко всем остальным функциям обработки, поэтому все они должны быть 
+или определены в том же файле, что и функция диспетчеризации или импортированы этой функцией (?). %TODO wtf?
+Междутем, функция обработчих практически обязательно будет refer на маршрутный тип. Поэтому,
+они должны быть или в одном файле, где определен тип маршрута или импротировать это файл.
+Если you follow the logic here, то всё приложение должно обязательно находиться в одном файле!
+
+Очевидно, что это не то, что мы хотим. Поэтому вместо использования \lstinline!mkYesod!, каркас 
+сайта использует разделенные (decomposed) версии этой функции. Основание вызывает \lstinline!mkYesodData!,
+который определяет маршрутный тип и функцию обработки. Так как он не определят функцию диспетчеризации,
+функции обработчики не должны быть в той же области видимости. \texttt{Import.hs} импортирует
+\texttt{Foundation.hs}, и все модули обработчики импортируют \texttt{Import.hs}.
+
+В \texttt{Application.hs} мы вызываем \lstinline!mkYesodDispatch!, который создаёт функцию диспетчеризации.
+Чтобы это заработало, все функции обрабочики должны быть в той же области видимости, так что убедитесь, в 
+том, чтобы добавить импортирование всех модулей обработчиков, которые вы создаёте.
+
+В остальном \texttt{Application.hs} достаточно прост. Он предоставляет две функции:
+\lstinline!withDevelAppPort! используемую \lstinline!yesod devel! для запуска приложения
+и \lstinline!getApplication! используемую исполняемым файлом для запуска.
+
+\texttt{Foundation.hs} гораздо более интересен. Он:
+\begin{itemize}
+      \item определяет тип основание;
+      \item определяет instance, такие как \lstinline!Yesod!, \lstinline!YesodAuth! и \lstinline!YesodPersist!;
+      \item импортирует файлы сообщений
+\end{itemize}
+
+Если вы взгляните на строку запускающую \lstinline!mkMessage!, вы увидите, что она определяет директорию 
+в которой находятся сообщения (\lstinline!messages!) и язык по умолчанию (\lstinline!en! для английского).
+Это правильный файл для добавления дополнительных instances для приложени, таких как \lstinline!YesodAuthEmail! 
+или \lstinline!YesodBreadcrumbs!. Мы будем ещё обратимся к этому файлу позже, когда будем ,
+as we discussed some of the special implementations of Yesod typeclass methods.
+
+\section{Import.hs}
+
+Модуль \texttt{Import} появился из нескольких часто используемых шаблонов
+Я хотел определить несколько вспомогательных функций (может быть оператор \lstinline!<> = mappend!) 
+для того, чтобы использовать их во всех обработчиках. Я всегда добавляют один и те же мять
+импортов  (\lstinline!Data.Text!, \lstinline!Control.Applicative!, прочие) в каждый модуль обработчик.
+Мне бы хотелось гарантировать, что я никогда не использую некоторые (evil) функции (\lstinline!head!,
+\lstinline!readFile!,\ldots) из \lstinline!Prelude!. Да evil это преувеличение. Если вам интересно,
+почему я причислил эти функции к плохим: \lstinline!head! partial, и выбрасывает исключение на пустом
+списке, а \lstinline!readFile! использует ленивый ввод-вывод, что приводит к тому, что хэндлер файла,
+не закрывается достаточно быстро. Также, \lstinline!readFile! использует \lstinline!String! вместо
+\lstinline!Text!. Решение заключается в том, чтобы включить расширение \texttt{NoImplicitPrelude} и
+ре-экспортировать интересующие нас части \lstinline!Prelude!, и всё остальное, то нам нужно, так же
+определить наши функции и инпортировать этот файл во все обработчики.
+
+\section{Модули обработчиков}
+
+Модули обработчиков должны находиться в директории \texttt{Handler}. Шаблон сайта включает один
+модуль: \texttt{Handler/Home.hs}. Как разделять функции обрабочиков на модули зависит от вас, но
+хорошее правило thumb:
+\begin{itemize}
+    \item методы относящиеся к одному маршруту должны находиться в одном файле, напр. \lstinline!getBlogR!
+          и \lstinline!postBlogR!;
+    \item связанные маршруты обычно находятся в одном файле, напр \lstinline!getPeopleR! и \lstinline!getPersonR!.
+\end{itemize}
+
+Естественно, решение зависит только от вас. Когда вы добавляете новый файл обработчик, убедитесь,
+что вы сделали следующее:
+\begin{itemize}
+  \item добавили файл в систему контроля версий (вы ведь используете систему контроля версий?);
+  \item добавили модуль в cabal файл;
+  \item добавили его в файл \texttt{Application.hs};
+  \item добавили \lstinline!module! statement вначале файла, и \lstinline!import Import! на следующей строке.
+\end{itemize}
+
+Одним из планируемых улучшений Yesod является автоматизация этих четырёх шагов.
+
+\section{widgetFile}
+
+It's very common to want to include CSS and Javascript specific to a page. You don't want to have to remember to include those Lucius and Julius files manually every time you refer to a Hamlet file. For this, the site template provides the widgetFile function.
+If you have a handler function:
+\begin{lstlisting}
+getHomeR = defaultLayout $(widgetFile "homepage")
+\end{lstlisting}
+, Yesod will look for the following files:
+\begin{lstlisting}
+templates/homepage.hamlet
+templates/homepage.lucius
+templates/homepage.cassius
+templates/homepage.julius
+\end{lstlisting}
+
+If any of those files are present, they will be automatically included in the output.
+Due to the nature of how this works, if you launch your app with yesod devel, and then create a new file (e.g., templates/homepage.julius), the contents will not be included until the file calling widgetFile is recompiled. In such a case, you may need to force a save of that file to get yesod devel to recompile.
+defaultLayout
+
+One of the first things you're going to want to customize is the look of your site. The layout is actually broken up into two files:
+templates/default-layout-wrapper.hamlet contains just the basic shell of a page. This file is interpreted as plain Hamlet, not as a Widget, and therefore cannot refer to other widgets, embed i18n strings, or add extra CSS/JS.
+templates/default-layout.hamlet is where you would put the bulk of your page. You must remember to include the widget value in the page, as that contains the per-page contents. This file is interpreted as a Widget.
+Also, since default-layout is included via the widgetFile function, any Lucius, Cassius, or Julius files named default-layout.* will automatically be included as well.
+\section{Static files}
+
+The scaffolded site automatically includes the static file subsite, optimized for serving files that will not change over the lifetime of the current build. What this means is that:
+When your static file identifiers are generated (e.g., static/mylogo.png becomes mylogo\_png), a query-string parameter is added to it with a hash of the contents of the file. All of this happens at compile time.
+When yesod-static serves your static files, it sets expiration headers far in the future, and incldues an etag based on a hash of your content.
+Whenever you embed a link to mylogo\_png, the rendering includes the query-string parameter. If you change the logo, recompile, and launch your new app, the query string will have changed, causing users to ignore the cached copy and download a new version.
+Additionally, you can set a specific static root in your Settings.hs file to serve from a different domain name. This has the advantage of not requiring transmission of cookies for static file requests, and also lets you offload static file hosting to a CDN or a service like Amazon S3. See the comments in the file for more details.
+Another optimization is that CSS and Javascript included in your widgets will not be included inside your HTML. Instead, their contents will be written to an external file, and a link given. This file will be named based on a hash of the contents as well, meaning:
+Caching works properly.
+Yesod can avoid an expensive disk write of the CSS/Javascript file contents if a file with the same hash already exists.
+Finally, all of your Javascript is automatically minified via hjsmin.
+\section{Заключение}
+
+The purpose of this chapter was not to explain every line that exists in the scaffolded site, but instead to give a general overview to how it works. The best way to become more familiar with it is to jump right in and start writing a Yesod site with it.
 
 

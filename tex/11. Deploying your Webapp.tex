@@ -1,5 +1,5 @@
 %Deploying your Webapp
-\chapter{Развёртывание вашего веб-приложения}
+\chapter{Развёртывание вашего веб-приложения}\label{chap:deploying}
 %
 %I can't speak for others, but I personally prefer programming to system administration. But the fact is that, eventually, you need to serve your app somehow, and odds are that you'll need to be the one to set it up.
 %
@@ -12,14 +12,14 @@
 
 %But we're not there yet. And even if we were, such a solution will never work for everyone. This chapter covers the different options you have for deployment, and gives some general recommendations on what you should choose in different situations.
 %
-Однако, пока что это не так, и даже если бы это было так, такое решение никогда не подошло бы абсолюно всем. Данная глава описывает различные существюующие варинты развёртывания и даёт некоторые общие рекомендации касательно того, какой из них следует выбрать в том или ином случае.
+Однако, пока что это не так, и, даже если бы это было так, подобное решение никогда бы не подошло абсолюно всем. Данная глава описывает различные существующие варианты развёртывания и даёт некоторые общие рекомендации касательно того, какой из них следует выбрать в том или ином случае.
 
 %Compiling
 \section{Компиляция}
 %
 %First things first: how do you build your production application? If you're using the scaffolded site, it's as simple as cabal build. I also recommend cleaning beforehand to make sure there is no cached information, so a simple combination to build your executable is:
 %
-Начнём с начала: как вы собираете своё приложение? Если вы используете сгенерированный сайт-каркас~--- это просто вызов команды \lstinline{cabal build}. Я бы так же рекомедовал очистку рабочих каталогов перед сборкой, чтобы гарантировать отсутствие закешированной информации. Таким образом, простейшая поседовательность команд для сборки вашего приложения будет выглядеть так:
+Начнём с начала: как вы собираете своё приложение? Если вы используете сгенерированный сайт-каркас~--- это просто вызов команды \lstinline{cabal build}. Я бы также рекомендовал очистку рабочих каталогов перед сборкой, чтобы гарантировать отсутствие закешированной информации. Таким образом, простейшая поседовательность команд для сборки вашего приложения будет выглядеть так:
 
 \begin{lstlisting}
 cabal clean && cabal configure && cabal build
@@ -39,7 +39,7 @@ cabal clean && cabal configure && cabal build
 %* Development server
 %
 
-Как было отмечено ранее, Yesod построен на \emph{Web Application Interface (WAI)}, что позволяет ему запускаться на любом WAI-совместимом бэкенд сервере. На момент написания этого текста доступны следующие варианты:
+Как было отмечено ранее, Yesod построен на \emph{Интерфейсе веб-приложения (Web Application Interface, WAI)}, что позволяет ему запускаться на любом WAI-совместимом бэкенд сервере. На момент написания этого текста доступны следующие варианты:
 \begin{itemize}
     \item Warp
     \item FastCGI
@@ -78,10 +78,10 @@ cabal clean && cabal configure && cabal build
 \begin{itemize}
   \item Несмотря на то, что Warp быстр, он оптимизирован для использования в качестве сервера приложений, а не сервера статических файлов;
   \item Используя Nginx, вы можете настроить виртуальный хостинг и раздавать статические файлы с отдельного домена. (Это возможно и с Warp, хоть и несколько сложнее);
-  \item Вы можете использовать Nginx как балансировщик нагрузки или SSL прокси. (Хотя, используя warp-tls вполне можно запускать https сайт на одном только Warp).
+  \item Вы можете использовать Nginx как балансировщик нагрузки или SSL прокси. (Хотя, используя warp-tls, вполне можно запускать https сайт на одном только Warp).
 \end{itemize}
 
-Итак, моя финальная рекомендация: использовать Nginx как обратный прокси для Warp.
+Таким образом, моя итоговая рекомендация будет: используйте Nginx как обратный прокси для Warp.
 
 %A number of people in the Yesod community disagree with me here, and believe that the increased performance and decreased complexity of skipping the Nginx step make standalone Warp a better choice. Feel free to follow either approach, they are both perfectly valid.
 Некоторые участники сообщества Yesod не согласны со мной в этом вопросе и полагают, что увеличенная производительность и уменьшенная сложность решения с одним только Warp, делают его лучшим выбором. Так что, поступайте как считаете правильным, оба подхода абсолютно корректны.
@@ -92,7 +92,7 @@ cabal clean && cabal configure && cabal build
 %
 %In general, Nginx will listen on port 80 and your Yesod/Warp app will listen on some unprivileged port (lets say 4321). You will then need to provide a nginx.conf file, such as:
 %
-В общем случае, Nginx будет ожидать соединений на 80 порту, а ваше Yesod/Warp приложение будет слушать какой-нибудь другой, не системный порт (скажем, 4321). В таком случае ваш nginx.conf файл будет выглядеть примерно так:
+В общем случае, Nginx будет ожидать соединений на 80 порту, а ваше Yesod/Warp приложение будет слушать какой-нибудь другой непривилегированный порт (скажем, 4321). В таком случае ваш nginx.conf файл будет выглядеть примерно так:
 
 % Оригинальные комментарии в конфиг файле
 %
@@ -127,12 +127,12 @@ server {
     server_name myserver.com;
     rewrite ^/(.*) http://www.myserver.com/$1 permanent;
 }
-\end{lstlisting}
+\end{lstlisting}%$
 %
 %A highly recommended optimization is to serve static files from a separate domain name, therefore bypassing the cookie transfer overhead. Assuming that our static files are stored in the static folder within our site folder, and the site folder is located at /home/michael/sites/mysite, this would look like:
 %
 
-Крайне рекомендуется в качестве оптимизации раздавать статические файлы с отдельного домена, избегая таким образом ненужной передачи файлов-cookie.
+Крайне рекомендуется в качестве оптимизации раздавать статические файлы с отдельного домена, избегая таким образом ненужной передачи cookie. Предполагая, что наши статические файлы хранятся в подпапке \lstinline{static} папки нашего сайта, которая имеет пут /home/michael/sites/mysite, это выглядело бы следующим образом:
 
 % Оригинальный коментарий
 %    # Since yesod-static appends a content hash in the query string,
@@ -153,7 +153,7 @@ server {
 %
 %In order for this to work, your site must properly rewrite static URLs to this alternate domain name. The scaffolded site is set up to make this fairly simple via the Settings.staticRoot function and the definition of urlRenderOverride. However, if you just want to get the benefit of nginx's faster static file serving without dealing with separate domain names, you can instead modify your original server block like so:
 
-Для того, чтобы это заработало, ваш сайт должен корректно изменять статические URLы так, чтобы они указывали на этот альтернативный домен. Сайт-каркас настроен таким образом, чтобы упростить эту задачу используя функцию Settings.staticRoot и определение urlRenderOverride. Однако, если вам надо всего лишь использовать преимущества Nginx при раздаче статических файлов без использования отдельных доменных имён, вы можете просто модифицировать исходный блок \lstinline{server} следующим образом:
+Для того, чтобы это заработало, ваш сайт должен корректно изменять статические URLы так, чтобы они указывали на этот альтернативный домен. Сайт-каркас настроен таким образом, чтобы упростить эту задачу используя функцию \lstinline{Settings.staticRoot} и определение \lstinline{urlRenderOverride}. Однако, если вам надо всего лишь использовать преимущества Nginx при раздаче статических файлов без использования отдельных доменных имён, вы можете просто модифицировать исходный блок server следующим образом:
 %
 % Оригинальные коментарии из конфига
 %
@@ -182,7 +182,7 @@ server {
 %
 %Many people are familiar with an Apache/mod_php or Lighttpd/FastCGI kind of setup, where the web server automatically spawns the web application. With nginx, either for reverse proxying or FastCGI, this is not the case: you are responsible to run your own process. I strongly recommend a monitoring utility which will automatically restart your application in case it crashes. There are many great options out there, such as angel or daemontools.
 %
-Многие знакомы с конфигурациями типа Apache/mod\_php или Lighttpd/FastCGI, в которых веб сервер автоматически запускает веб приложение. При использовании nginx, как в режиме обратного прокси так и в режиме FastCGI, это не так: вы сами ответственны за запуск вашего процесса. Я настоятельно рекомендую использовать тот или иной инструмент мониторинга, который будет автоматически перезапускать ваше приложение в случае падений. Существует множество подобных инструментов, как например, angel или daemontools.
+Многие знакомы с конфигурациями типа Apache/mod\_php или Lighttpd/FastCGI, в которых веб сервер автоматически запускает веб приложение. При использовании nginx, как в режиме обратного прокси, так и в режиме FastCGI, это не так: вы сами ответственны за запуск вашего процесса. Я настоятельно рекомендую использовать какой-либо инструмент мониторинга, который будет автоматически перезапускать ваше приложение в случае падений. Существует множество отличных вариантов для этого, таких как angel или daemontools.
 %To give a concrete example, here is an Upstart config file. The file must be placed in /etc/init/mysite.conf:
 
 В качестве конкретного примера ниже приведён файл конфигурации Upstart. Он должен располагаться в /etc/init/mysite.conf:
@@ -208,7 +208,7 @@ exec /home/michael/sites/mysite/dist/build/mysite/mysite
 Некоторые предпочитают использовать FastCGI для развёртывания своих приложений. В этом слчае вам потребуется ещё один инструмент. FastCGI работает принимая новые соединения из файлового дескриптора. Стандартная библиотека C предполагает, что этот файловый дескриптор будет равен 0 (стандартый поток ввода), а значит, надо использовать специальную программу spawn-fcgi, которая свяжет стандратный поток ввода вашего приложения с правильным сокетом.
 
 %It can be very convenient to use Unix named sockets for this instead of binding to a port, especially when hosting multiple applications on a single host. A possible script to load up your app could be:
-Может оказаться очень удобным использовать для этих целей именованные Unix сокеты вместо привязки к порту, особенно если вы собираетесь запускать несколько приложений на одном физическом сервере. Возможный сценарий для запуска вашего приложения может выглядеть следующим образом:
+Может оказаться очень удобным использовать для этих целей именованные сокеты Unix вместо привязки к порту, особенно если вы собираетесь запускать несколько приложений на одном физическом сервере. Возможный сценарий для запуска вашего приложения может выглядеть следующим образом:
 
 \begin{lstlisting}
 spawn-fcgi \
@@ -251,15 +251,14 @@ fastcgi_param  REMOTE_ADDR        $remote_addr;
 fastcgi_param  SERVER_ADDR        $server_addr;
 fastcgi_param  SERVER_PORT        $server_port;
 fastcgi_param  SERVER_NAME        $server_name;
-\end{lstlisting}
-%
+\end{lstlisting}%$
 
 %Desktop
 \section{Настольное приложение}
 %
 %Another nifty backend is wai-handler-webkit. This backend combines Warp and QtWebkit to create an executable that a user simply double-clicks. This can be a convenient way to provide an offline version of your application.
 
-Другой замечательный способ запускать ваше приложение~--- wai-handler-webkit. Он объединяет Warp и QtWebkit для создания исполняемого файла, который может быть запущен при помощи простого двойного целчка мышью. Это может быть удобным способом сделать оффлайн версию вашего приложения.
+Другой замечательный способ запускать ваше приложение~--- \footnotehref{http://hackage.haskell.org/package/wai-handler-webkit}{wai-handler-webkit}. Он объединяет Warp и QtWebkit для создания исполняемого файла, который может быть запущен при помощи простого двойного целчка мышью. Это может быть удобным способом сделать оффлайн версию вашего приложения.
 %
 %One of the very nice conveniences of Yesod for this is that your templates are all compiled into the executable, and thus do not need to be distributed with your application. Static files do, however.
 
@@ -267,11 +266,11 @@ fastcgi_param  SERVER_NAME        $server_name;
 %
 %There's actually support for embedding your static files directly in the executable as well, see the yesod-static docs for more details.
 
-На самом деле, поддержка включения статических файлов прямо в приложение существует, обращайтесь к документации на yesod-static за подробностями.
+На самом деле, поддержка включения статических файлов прямо в приложение существует, обращайтесь к документации к \footnotehref{http://hackage.haskell.org/package/yesod-static}{yesod-static} за подробностями.
 %
 %A similar approach, without requiring the QtWebkit library, is wai-handler-launch, which launches a Warp server and then opens up the user's default web browser. There's a little trickery involved here: in order to know that the user is still using the site, wai-handler-launch inserts a "ping" Javascript snippet to every HTML page it serves. It wai-handler-launch doesn't receive a ping for two minutes, it shuts down.
 
-Аналогичный подход wai-handler-launch, который не требует библиотеки QtWebkit, запускает Warp сервер и затем открывает пользовательский браузер по-умолчанию. Следует отметить небольшой трюк: для того, чтобы понять, что пользователь всё ещё пользуется сайтом, wai-handler-launch вставляет небольшой отрывок Javascript сценария на каждую HTML страницу, которую раздаёт. Этот сценарий периодически посылает пустые запросы на сервер. Если wai-handler-launch не получает ответа на такой пустой запрос в течение двух минут, он останавливается.
+Аналогичный подход \footnotehref{http://hackage.haskell.org/package/wai-hanlder-launch}{wai-handler-launch}, который не требует библиотеки QtWebkit, запускает Warp сервер и затем открывает пользовательский браузер по-умолчанию. Следует отметить небольшой трюк: для того, чтобы понять, что пользователь всё ещё пользуется сайтом, wai-handler-launch вставляет небольшой отрывок Javascript сценария на каждую HTML страницу, которую раздаёт. Этот сценарий периодически посылает ``пинг''(запрос, не несущий полезной нагрузки и требующий ответа) на сервер. Если wai-handler-launch не получает ответа на такой запрос в течение двух минут, то он останавливается.
 %
 %CGI on Apache
 
@@ -340,7 +339,7 @@ fastcgi.server = (
         "idle-timeout" => 30
     ))
 )
-\end{lstlisting}
+\end{lstlisting}%$
 
 %CGI on lighttpd
 \section{CGI и lighttpd}

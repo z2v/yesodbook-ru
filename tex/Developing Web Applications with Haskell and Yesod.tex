@@ -9,6 +9,7 @@
 
 \usepackage{polyglossia}
 \setdefaultlanguage{russian}
+\usepackage{indentfirst}
 
 \usepackage{listings}
 
@@ -91,6 +92,7 @@
 
 % helper for remarks
 \usepackage{fancybox}
+\usepackage{setspace}
 \newenvironment{remark}%
 {\begin{Sbox}\begin{minipage}[!h]{.9\linewidth}}%
 {\end{minipage}\end{Sbox}\fbox{\TheSbox}}
@@ -100,6 +102,7 @@
 
 % helper for making hyperrefs with footnote
 \newcommand{\footnotehref}[2]{\href{#1}{#2}\footnote{\href{#1}{\texttt{#1}}}}
+
 \begin{document}
 
 \input "S1. Basics.tex"
