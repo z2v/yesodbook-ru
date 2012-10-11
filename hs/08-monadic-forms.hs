@@ -21,8 +21,8 @@ data Person = Person { personName :: Text, personAge :: Int }
 
 personForm :: Html -> MForm MFormExample MFormExample (FormResult Person, Widget)
 personForm extra = do
-    (nameRes, nameView) <- mreq textField "this is not used" Nothing
-    (ageRes, ageView) <- mreq intField "neither is this" Nothing
+    (nameRes, nameView) <- mreq textField "Это не используется" Nothing
+    (ageRes, ageView) <- mreq intField "И это тоже" Nothing
     let personRes = Person <$> nameRes <*> ageRes
     let widget = do
             toWidget [lucius|
@@ -33,12 +33,12 @@ personForm extra = do
             [whamlet|
 #{extra}
 <p>
-    Hello, my name is #
+    Привет, меня зовут #
     ^{fvInput nameView}
-    \ and I am #
+    \ и мне #
     ^{fvInput ageView}
-    \ years old. #
-    <input type=submit value="Introduce myself">
+    \ лет. #
+    <input type=submit value="Представиться">
 |]
     return (personRes, widget)
 
@@ -46,7 +46,7 @@ getRootR :: Handler RepHtml
 getRootR = do
     ((res, widget), enctype) <- runFormGet personForm
     defaultLayout [whamlet|
-<p>Result: #{show res}
+<p>Результат: #{show res}
 <form enctype=#{enctype}>
     ^{widget}
 |]

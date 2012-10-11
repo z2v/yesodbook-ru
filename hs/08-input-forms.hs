@@ -24,12 +24,12 @@ getRootR :: Handler RepHtml
 getRootR = defaultLayout [whamlet|
 <form action=@{InputR}>
     <p>
-        My name is #
+        Меня зовут #
         <input type=text name=name>
-        \ and I am #
+        \ и мне #
         <input type=text name=age>
-        \ years old. #
-        <input type=submit value="Introduce myself">
+        \ лет. #
+        <input type=submit value="Представиться">
 |]
 
 getInputR :: Handler RepHtml
