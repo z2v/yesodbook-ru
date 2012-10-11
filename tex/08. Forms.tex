@@ -733,63 +733,8 @@ getCarR = do
 получать полный контроль над тем, как форма будет выглядеть. Чтобы получить такую же
 форму, как приведенная выше, мы должны написать что-то подобное этому.
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
-             TemplateHaskell, MultiParamTypeClasses #-}
+\lstinputlisting{../hs/08-monadic-forms.hs}
 
-import Yesod
-import Control.Applicative
-import Data.Text (Text)
-
-data MFormExample = MFormExample
-
-mkYesod "MFormExample" [parseRoutes|
-/ RootR GET
-|]
-
-instance Yesod MFormExample
-
-instance RenderMessage MFormExample FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
-data Person = Person { personName :: Text, personAge :: Int }
-    deriving Show
-
-personForm :: Html -> MForm MFormExample MFormExample (FormResult Person, Widget)
-personForm extra = do
-    (nameRes, nameView) <- mreq textField "this is not used" Nothing
-    (ageRes, ageView) <- mreq intField "neither is this" Nothing
-    let personRes = Person <$> nameRes <*> ageRes
-    let widget = do
-            toWidget [lucius|
-##{fvId ageView} {
-    width: 3em;
-}
-|]
-            [whamlet|
-#{extra}
-<p>
-    Hello, my name is #
-    ^{fvInput nameView}
-    \ and I am #
-    ^{fvInput ageView}
-    \ years old. #
-    <input type=submit value="Introduce myself">
-|]
-    return (personRes, widget)
-
-getRootR :: Handler RepHtml
-getRootR = do
-    ((res, widget), enctype) <- runFormGet personForm
-    defaultLayout [whamlet|
-<p>Result: #{show res}
-<form enctype=#{enctype}>
-    ^{widget}
-|]
-
-main :: IO ()
-main = warpDebug 3000 MFormExample
-\end{lstlisting}
 Подобно тому, как мы использовали \lstinline'areq' в аппликативном случае, мы используем 
 \lstinline'mreq' в монадическом. 
 (И да, также можно использовать \lstinline'mopt' для опциональных полей).
@@ -862,51 +807,7 @@ fromString "this is not used" == FieldSettings
 укажет, что надо справить. Для форм ввода данных пользователей получит только 
 сообщение об ошибке.
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
-             TemplateHaskell, MultiParamTypeClasses #-}
-
-import Yesod
-import Control.Applicative
-import Data.Text (Text)
-
-data Input = Input
-
-mkYesod "Input" [parseRoutes|
-/ RootR GET
-/input InputR GET
-|]
-
-instance Yesod Input
-
-instance RenderMessage Input FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
-data Person = Person { personName :: Text, personAge :: Int }
-    deriving Show
-
-getRootR :: Handler RepHtml
-getRootR = defaultLayout [whamlet|
-<form action=@{InputR}>
-    <p>
-        My name is #
-        <input type=text name=name>
-        \ and I am #
-        <input type=text name=age>
-        \ years old. #
-        <input type=submit value="Introduce myself">
-|]
-
-getInputR :: Handler RepHtml
-getInputR = do
-    person <- runInputGet $ Person
-                <$> ireq textField "name"
-                <*> ireq intField "age"
-    defaultLayout [whamlet|<p>#{show person}|]
-
-main :: IO ()
-main = warpDebug 3000 Input
-\end{lstlisting}
+\lstinputlisting{../hs/08-input-forms.hs}
 
 \section{Создание пользовательских полей}
 Поля, которые встроены в Yesod наверняка покроют большинство ваших нужд по 
