@@ -652,39 +652,42 @@ getCarR = do
 |]
 \end{lstlisting}
 
-\section{Выполнение форм}\marginpar{В оригинале --- running. Не уверен, что подобрал качественный термин.}
-А теперь воспользуемся нашими формами, чтобы получить некоторый результат. Для этого
-существует несколько различных функций, каждая из которых имеет своё назначение. Я
-пройдусь по всем, ничиная с самых распространённых.
+\section{Выполнение форм}
+В какой-то момент у нас возникнет необходимость воспользоваться нашими
+прекрасными формами и получить некоторые результаты.  Для этого в нашем
+распоряжении есть целый ряд различных функций, каждая из которых имеет своё
+назначение. Я пройдусь по всем, начав с самых распространённых.
 
 \begin{description}
-\item[runFormPost] \hfill \\
-This will run your form against any submitted POST parameters.
-\marginpar{Я ничего не понял} If this is not a POST
-submission, it will return a FormMissing. Токен безопасности вставится автоматически
-как скрытое поле во избежание 
-\footnotehref{http://en.wikipedia.org/wiki/Cross-site\_request\_forgery}{CSRF}-атак.
+    \item[runFormPost] \hfill \\
+        Функция выполнит вашу форму с любыми предоставленными POST
+        параметрами. Если запрос не является POST--запросом, вернёт
+        \lstinline'FormMissing'. Функция автоматически вставляет признак
+        безопасности (security token) в виде скрытого поля для предупреждения
+        кросс-сайтовых~(\footnotehref{http://en.wikipedia.org/wiki/Cross-site\_request\_forgery}{CSRF})
+        атак.
 
-\item[runFormGet] \hfill \\
-То же, что и \lstinline'runFormPost' для GET-параметров. Чтобы различать обычную
-загрузку страницы через GET от отправки GET формы, она включает дополнительное скрытое
-поле \lstinline'_hasdata' в форме.
+    \item[runFormGet] \hfill \\
+        Аналог \lstinline'runFormPost' для GET-параметров. Чтобы различать
+        обычную загрузку страницы через GET от отправки GET формы, включает в
+        форму дополнительное скрытое поле~\lstinline'_hasdata'.
 
-\item[runFormPostNoNonce] \hfill \\
-То же, что и \lstinline'runFormPost', но без включения токена безопасности CSRF.
+    \item[runFormPostNoNonce] \hfill \\
+        То же что и \lstinline'runFormPost', но не включает (или не требует)
+        признака безопасности CSRF.
 
-\item[generateFormPost] \hfill \\
-Вместо связывания существующих POST параметров, действует так, будто их нет. Может
-быть полезно когда вам нужно сгенерировать новую форму после того, как предыдущая была
-отправлена, such as in a wizard.
+    \item[generateFormPost] \hfill \\
+        Вместо привязки к существующим POST параметрам, действует так, будто
+        их нет. Может быть полезна, когда вам нужно сгенерировать новую форму
+        после того, как предыдущая была отправлена, например, в мастере форм.
 
-\item[generateFormGet] \hfill \\
-То же, что и \lstinline'generateFormPost', но через GET.
+    \item[generateFormGet] \hfill \\
+        То же что и \lstinline'generateFormPost', но для GET.
 \end{description}
 
-Возвращаемым значением первых трёх является \lstinline'((FormResult a, Widget), Enctype)'.
-\lstinline'Widget' уже будет иметь ошибки валидации и предыдущие отправленные значения.
-\marginpar{Widget will already have any validation errors and previously submitted values.}
+Тип возвращаемого значения первых трёх функций~--- \lstinline'((FormResult a,
+Widget), Enctype)'.  \lstinline'Widget' уже будет включать любые ошибки
+валидации и ранее отправленные значения.
 
 \section{i18n}
 Здесь будет просто несколько ссылок к i18n. Эта тема подробнее освещена в своей
