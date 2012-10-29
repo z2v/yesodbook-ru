@@ -213,8 +213,8 @@ data Car = Car
 
 carAForm :: AForm Synopsis Synopsis Car
 carAForm = Car
-    <$> areq textField "Model" Nothing
-    <*> areq intField "Year" Nothing
+    <$> areq textField "Модель" Nothing
+    <*> areq intField "Год выпуска" Nothing
 
 carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
 carForm = renderTable carAForm
@@ -257,8 +257,8 @@ getCarR = do
 \begin{lstlisting}[caption={Формы со значениями по умолчанию}]
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
-    <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq intField "Year" (carYear <$> mcar)
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq intField "Год выпуска" (carYear <$> mcar)
 
 carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
 carForm = renderTable (carAForm $ Just $ Car "Forte" 2010)
@@ -290,9 +290,9 @@ data Car = Car
 
 carAForm :: AForm Synopsis Synopsis Car
 carAForm = Car
-    <$> areq textField "Model" Nothing
-    <*> areq intField "Year" Nothing
-    <*> aopt textField "Color" Nothing
+    <$> areq textField "Модель" Nothing
+    <*> areq intField "Год выпуска" Nothing
+    <*> aopt textField "Цвет" Nothing
 
 carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
 carForm = renderTable carAForm
@@ -327,12 +327,12 @@ data Car = Car
 
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
-    <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq intField  "Year"  (carYear  <$> mcar)
-    <*> aopt textField "Color" (carColor <$> mcar)
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq intField  "Год выпуска"  (carYear  <$> mcar)
+    <*> aopt textField "Цвет" (carColor <$> mcar)
 
 carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
 
 getCarR :: Handler RepHtml
 getCarR = do
@@ -358,12 +358,12 @@ getCarR = do
 \begin{lstlisting}
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
-    <$> areq textField    "Model" (carModel <$> mcar)
-    <*> areq carYearField "Year"  (carYear  <$> mcar)
-    <*> aopt textField    "Color" (carColor <$> mcar)
+    <$> areq textField    "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска"  (carYear  <$> mcar)
+    <*> aopt textField    "Цвет" (carColor <$> mcar)
   where
     errorMessage :: Text
-    errorMessage = "Your car is too old, get a new one!"
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
 
     carYearField = check validateYear intField
 
@@ -372,7 +372,7 @@ carAForm mcar = Car
         | otherwise = Right y
 
 carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
 
 getCarR :: Handler RepHtml
 getCarR = do
@@ -399,7 +399,7 @@ carYearField = checkBool (>= 1990) errorMessage intField
 
 \begin{lstlisting}
 carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
 
 getCarR :: Handler RepHtml
 getCarR = do
@@ -438,7 +438,7 @@ inPast y = do
     thisYear <- liftIO getCurrentYear
     return $ if y <= thisYear
         then Right y
-        else Left ("You have a time machine!" :: Text)
+        else Left ("Да у вас машина времени!" :: Text)
 
 getCurrentYear :: IO Int
 getCurrentYear = do
@@ -448,7 +448,7 @@ getCurrentYear = do
     return $ fromInteger year
 
 carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
 
 getCarR :: Handler RepHtml
 getCarR = do
@@ -493,14 +493,14 @@ data Color = Red | Blue | Gray | Black
 
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
-    <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq carYearField "Year" (carYear <$> mcar)
-    <*> aopt (selectFieldList colors) "Color" (carColor <$> mcar)
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска" (carYear <$> mcar)
+    <*> aopt (selectFieldList colors) "Цвет" (carColor <$> mcar)
   where
     colors :: [(Text, Color)]
-    colors = [("Red", Red), ("Blue", Blue), ("Gray", Gray), ("Black", Black)]
+    colors = [("Красный", Red), ("Синий", Blue), ("Серый", Gray), ("Чёрный", Black)]
     errorMessage :: Text
-    errorMessage = "Your car is too old, get a new one!"
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
 
     carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
 
@@ -508,7 +508,7 @@ carAForm mcar = Car
         thisYear <- liftIO getCurrentYear
         return $ if y <= thisYear
             then Right y
-            else Left ("You have a time machine!" :: Text)
+            else Left ("Да у вас машина времени!" :: Text)
 
 getCurrentYear :: IO Int
 getCurrentYear = do
@@ -553,13 +553,13 @@ data Color = Red | Blue | Gray | Black
 
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
-    <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq carYearField "Year" (carYear <$> mcar)
-    <*> aopt (selectFieldList colors) "Color" (carColor <$> mcar)
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска" (carYear <$> mcar)
+    <*> aopt (selectFieldList colors) "Цвет" (carColor <$> mcar)
   where
     colors = map (pack . show &&& id) $ [minBound..maxBound]
     errorMessage :: Text
-    errorMessage = "Your car is too old, get a new one!"
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
 
     carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
 
@@ -567,7 +567,7 @@ carAForm mcar = Car
         thisYear <- liftIO getCurrentYear
         return $ if y <= thisYear
             then Right y
-            else Left ("You have a time machine!" :: Text)
+            else Left ("Да у вас машина времени!" :: Text)
 
 getCurrentYear :: IO Int
 getCurrentYear = do
@@ -613,13 +613,13 @@ data Color = Red | Blue | Gray | Black
 
 carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
 carAForm mcar = Car
-    <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq carYearField "Year" (carYear <$> mcar)
-    <*> aopt (radioFieldList colors) "Color" (carColor <$> mcar)
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска" (carYear <$> mcar)
+    <*> aopt (radioFieldList colors) "Цвет" (carColor <$> mcar)
   where
     colors = map (pack . show &&& id) $ [minBound..maxBound]
     errorMessage :: Text
-    errorMessage = "Your car is too old, get a new one!"
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
 
     carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
 
@@ -627,7 +627,7 @@ carAForm mcar = Car
         thisYear <- liftIO getCurrentYear
         return $ if y <= thisYear
             then Right y
-            else Left ("You have a time machine!" :: Text)
+            else Left ("Да у вас машина времени!" :: Text)
 
 getCurrentYear :: IO Int
 getCurrentYear = do
@@ -756,8 +756,8 @@ getCarR = do
 компилятором в:
 
 \begin{lstlisting}
-fromString "this is not used" == FieldSettings
-    { fsLabel = "this is not used"
+fromString "Это не используется" == FieldSettings
+    { fsLabel = "Это не используется"
     , fsTooltip = Nothing
     , fsId = Nothing
     , fsName = Nothing
