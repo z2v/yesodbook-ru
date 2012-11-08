@@ -363,20 +363,20 @@ useMyFileError6 = control $ \run -> withMyFile $ run . sayHiError
 \end{lstlisting}
 
 \subsection{MonadControlIO}
-Класс MonadTrans предоставляет метод lift, который позволяет протягивать
-действие на один уровень по стеку монад. Также существует класс MonadIO
-предоставляющий метод liftIO, который протягивает действие IO так далеко по
-стеку как хочется. У нас такое же разделение в monad-control. Но сперва, нам
-нужно функцию подобную Run:
+Класс \lstinline'MonadTrans' предоставляет метод~\lstinline'lift', который позволяет протягивать
+действие на один уровень по стеку монад. Также существует класс~\lstinline'MonadIO'
+предоставляющий метод~\lstinline'liftIO', который протягивает действие~\lstinline'IO' так далеко по
+стеку как хочется. У нас такое же разделение в~\texttt{monad-control}. Но сперва, нам
+нужно функцию подобную~\lstinline'Run':
 
 \begin{lstlisting}
 type RunInBase m base = forall b. m b -> base (m b)
 \end{lstlisting}
 
 Вместо того что бы иметь дело с трансформатором, мы работаем с двумя монадами.
-Монада base это основная монада, а m это стек построеный на ней. RunInBase это
-функция которая берёт значение всего стека, вытягивает base, и размещает её
-снаружи. В отличии от типа Run, мы не замещали её произвольной монадой, а
+Монада~\lstinline'base' это основная монада, а~\lstinline'm' это стек построеный на ней. \lstinline'RunInBase' это
+функция которая берёт значение всего стека, вытягивает \lstinline'base', и размещает её
+снаружи. В отличии от типа~\lstinline'Run', мы не замещали её произвольной монадой, а
 использовали исходную. Пример с конкретными типами:
 
 \begin{lstlisting}
@@ -385,17 +385,17 @@ RunInBase (ErrorT MyError IO) IO = forall b. ErrorT MyError IO b -> IO (ErrorT M
 
 Это очень похоже на то, что мы рассматривали до сих пор, с той лишь разницей,
 что тут мы хотим иметь дело с конкретной внутренней монадой. На самом деле
-класс MonadControlIO это просто расширение MonadControlTrans с помощью
-RunInBase.
+класс~\lstinline'MonadControlIO' это просто расширение \lstinline'MonadControlTrans' с
+помощью~\lstinline'RunInBase'.
 
 \begin{lstlisting}
 class MonadIO m => MonadControlIO m where
     liftControlIO :: (RunInBase m IO -> IO a) -> m a
 \end{lstlisting}
 
-Проще говоря, liftControlIO принимает функцию, которая принимает RunInBase. Эта
-RunInBase может быть использована для разбора нашей монады до простой IO, а
-затем liftControlIO выстраивает всё назад. Так же, как и MonadControlTrans, он
+Проще говоря, \lstinline'liftControlIO' принимает функцию, которая принимает~\lstinline'RunInBase'. Эта
+\lstinline'RunInBase' может быть использована для разбора нашей монады до простой~\lstinline'IO', а
+затем \lstinline'liftControlIO' выстраивает всё назад. Так же, как и \lstinline'MonadControlTrans', он
 поставляется со вспомогательной функцией
 
 \begin{lstlisting}
