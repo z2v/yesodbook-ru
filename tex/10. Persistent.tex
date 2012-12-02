@@ -1,15 +1,17 @@
 \chapter{Persistent}\label{chap:persistent}
 
-Forms deal with the boundary between the user and the application. Another boundary we need to deal with is between the application and the storage layer. Whether it be a SQL database, a YAML file, or a binary blob, odds are you have to work to get your storage layer to accept your application datatypes. Persistent is Yesod's answer to data storage- a type-safe, universal data store interface for Haskell.
+% TODO: доперевести "error prone, boiler plate code" в главе Types
 
-Haskell has many different database bindings available. However, most of these have little knowledge of a schema and therefore do not provide useful static guarantees. They also force database-dependent APIs and data types on the programmer. Haskellers have attempted a more revolutionary route of creating Haskell specific data stores to get around these flaws that allow one to easily store any Haskell type. These options are great for certain use cases, but they constrain one to the storage techniques provided by the library, do not interface well with other languages, and the flexibility can also mean one must write reams of code for querying data. In contrast, Persistent allows us to choose among existing databases that are highly tuned for different data storage use cases, interoperate with other programming languages, and to use a safe and productive query interface.
+Формы представляют собой границу между пользователем и приложением. Другая граница, с которой нам приходится иметь дело, находится между приложением и хранилищем. Является ли это хранилище SQL базой данных, YAML-файлом или бинарным объектом, вам с большой вероятностью придется попотеть, чтобы хранилище принимало типы данных вашего приложения. Persistent представляет собой ответ Yesod'а на проблему хранения данных. Это универсальный типобезопасный интерфейс к хранилищу данных для Haskell.
 
-Persistent follows the guiding principles of type safety and concise, declarative syntax. Some other nice features are:
+Haskell предлагает множество различных биндингов к базам данных. Однако большинство из них имеют малое представление о схеме базы данных и потому не обеспечивают полезных статических проверок. Кроме того, они вынуждают программиста использовать API и типы данных, зависящие от конкретной базы данных. Чтобы избавиться от этих проблем, программистами на Haskell была предпринята попытка пойти более революционным путем и создать хранилище данных, специфичное для Haskell, тем самым получив возможность с легкостью хранить любой тип данных Haskell. Эта возможность действительно прекрасна в некоторых случаях, но она делает программиста зависимым от техники хранения данных, используемой библиотекой, плохо взаимодейтсвует с другими языками, а также для обеспечения гибкости может требовать от программиста написания кучи кода, запрашивающего данные. В отличии от Persistent, который предоставляет выбор среди множества баз данных, каждая из которых оптимизирована для различных случаев, позволяет взаимодействовать с другими языками, а также использовать безопасный и производительный интерфейс запросов.
+
+Persistent следует принципам безопасности типов и краткого, декларативного синтексиса. Среди других возможностей следует отметить:
 
 \begin{itemize}
-  \item Database-agnostic. There is first class support for PostgreSQL, SQLite and MongoDB, with experimental CouchDB and MySQL support in the works.
-  \item By being non-relational in nature, we simultaneously are able to support a wider number of storage layers and are not constrained by some of the performance bottlenecks incurred through joins.
-  \item A major source of frustration in dealing with SQL databases is changes to the schema. Persistent can automatically perform database migrations.
+  \item Независимость от базы данных. Имеется первоклассная поддержка PostgreSQL, SQLite и MongoDB, а также эксперементальная поддержка CouchDB и находящаяся в разработке поддержка MySQL.
+  \item Будучи нереляционным по своей природе, Persistent позволяет одновременно поддерживать множество слоев хранения данных и не обременен проблемами производительности, связанными с использованием JOIN'ов.
+  \item Основным источником разочарования при использовании SQL баз данных является попытка изменения схемы базы данных. Persistent позволяет автоматически выполнять переход между базами данных. % схемами БД?
 \end{itemize}
 
 \section{Краткое содержание} % Synopsis
@@ -52,17 +54,17 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
     delete janeId
     deleteWhere [BlogPostAuthorId ==. johnId]
-\end{lstlisting}
+\end{lstlisting}%$
 
-\section{Solving the boundary issue}
+\section{Решение <<пограничной>> проблемы} % Solving the boundary issue
 
-Suppose you are storing information on people in a SQL database. Your table might look something like:
+Допустим, вы храните информацию о людях в SQL базе данных. Соответствующая таблица может выглядеть как-то так:
 
 \begin{lstlisting}
 CREATE TABLE Person(id SERIAL PRIMARY KEY, name VARCHAR NOT NULL, age INTEGER)
 \end{lstlisting}
 
-And if you are using a database like PostgreSQL, you can be guaranteed that the database will never store some arbitrary text in your age field. (The same cannot be said of SQLite, but let's forget about that for now.) To mirror this database table, you would likely create a Haskell datatype that looks something like:
+И если вы используете такую СУБД, как PostgreSQL, вы можете быть уверены, что СУБД никогда не сохранит какой-нибудь дополнительный текст в поле age. (Нельзя сказать то же самое в отношении SQLite, однако пока что забудем об этом). Для отображения этой таблицы вы можете захотеть создать примерно такой тип данных:
 
 \begin{lstlisting}
 data Person = Person
@@ -71,25 +73,26 @@ data Person = Person
     }
 \end{lstlisting}
 
-It looks like everything is type safe: the database schema matches our Haskell datatypes, the database ensures that invalid data can never make it into our data store, and everything is generally awesome. Well, until:
+Все выглядит вполне типобезопасно --- схема базы данных соответствует типу данных в Haskell, СУБД гарантирует, что некорректные данные никогда не будут сохранены в таблице, и все в целом выглядит прикрасно. Ну, до поры до времени.
 
-You want to pull data from the database, and the database layer gives you the data in an untyped format.
+Вы хотите получить данные из базы данных, а слой базы данных отдает вам данные в нетипизированном формате.
 
 \begin{itemize}
-  \item You want to find everyone older than 32, and you accidently write "thirtytwo" in your SQL statement. Guess what: that will compile just fine, and you won't find out you have a problem until runtime.
-  \item You decide you want to find the first 10 people alphabetically. No problem... until you make a typo in your SQL. Once again, you don't find out until runtime.
-  \item In dynamic languages, the answers to these issues is unit testing. For everything that can go wrong, make sure you write a test case. But as I am sure you are aware by now, that doesn't jive well with the Yesod approach to things. We like to take advantage of Haskell's strong typing to save us wherever possible, and data storage is no exception.
+  \item Вы хотите найти все людей, старше 32-х лет, но по ошибке пишете <<тридцать два>> в SQL-запросе. И значете что? Все прекрасно скомпилируется и вы не узнаете о проблемы до тех пор, пока не запустите программу.
+  \item Вы решили найти первых десятерых человек в алфавитном порядке. Нет проблем... до тех пор, пока вы не сделаете опечатку в SQL-запросе. И снова, вы не узнаете об этом до тех пор, пока не запустите программу.
+  \item В языках с динамической типизацией ответом на эти проблемы является модульное тестирование. Проверьте, что для всего, что может пойти не так, вы не забили написать тест. Но как, я полагаю, вы уже знаете, это не очень согласуется с подходом, принятом в Yesod. Мы предпочитаем использовать преимущества статической типизации языка Haskell для нашей собственной защиты, насколько это возможно, и хранение данных не является исключением.
 \end{itemize}
 
-So the question remains: how can we use Haskell's type system to save the day?
+Итак, вопрос остается открытым: как мы можем использовать систему типов языка Haskell, чтобы исправить положение?
 
 \section{Типы} % Types
 
-Like routing, there is nothing intrinsically difficult about type-safe data access. It just requires a lot of monotonous, error prone, boiler plate code. As usual, this means we can use the type system to keep us honest. And to avoid some of the drudgery, we'll use a sprinkling of Template Haskell.
+Как и в случае с маршрутизацией, нет ничего невероятно сложного в типобезопасном доступе к данным. Он всего лишь требует монотонного, error prone, boiler plate code. Как обычно, это означает, что мы можем использовать систему типов, чтобы гарантировать нашу честность. А чтобы избежать лишней нудной работы, мы вооружимся возможностями Template Haskell. % we'll use a sprinkling of Template Haskell.
 
-Earlier versions of Persistent made much heavier usage of Template Haskell. Starting with 0.6, there is a new architecture inspired by the groundhog package. This approach uses phantom types to carry a lot of the burden.
+% FIXME: это врезка!
+В ранних версиях Persistent очень активно использовался Template Haskell. Начиная с версии 0.6 используется новая архитектура, позаимстованная из пакета groundhog. Благодаря новому подходу существенная часть нагрузки была переложена на фантомные типы.
 
-PersistValue is the basic building block of Persistent. It is a sum type that can represent data that gets sent to and from a database. Its definition is:
+PersistValue является основным строительным блоком в Persistent. Этот тип представляет данные, посылаемые базе данных или получаемые от нее. Вот его определение:
 
 \begin{lstlisting}
 data PersistValue = PersistText Text
@@ -103,19 +106,22 @@ data PersistValue = PersistText Text
                   | PersistNull
                   | PersistList [PersistValue]
                   | PersistMap [(T.Text, PersistValue)]
-                  | PersistForeignKey ByteString -- ^ intended especially for MongoDB backend
+                  | PersistForeignKey ByteString -- ^ предназначен прежде всего для MongoDB
 \end{lstlisting}
 
-Each Persistent backend needs to know how to translate the relevant values into something the database can understand. However, it would be awkward do have to express all of our data simply in terms of these basic types. The next layer is the PersistField typeclass, which defines how an arbitrary Haskell datatype can be marshaled to and from a PersistValue. A PersistField correlates to a column in a SQL database. In our person example above, name and age would be our PersistFields.
+Каждый из бэкэндов Persistent должен знать, как переводить соответствующие значения во что-то понятное базе данных. Однако было бы неудобно выражать все данные через эти базовые типы. Следующим слоем является класс типов PersistField, определяющий, как произвольный тип может быть преобразован в тип PersistValue или обратно. PersistField соответствует столбцами в SQL базах данных. В приведенном ранее примере с людьми name и age будут нашими PersistField'ами.
 
-To tie up the user side of the code, our last typeclass is PersistEntity. An instance of PersistEntity correlates with a table in a SQL database. This typeclass defines a number of functions and some associated types. To review, we have the following correspondence between Persistent and SQL:
+Чтобы связать пользовательский код, нам понадобится полсдений класс типов --- PersistEntity. Экземпляр класса типов PersistEntity соответствует таблице в SQL базе данных. Этот класс типов определеяет несколько функций и связанные с ними типы. Таким образом, имеет место следующее соответствие между Persistent и SQL:
 
-% TODO: TABLE
-
-SQL	Persistent
-Datatypes (VARCHAR, INTEGER, etc)	PersistValue
-Column	PersistField
-Table	PersistEntity
+\begin{center}
+\begin{tabular}{ | l | l |}
+\hline
+SQL	& Persistent \\ \hline
+Тип (VARCHAR, INTEGER и тд)	& PersistValue \\ \hline
+Столбец & PersistField \\ \hline
+Таблица	& PersistEntity \\ \hline
+\end{tabular}
+\end{center}
 
 \section{Генерация кода} % Code Generation
 
@@ -211,7 +217,7 @@ instance PersistEntity Person where
     persistIdField = undefined
 main :: IO ()
 main = return ()
-\end{lstlisting}
+\end{lstlisting}%$
 
 As you might expect, our Person datatype closely matches the definition we gave in the original Template Haskell version. We also have a Generalized Algebraic Datatype (GADT) which gives a separate constructor for each field. This GADT encodes both the type of the entity and the type of the field. We use its constructors throughout Persistent, such as to ensure that when we apply a filter, the types of the filtering value match the field.
 
@@ -222,7 +228,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     michaelId <- insert $ Person "Michael" 26
     michael <- get michaelId
     liftIO $ print michael
-\end{lstlisting}
+\end{lstlisting}%$
 
 We start off with some standard database connection code. In this case, we used the single-connection functions. Persistent also comes built in with connection pool functions, which we will generally want to use in production.
 
@@ -274,7 +280,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     michaelId <- insert $ Person "Michael" 26
     michael <- get michaelId
     liftIO $ print michael
-\end{lstlisting}
+\end{lstlisting}%$
 
 With this one little code change, Persistent will automatically create your Person table for you. This split between runMigration and migrate allows you to migrate multiple tables simultaneously.
 
@@ -302,7 +308,7 @@ Car
 
 main = withSqliteConn ":memory:" $ runSqlConn $ do
     runMigration migrateAll
-\end{lstlisting}
+\end{lstlisting}%$
 
 mkMigrate is a Template Haskell function which creates a new function that will automatically call migrate on all entities defined in the persist block. The share function is just a little helper that passes the information from the persist block to each Template Haskell function and concatenates the results.
 
@@ -363,7 +369,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     insert $ Person "Michael" "Snoyman" 26
     michael <- getBy $ PersonName "Michael" "Snoyman"
     liftIO $ print michael
-\end{lstlisting}
+\end{lstlisting}%$
 
 To declare a unique combination of fields, we add an extra line to our declaration. Persistent knows that it is defining a unique constructor, since the line begins with a capital letter. Each following word must be a field in this entity.
 
@@ -393,7 +399,7 @@ Using get % TODO: title? image?
     case maybePerson of
         Nothing -> liftIO $ putStrLn "Just kidding, not really there"
         Just person -> liftIO $ print person
-\end{lstlisting}
+\end{lstlisting}%$
 
 This can be very useful for sites that provide URLs like /person/5. However, in such a case, we don't usually care about the Maybe wrapper, and just want the value, returning a 404 message if it is not found. Fortunately, the get404 function helps us out here. We'll go into more details when we see integration with Yesod.
 
@@ -443,7 +449,7 @@ Let's jump straight into an example of filtering, and then analyze it.
 \begin{lstlisting}
     people <- selectList [PersonAge >. 25, PersonAge <=. 30] []
     liftIO $ print people
-\end{lstlisting}
+\end{lstlisting}%$
 
 As simple as that example is, we really need to cover three points:
 
@@ -465,7 +471,7 @@ And regarding ORs, we use the ||. operator. For example:
         )
         []
     liftIO $ print people
-\end{lstlisting}
+\end{lstlisting}%$
 
 This (completely nonsensical) example means: find people who are 26-30, inclusive, OR whose names are neither Adam or Bonny, OR whose age is either 50 or 60.
 
@@ -508,7 +514,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     runMigrationSilent migrateAll
     personId <- insert $ Person "Michael" "Snoyman" 26
     resultsForPage 1 >>= liftIO . print
-\end{lstlisting}
+\end{lstlisting}%$
 
 Manipulation % TODO: title?
 
@@ -569,7 +575,7 @@ Instead, we're looking at ways of modifying rows in a table. And the simplest wa
     personId <- insert $ Person "Michael" "Snoyman" 26
     update personId [PersonAge =. 27]
     resultsForPage 1 >>= liftIO . print
-\end{lstlisting}
+\end{lstlisting}%$
 
 update takes two arguments: an ID, and a list of Updates. The simplest update is assignment, but it's not always the best. What if you want to increase someone's age by 1, but you don't have their current age? Persistent has you covered:
 
@@ -582,7 +588,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     update personId [PersonAge =. 27]
     haveBirthday personId
     resultsForPage 1 >>= liftIO . print
-\end{lstlisting}
+\end{lstlisting}%$
 
 And as you might expect, we have all the basic mathematical operators: +=., -=., *=., and /=. (full stop). These can be convenient for updating a single record, but they are also essential for proper ACID guarantees. Imagine the alternative: pull out a Person, increment the age, and update the new value. If you have two threads/processes working on this database at the same time, you're in for a world of hurt (hint: race conditions).
 
@@ -601,7 +607,7 @@ Occassionally, you'll just want to completely replace the value in a database wi
     haveBirthday personId
     updateWhere [PersonFirstName ==. "Michael"] [PersonAge *=. 2] -- it's been a long day
     resultsForPage 1 >>= liftIO . print
-\end{lstlisting}
+\end{lstlisting}%$
 
 \section{Удаление} % Delete
 
@@ -624,7 +630,7 @@ Delete based on a set of filters
     delete personId
     deleteBy $ UniqueName "Michael" "Snoyman"
     deleteWhere [PersonFirstName ==. "Michael"]
-\end{lstlisting}
+\end{lstlisting}%$
 
 We can even use deleteWhere to wipe out all the records in a table, we just need to give some hints to GHC as to what table we're interested in:
 
@@ -661,7 +667,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     runMigration migrateAll
     insert $ Person "Michael" (Just 26) time
     insert $ Person "Greg" Nothing time
-\end{lstlisting}
+\end{lstlisting}%$
 
 Maybe is a built in, single word attribute. It makes the field optional. In Haskell, this means it is wrapped in a Maybe. In SQL, it makes the column nullable.
 
@@ -687,7 +693,7 @@ Person
 
 main = withSqliteConn ":memory:" $ runSqlConn $ do
     runMigration migrateAll
-\end{lstlisting}
+\end{lstlisting}%$
 
 The default attribute has absolutely no impact on the Haskell code itself; you still need to fill in all values. This will only affect the database schema and automatic migrations.
 
@@ -714,7 +720,7 @@ Person
 
 main = withSqliteConn ":memory:" $ runSqlConn $ do
     runMigration migrateAll
-\end{lstlisting}
+\end{lstlisting}%$
  
 One last trick you can do with attributes is to specify the names to be used for the SQL tables and columns. This can be convenient when interacting with existing databases.
 
@@ -744,7 +750,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     runMigration migrateAll
     personId <- insert $ Person "Michael" "Snoyman" 26
     resultsForPage 1 >>= liftIO . print
-\end{lstlisting}
+\end{lstlisting}%$
 
 \section{Отношения} % Relations
 
@@ -778,7 +784,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     -- this could go on a while
     cars <- selectList [CarOwnerId ==. bruce] []
     liftIO $ print cars
-\end{lstlisting}
+\end{lstlisting}%$
  
 Using this technique, you can define one-to-many relationships. To define many-to-many relationships, we need a join entity, which has a one-to-many relationship with each of the original tables. It is also a good idea to use uniqueness constraints on these. For example, to model a situation where we want to track which people have shopped in which stores:
 
@@ -817,7 +823,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
     insert $ PersonStore michael target
     insert $ PersonStore michael sevenEleven
-\end{lstlisting}
+\end{lstlisting}%$
 
 \section{Closer look at types}
 
@@ -889,7 +895,7 @@ And no, SqlPersist isn't hard-coded into Persistent anywhere. That sqlSettings p
 
 This might be quite complicated under the surface, but user code hardly ever touches this. Look back through this whole chapter: not once did we need to deal with the Key or Generic stuff directly. The most common place for it to pop up is in compiler error messages. So it's important to be aware that this exists, but it shouldn't affect you on a day-to-day basis.
 
-\section{Custom Fields}
+\section{Произвольные поля} % Custom Fields
 
 Occassionally, you will want to define a custom field to be used in your datastore. The most common case is an enumeration, such as employment status. For this, Persistent provides a helper Template Haskell function:
 
@@ -917,7 +923,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     insert $ Person "Bruce Wayne" Retired
     insert $ Person "Peter Parker" Unemployed
     insert $ Person "Michael" Employed
-\end{lstlisting}
+\end{lstlisting}%$
 
 derivePersistField stores the data in the database using a string field, and performs marshaling using the Show and Read instances of the datatype. This may not be as efficient as storing via an integer, but it is much more future proof: even if you add extra constructors in the future, your data will still be valid.
 
@@ -964,7 +970,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     let sql = "SELECT name FROM Person WHERE name LIKE '%Snoyman'"
     C.runResourceT $ withStmt sql []
                 C.$$ CL.mapM_ $ liftIO . print
-\end{lstlisting}
+\end{lstlisting}%$
 
 There is also higher-level support that allows for automated data marshaling. Please see the Haddock API docs for more details.
 
@@ -1028,7 +1034,7 @@ main = withSqlitePool "test.db3" openConnectionCount $ \pool -> do
     runSqlPool (runMigration migrateAll) pool
     runSqlPool (insert $ Person "Michael" "Snoyman" 26) pool
     warpDebug 3000 $ PersistTest pool
-\end{lstlisting}
+\end{lstlisting}%$
 
 There are two important pieces here for general use. runDB is used to run a DB action from within a Handler. Within the runDB, you can use any of the functions we've spoken about so far, such as insert and selectList.
 
