@@ -282,14 +282,14 @@ instance YesodAuth Blog where
     logoutDest _ = RootR
     authHttpManager = httpManager
 \end{lstlisting}
- 
-Мы будем использовать [BrowserID](https://browserid.org/), которая является сторонней системой ипользующей адрес электронной почты в качестве вашего идентификатора. Это позволит в будущем легко перейти на другие системы, для локально аутентифицированых адресов электронной почты (также входит в yesod-auth). 
+
+Мы будем использовать систему \footnotehref{https://browserid.org/}{BrowserID}, использующую адрес электронной почты в качестве вашего идентификатора. Это позволит в будущем легко перейти на другие системы для локально аутентифицируемых адресов электронной почты (также входит в yesod-auth).
  
 \begin{lstlisting}
     authPlugins _ = [authBrowserId]
 \end{lstlisting}
  
-Эта функция берёт регистрационное имя пользователя (login credentials) (то есть, адрес электронной почты) и возвращает UserId. 
+Эта функция принимает регистрационные данные пользователя (то есть, адрес электронной почты) и возвращает \lstinline!UserId!. 
  
 \begin{lstlisting}
     getAuthId creds = do
@@ -297,9 +297,9 @@ instance YesodAuth Blog where
             user = User email
         res <- runDB $ insertBy user
         return $ Just $ either entityKey id res
-\end{lstlisting}
+\end{lstlisting}%$
  
-Обработчик домашней страницы. Одна важная деталь здесь это использование \lstinline'`setTitleI`', что позволяет использовать локализированные сообщения в заголовке. Мы также используем это сообщение с \lstinline'`_{Msg...}`' интерполяцией в Hamlet. 
+Обработчик домашней страницы. Одна важная деталь здесь это использование \lstinline'`setTitleI`', что позволяет использовать локализованные сообщения в заголовке страницы. Мы также используем это сообщение с \lstinline'`_{Msg...}`'-интерполяцией в Hamlet. 
  
 \begin{lstlisting}
 getRootR :: Handler RepHtml
@@ -310,9 +310,9 @@ getRootR = defaultLayout $ do
 <p>
    <a href=@{BlogR}>_{MsgSeeArchive}
 |]
-\end{lstlisting}
+\end{lstlisting}%$
  
-Определяем форму для добавления новых записей. Мы хотим, чтобы пользователь заполнил заголовок и содержание, а дату записи заполним автоматически с помощью \lstinline'`getCurrentTime`'. 
+Определяем форму для добавления новых записей. Мы хотим, чтобы пользователь заполнил заголовок и содержание, а дату создания записи заполним автоматически с помощью \lstinline'`getCurrentTime`'. 
  
 \begin{lstlisting}
 entryForm :: Form Entry
@@ -322,7 +322,7 @@ entryForm = renderDivs $ Entry
     <*> areq nicHtmlField (fieldSettingsLabel MsgNewEntryContent) Nothing
 \end{lstlisting}
  
-Получаем список всех записей, и для администратора отобразим форму для создания новой записи. 
+Получаем список всех записей и для администратора отображаем форму создания новой записи. 
  
 \begin{lstlisting}
 getBlogR :: Handler RepHtml
@@ -340,9 +340,9 @@ $else
         $forall Entity entryId entry <- entries
             <li>
                 <a href=@{EntryR entryId}>#{entryTitle entry}
-\end{lstlisting}
+\end{lstlisting}%$
  
-У нас есть три варианта: пользователь вошёл в систему в качестве администратора, пользователь вошёл и не администратор, и пользователь не вошёл в систему. В первом случае, мы должны отобразить форму записи. Во втором, мы ничего не делаем. В третьем, мы предоставим ссылку для входа. 
+У нас есть три варианта: пользователь-администратор вошёл в систему, обычный пользователь вошёл в систему и пользователь не вошёл в систему. В первом случае мы должны отобразить форму создания записи. Во втором мы ничего не делаем. В третьем мы отображаем ссылку для входа. 
  
 \begin{lstlisting}
 $maybe Entity _ user <- muser
@@ -355,9 +355,9 @@ $nothing
     <p>
         <a href=@{AuthR LoginR}>_{MsgLoginToPost}
 |]
-\end{lstlisting}
+\end{lstlisting}%$
  
-Обработаем добавление новой записи. Мы не делаем никакой проверки авторизации, так как isAuthorized делает это за нас. Если форма была верной (form submission was valid), мы добавляеи запись в базу данных и перенаправляем на эту новую запись. В противном случае, мы просим пользователей попробовать еще раз. 
+Обрабатываем добавление новой записи. Мы не делаем никакой проверки авторизации, так как \lstinline!isAuthorized! делает это за нас. Если в форме заданы корректные значения, мы добавляем запись в базу данных и перенаправляем пользователя на эту запись. В противном случае мы просим пользователя попробовать еще раз. 
  
 \begin{lstlisting}
 postBlogR :: Handler RepHtml
@@ -376,9 +376,9 @@ postBlogR = do
     <div>
         <input type=submit value=_{MsgNewEntry}>
 |]
-\end{lstlisting}
+\end{lstlisting}%$
  
-Форма для комментариев, очень похожа на entryForm выше. Она принимает EntryID записи к которой относиться комментарий. Используя pure, мы вкладываем это значение в результирующее значение Comment, не позволяя ему появиться в сгенерированном HTML. 
+Форма для комментариев, очень похожая на \lstinline!entryForm! выше. Она принимает \lstinline!EntryID! записи, к которой относится комментарий. Используя \lstinline!pure!, мы вкладываем это значение в результирующее значение \lstinline!Comment!, не позволяя ему появиться в сгенерированном HTML. 
  
 \begin{lstlisting}
 commentForm :: EntryId -> Form Comment
@@ -390,7 +390,7 @@ commentForm entryId = renderDivs $ Comment
     <*> areq textareaField (fieldSettingsLabel MsgCommentText) Nothing
 \end{lstlisting}
  
-Показываем отдельную запись, комментарии, и для зарегистрированых пользователей форму комментариев.
+Показываем отдельную запись, комментарии, и для зарегистрированых пользователей --- форму комментариев.
  
 \begin{lstlisting}
 getEntryR :: EntryId -> Handler RepHtml
@@ -428,9 +428,9 @@ getEntryR entryId = do
                 <p>
                     <a href=@{AuthR LoginR}>_{MsgLoginToComment}
 |]
-\end{lstlisting}
+\end{lstlisting}%$
  
-Получаем комментарий (submission). 
+Получаем добавляемый комментарий. 
  
 \begin{lstlisting}
 postEntryR :: EntryId -> Handler RepHtml
@@ -450,16 +450,16 @@ postEntryR entryId = do
     <div>
         <input type=submit value=_{MsgAddCommentButton}>
 |]
-\end{lstlisting}
+\end{lstlisting}%$
  
-Наконец наша главная функция. 
+Наконец, наша главная функция. 
  
 \begin{lstlisting}
 main :: IO ()
 main = do
     pool <- createSqlitePool "blog.db3" 10 -- создаём новый пул
-    -- perform any necessary migration
+    -- выполнить необходимую миграцию
     runSqlPool (runMigration migrateAll) pool
     manager <- newManager def -- создаём новый менеджер HTTP
-    warpDebug 3000 $ Blog pool manager -- стартуем наш сервер
+    warpDebug 3000 $ Blog pool manager -- запускаем наш сервер
 \end{lstlisting}
