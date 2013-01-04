@@ -1,8 +1,8 @@
 \chapter{Persistent}\label{chap:persistent}
 
-Формы представляют собой границу между пользователем и приложением. Другая граница, с которой нам приходится иметь дело, находится между приложением и хранилищем. Является ли это хранилище SQL базой данных, YAML-файлом или бинарным объектом, вам с большой вероятностью придется попотеть, чтобы хранилище принимало типы данных вашего приложения. Persistent представляет собой ответ Yesod'а на проблему хранения данных. Это универсальный типобезопасный интерфейс к хранилищу данных для Haskell.
+Формы представляют собой границу между пользователем и приложением. Другая граница, с которой нам приходится иметь дело, находится между приложением и хранилищем. Является ли это хранилище SQL базой данных, YAML- или бинарным файлом, вам с большой вероятностью придется попотеть, чтобы хранилище принимало типы данных вашего приложения. Persistent представляет собой ответ Yesod'а на проблему хранения данных. Это универсальный типобезопасный интерфейс к хранилищу данных для Haskell.
 
-Haskell предлагает множество различных биндингов к базам данных. Однако большинство из них имеют малое представление о схеме базы данных и потому не обеспечивают полезных статических проверок. Кроме того, они вынуждают программиста использовать API и типы данных, зависящие от конкретной базы данных. Чтобы избавиться от этих проблем, программистами на Haskell была предпринята попытка пойти более революционным путем и создать хранилище данных, специфичное для Haskell, тем самым получив возможность с легкостью хранить любой тип данных Haskell. Эта возможность действительно прекрасна в некоторых случаях, но она делает программиста зависимым от техники хранения данных, используемой библиотекой, плохо взаимодейтсвует с другими языками, а также для обеспечения гибкости может требовать от программиста написания кучи кода, запрашивающего данные. В отличии от Persistent, который предоставляет выбор среди множества баз данных, каждая из которых оптимизирована для различных случаев, позволяет взаимодействовать с другими языками, а также использовать безопасный и производительный интерфейс запросов.
+Haskell предлагает множество различных биндингов к базам данных. Однако большинство из них имеют малое представление о схеме базы данных и потому не обеспечивают полезных статических проверок. Кроме того, они вынуждают программиста использовать API и типы данных, зависящие от конкретной базы данных. Чтобы избавиться от этих проблем, программистами на Haskell была предпринята попытка пойти более революционным путем и создать хранилище данных, специфичное для Haskell, тем самым получив возможность с легкостью хранить любой тип данных Haskell. Эта возможность действительно прекрасна в некоторых случаях, но она делает программиста зависимым от техники хранения данных и используемой библиотеки, плохо взаимодейтсвует с другими языками, а также для обеспечения гибкости может требовать от программиста написания кучи кода, запрашивающего данные. В отличии от Persistent, который предоставляет выбор среди множества баз данных, каждая из которых оптимизирована для различных случаев, позволяет взаимодействовать с другими языками, а также использовать безопасный и производительный интерфейс запросов.
 
 Persistent следует принципам безопасности типов и краткого, декларативного синтексиса. Среди других возможностей следует отметить:
 
@@ -76,7 +76,7 @@ data Person = Person
 Вы хотите получить данные из базы данных, а слой базы данных отдает вам данные в нетипизированном формате.
 
 \begin{itemize}
-  \item Вы хотите найти все людей, старше 32-х лет, но по ошибке пишете <<тридцать два>> в SQL-запросе. И значете что? Все прекрасно скомпилируется и вы не узнаете о проблемы до тех пор, пока не запустите программу.
+  \item Вы хотите найти все людей, старше 32-х лет, но по ошибке пишете <<тридцать два>> в SQL-запросе. И значете что? Все прекрасно скомпилируется и вы не узнаете о проблеме до тех пор, пока не запустите программу.
   \item Вы решили найти первых десятерых человек в алфавитном порядке. Нет проблем... до тех пор, пока вы не сделаете опечатку в SQL-запросе. И снова, вы не узнаете об этом до тех пор, пока не запустите программу.
   \item В языках с динамической типизацией ответом на эти проблемы является модульное тестирование. Проверьте, что для всего, что может пойти не так, вы не забили написать тест. Но как, я полагаю, вы уже знаете, это не очень согласуется с подходом, принятом в Yesod. Мы предпочитаем использовать преимущества статической типизации языка Haskell для нашей собственной защиты, насколько это возможно, и хранение данных не является исключением.
 \end{itemize}
@@ -85,7 +85,7 @@ data Person = Person
 
 \section{Типы} % Types
 
-Как и в случае с маршрутизацией, нет ничего невероятно сложного в типобезопасном доступе к данным. Он всего лишь требует написания монотонного, подверженного ошибкам избыточного шаблонного кода. Как обычно, это означает, что мы можем использовать систему типов для того, чтобы избежать лишних ошибок. А чтобы не заниматься нудной работой, мы вооружимся Template Haskell.
+Как и в случае с маршрутами, нет ничего невероятно сложного в типобезопасном доступе к данным. Он всего лишь требует написания монотонного, подверженного ошибкам избыточного шаблонного кода. Как обычно, это означает, что мы можем использовать систему типов для того, чтобы избежать лишних ошибок. А чтобы не заниматься нудной работой, мы вооружимся Template Haskell.
 
 \begin{remark}
 В ранних версиях Persistent очень активно использовался Template Haskell. Начиная с версии 0.6 используется новая архитектура, позаимстованная из пакета groundhog. Благодаря новому подходу существенная часть нагрузки была переложена на фантомные типы.
@@ -110,7 +110,7 @@ data PersistValue = PersistText Text
 
 Каждый из бэкэндов Persistent должен знать, как переводить соответствующие значения во что-то понятное базе данных. Однако было бы неудобно выражать все данные через эти базовые типы. Следующим слоем является класс типов PersistField, определяющий, как произвольный тип может быть преобразован в тип PersistValue или обратно. PersistField соответствует столбцами в SQL базах данных. В приведенном ранее примере с людьми name и age будут нашими PersistField'ами.
 
-Чтобы связать пользовательский код, нам понадобится полсдений класс типов --- PersistEntity. Экземпляр класса типов PersistEntity соответствует таблице в SQL базе данных. Этот класс типов определеяет несколько функций и связанные с ними типы. Таким образом, имеет место следующее соответствие между Persistent и SQL:
+Чтобы связать пользовательский код, нам понадобится последний класс типов --- PersistEntity. Экземпляр класса типов PersistEntity соответствует таблице в SQL базе данных. Этот класс типов определеяет несколько функций и связанные с ними типы. Таким образом, имеет место следующее соответствие между Persistent и SQL:
 
 \begin{center}
 \begin{tabular}{ | l | l |}
@@ -124,7 +124,7 @@ SQL	& Persistent \\ \hline
 
 \section{Генерация кода} % Code Generation
 
-In order to ensure that the PersistEntity instances match up properly with your Haskell datatypes, Persistent takes responsibility for both. This is also good from a DRY (Don't Repeat Yourslef) perspective: you only need to define your entities once. Let's see a quick example:
+Дабы убедиться, что экземпляры класса PersistEntity корректно соответствуют вашим типам данных, Persistent берет на себя ответственность и за тех, и за других. Это хорошо и с точки зрения принципа DRY (Не повторяйтесь, Don't Repeat Yourslef): от вас требуется объявить сущности только один раз. Рассмотрим следующий пример:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs #-}
@@ -143,14 +143,14 @@ Person
 main = return ()
 \end{lstlisting}
 
-We use a combination of Template Haskell and Quasi-Quotation (like when defining routes): persist is a quasi-quoter which converts a whitespace-sensitive syntax into a list of entity definitions. (You can also declare your entities in a separate file using persistFile.) mkPersist takes that list of entities and declares:
+Здесь мы используем комбинацию из Template Haskell и квазицитирования (как при определении маршрутов): persist является обработчиком квазицитирования, который преобразует чувствительный к пробелам синтаксис в список определений сущностей. (Также вы можете вынести определение сущностей в отдельный файл и воспользоваться persistFile.) mkPersist принимает список этих сущностей и определяет:
 
 \begin{itemize}
-  \item One Haskell datatype for each entity.
-  \item A PersistEntity instance for each datatype defined.
+  \item По одному типу данных языка Haskell на сущность;
+  \item Экземпляр класса PersistEntity для каждого определенного типа данных;
 \end{itemize}
 
-The example above generates code that looks like the following:
+Приведенный выше пример генерирует код, который выглядит примерно следующим образом:
 
 \begin{lstlisting}
 {-# LANGUAGE TypeFamilies, GeneralizedNewtypeDeriving, OverloadedStrings, GADTs #-}
@@ -171,9 +171,9 @@ data Person = Person
 type PersonId = Key SqlPersist Person
 
 instance PersistEntity Person where
-    -- A Generalized Algebraic Datatype (GADT).
-    -- This gives us a type-safe approach to matching fields with
-    -- their datatypes.
+    -- Обобщенный алгебраический тип данных.
+    -- Это дает нам типобезопасный подход к сопоставлению
+    -- полей с их типами данных
     data EntityField Person typ where
         PersonId   :: EntityField Person PersonId
         PersonName :: EntityField Person String
@@ -191,7 +191,7 @@ instance PersistEntity Person where
         <*> fromPersistValue ageValue
     fromPersistValues _ = Left "Invalid fromPersistValues input"
 
-    -- Information on each field, used internally to generate SQL statements
+    -- Информация о каждом поле для внутреннего использования при генерации SQL выражений
     persistFieldDef PersonId = FieldDef
         (HaskellName "Id")
         (DBName "id")
@@ -218,9 +218,9 @@ main :: IO ()
 main = return ()
 \end{lstlisting}%$
 
-As you might expect, our Person datatype closely matches the definition we gave in the original Template Haskell version. We also have a Generalized Algebraic Datatype (GADT) which gives a separate constructor for each field. This GADT encodes both the type of the entity and the type of the field. We use its constructors throughout Persistent, such as to ensure that when we apply a filter, the types of the filtering value match the field.
+Как и следовало ожидать, определение типа данных Person очень близко к определению, данному в оригинальной версии кода, где использовался Template Haskell. Мы также имеем обощенный алгебраический тип данный (ОАТД), предоставляющий отдельный конструктор для каждого поля. Этот ОАТД кодирует как тип сущности, так и тип поля. Мы используем его конструкторы через модуль Persistent, например, чтобы убедиться, что когда мы применяем фильтр, типы фильтруемого значения и поля совпадают.
 
-We can use the generated Person type like any other Haskell type, and then pass it off to other Persistent functions.
+Мы можем использовать сгенерированный тип Person как и любой другой тип языка Haskell, а затем передать его в одну из функций модуля Persistent.
 
 \begin{lstlisting}
 main = withSqliteConn ":memory:" $ runSqlConn $ do
@@ -229,11 +229,11 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     liftIO $ print michael
 \end{lstlisting}%$
 
-We start off with some standard database connection code. In this case, we used the single-connection functions. Persistent also comes built in with connection pool functions, which we will generally want to use in production.
+Мы начнем со стандартного кода, работающего с базой данных. В данном случае мы использовали функции для работы с одним соединением. Модуль Persistent также предоставляет функции для работы с пулом соединений, которые использовать в боевом окружении обычно предпочтительнее.
 
-In this example, we have seen two functions: insert creates a new record in the database and returns its ID. Like everything else in Persistent, IDs are type safe. We'll get into more details of how these IDs work later. So when you call insert \$ Person "Michael" 25, it gives you a value back of type PersonId.
+В приведенном примере мы видим две функции. Функция \lstinline'insert' создает новую запись в базе данных и возвращает ее ID. Как и все остальное в модуле Persistent, ID являются типобезопасными. Более подробно о том, как работают эти ID, мы узнаем позже. Итак, код \lstinline'insert \$ Person "Michael" 25', возвращает значение типа PersonId.
 
-The next function we see is get, which attempts to load a value from the database using an Id. In Persistent, you never need to worry that you are using the key from the wrong table: trying to load up a different entity (like House) using a PersonId will never compile.
+Следующая функция, которую мы видим --- это \lstinline'get'. Она пытается загрузить из базы данных значение, используя заданный ID. При использовании Persistent вам никогда не придется беспокоиться, что вы, возможно, используете ключ не от той таблицы. Код, который пытается получить другую сущность (например, House), используя PersonId, никогда не будет скомпилирован.
 
 \section{PersistStore}
 
