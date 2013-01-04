@@ -339,9 +339,6 @@ mkMigrate --- это функция Template Haskell, которая созда�
 
 Помимо объявления полей у сущности мы также может объявлять ограничение уникальности. Типичный пример --- это требование уникальности имени пользователя:
 
-In addition to declaring fields within an entity, you can also declare uniqueness constraints. A typical example would be requiring that a username be unique.
-
-% Возможно, имелось ввиду UniqueName? См ниже.
 \begin{lstlisting}
 User
     username Text
@@ -397,41 +394,41 @@ UniqueName :: String -> String -> Unique Person
 
 \section{Выборка по ID} % Fetching by ID
 
-The simplest query you can perform in Persistent is getting based on an ID. Since this value may or may not exist, its return type is wrapped in a Maybe.
+Простейший запрос, который может быть выполнен в Persistent --- это выборка, основанная на ID. Поскольку в этом случае значение может существовать или не существовать, возвращаемое значение оборачивается в Maybe.
 
-Using get % в оригинале это что-то вроде врезки
+Использование функции get:
 
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
     maybePerson <- get personId
     case maybePerson of
-        Nothing -> liftIO $ putStrLn "Just kidding, not really there"
+        Nothing -> liftIO $ putStrLn "Ничего нет"
         Just person -> liftIO $ print person
 \end{lstlisting}%$
 
-This can be very useful for sites that provide URLs like /person/5. However, in such a case, we don't usually care about the Maybe wrapper, and just want the value, returning a 404 message if it is not found. Fortunately, the get404 function helps us out here. We'll go into more details when we see integration with Yesod.
+Это может быть очень удобно на сайтах, предоставляющих URL типа /person/5. Однако в таких случаях мы обычно не беспокоимся о Maybe, а просто хотим получить значение или вернуть код 404, если оно не найдено. К счастью, есть функция get404, которая поможет нам в этом. Мы разберемся с этим вопросом более детально, когда дойдем до интеграции с Yesod. 
 
 \section{Выборка по уникальному ключу} % Fetching by unique constraint
 
-getBy is almost identical to get, except it takes a uniqueness constraint instead of an ID it takes a Unique value.
+Функция getBy почти идентична get, только вместо ID она принимает значение Unique.
 
-Using getBy % TODO: title? image?
+Использование функции getBy:
 
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
     maybePerson <- getBy $ UniqueName "Michael" "Snoyman"
     case maybePerson of
-        Nothing -> liftIO $ putStrLn "Just kidding, not really there"
+        Nothing -> liftIO $ putStrLn "Ничего нет"
         Just person -> liftIO $ print person
 \end{lstlisting}
 
-Like get404, there is also a getBy404 function.
+Аналогично get404, также существует функция getBy404.
 
-\section{Select functions}
+\section{Другие функции выборки} % Select functions
 
-Most likely, you're going to want more powerful queries. You'll want to find everyone over a certain age; all cars available in blue; all users without a registered email address. For this, you need one of the select functions.
+Скорее всего, вам хотелось бы выполнять более сложные запросы, например, найти всех людей определенного возраста, все свободные машины синего цвета, всех пользователей без указанного email и тд. Для этого вам понадобится одна из следующий функций выборки.
 
-All the select functions use a similar interface, with slightly different outputs:
+Все эти функции имеют похожий интерфейс и немного различающиеся возвращаемые значения: 
 
 % TODO: table!
 
