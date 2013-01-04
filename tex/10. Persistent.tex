@@ -241,11 +241,15 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 Все действия с базой данных должны выполняться в экземпляре PersistStore. Как следует из его названия, каждое хранилище (PostgreSQL, SQLite, MongoDB) имеет свой экземпляр PersistStore. Именно с его помощью происходят генерация SQL-запросов, преобразования из PersistValue в значения, специфичные для конкретной СУБД и так далее.
 
+\begin{remark}
 Как вы, вероятно, догадываетесь, несмотря на то, что PersistStore предоставляет безопасный, хорошо типизированный интерфейс, во время взаимодействия с базой данных многое может пойти не так, как ожидалось. Однако тестируя код автоматически и тщательно в каждом отдельном месте, мы может централизовать склонный к ошибкам код и убедиться, что он настолько свободен от ошибок, насколько это вообще возможно.
+\end{remark}
 
 Функция withSqliteConn создает отдельное соединение с базой данных, используя предоставленную строку. Для тестов мы воспользуемся строкой <<:memory:>>, которая означает использовать базу данных, расположенную в памяти. Функция runSqlConn использует это соединение для выполнения действий над базой данных. SQLite и PostgreSQL используют один и тот же экземпляр PersistStore: SqlPersist.
 
+\begin{remark}
 В действительности существует еще несколько классов типов --- это PersistUpdate и PersistQuery. Различные классы типов предоставляют различную функциональность, что позволяет нам писать бэкенды, использующие более простые хранилища (например, Redis) несмотря на то, что они не обладают всей высокоуровневой функциональностью, предоставляемой Persistent. 
+\end{remark}
 
 Важный момент, который следует отметить, заключается в том, что каждый отдельный вызов runSqlConn выполняется в отдельной транзакции. Отсюда два следствия:
 
@@ -333,64 +337,69 @@ mkMigrate --- это функция Template Haskell, которая созда�
 
 \section{Уникальность} % Uniqueness
 
+Помимо объявления полей у сущности мы также может объявлять ограничение уникальности. Типичный пример --- это требование уникальности имени пользователя:
+
 In addition to declaring fields within an entity, you can also declare uniqueness constraints. A typical example would be requiring that a username be unique.
 
-% TODO: WTF?
-
-Unique Username
-
+% Возможно, имелось ввиду UniqueName? См ниже.
+\begin{lstlisting}
 User
     username Text
     UniqueUsername username
+\end{lstlisting}
 
-While each field name must begin with a lowercase letter, the uniqueness constraints must begin with an uppercase letter.
+В то время, как имя каждого поля должно начинаться с маленькой буквы, ограничение уникальности должно начинаться с большой буквы.
 
 \begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell,
-             OverloadedStrings, GADTs, FlexibleContexts #-}
+{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Data.Time
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Resource (runResourceT)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Person
     firstName String
     lastName String
     age Int
-    PersonName firstName lastName
+    UniqueName firstName lastName
     deriving Show
 |]
 
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runResourceT $ withSqliteConn ":memory:" $ runSqlConn $ do
     runMigration migrateAll
     insert $ Person "Michael" "Snoyman" 26
-    michael <- getBy $ PersonName "Michael" "Snoyman"
+    michael <- getBy $ UniqueName "Michael" "Snoyman"
     liftIO $ print michael
 \end{lstlisting}%$
 
-To declare a unique combination of fields, we add an extra line to our declaration. Persistent knows that it is defining a unique constructor, since the line begins with a capital letter. Each following word must be a field in this entity.
+Чтобы сообщить об уникальности комбинации нескольких полей, добавим одну дополнительную строку в наше определение. Persistent знает, что таким образом определяется уникальный конструктор, потому что строка начинается с заглавной буквы. Каждое последующее слово должно быть именем поля в сущности.
 
-The main restriction on uniqueness is that it can only be applied non-null fields. The reason for this is that the SQL standard is ambiguous on how uniqueness should be applied to NULL (e.g., is NULL=NULL true or false?). Besides that ambiguity, most SQL engines in fact implement rules which would be contrary to what the Haskell datatypes anticipate (e.g., PostgreSQL says that NULL=NULL is false, whereas Haskell says Nothing == Nothing is True).
+Главное ограничение, связанное с уникальностью, состоит в том, что она может использоваться только для непустых (non-null) полей. Причина заключается в том, что стандарт SQL неоднозначен относительно уникальности пустых полей (например, NULL=NULL является истиной или ложью?). К тому же, в большинстве СУБД реализованы правила, которые не соответствуют правилам для соответствующих типов данных в Haskell (например, в PostgreSQL NULL=NULL --- это ложь, а в Haskell Nothing = Nothing есть True).
 
-In addition to providing nice guarantees at the database level about consistency of your data, uniqueness constraints can also be used to perform some specific queries within your Haskell code, like the getBy demonstrated above. This happens via the Unique associated type. In the example above, we end up with a new constructor:
+В дополнение к предоставлению гарантий на уровне СУБД относительно согласованности даннных, ограничение уникальности также может быть использовано для выполнения некоторых специфических запросов из кода на Haskell, как, например, в случае с getBy, продемонстрированом выше. Здесь используется ассоциированный тип Unique. В конце приведенного выше примера используется следующий конструктор:
 
 \begin{lstlisting}
-PersonName :: String -> String -> Unique Person
+UniqueName :: String -> String -> Unique Person
 \end{lstlisting}
+
+\begin{remark}
+В случае использования MongoDB ограничение уникальности не может быть использовано --- вы должны создать уникальный индекс по полю.
+\end{remark}
 
 \section{Запросы} % Queries
 
-Depending on what your goal is, there are different approaches to querying the database. Some commands query based on a numeric ID, while others will filter. Queries also differ in the number of results they return: some lookups should return no more than one result (if the lookup key is unique) while others can return many results.
+В зависимости от вашей цели, могут быть использованы различные запросы к базе данных. В некоторых запросах используется численный ID, когда в других происходит фильтрация по значению поля. Запросы также различаются по количеству значений, которые они возвращают. Одни должны возвращать не более одного результата, другие же могут возвразать множество результатов.
 
-Persistent therefore provides a few different query functions. As usual, we try to encode as many invariants in the types as possible. For example, a query that can return only 0 or 1 results will use a Maybe wrapper, whereas a query returning many results will return a list.
+В связи с этим Persistent предоставляет множетсво различных функций для выполнения запросов. Как обычно, мы стараемся закодировать с помощью типов столько инвариантов, сколько возможно. Например, если запрос может возвращать либо 0, либо 1 результат, используется обертка Maybe. Если же запрос может вернуть много результатов, возвращается список.
 
 \section{Выборка по ID} % Fetching by ID
 
 The simplest query you can perform in Persistent is getting based on an ID. Since this value may or may not exist, its return type is wrapped in a Maybe.
 
-Using get % TODO: title? image?
+Using get % в оригинале это что-то вроде врезки
 
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
