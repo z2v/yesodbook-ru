@@ -442,30 +442,30 @@ UniqueName :: String -> String -> Unique Person
 
 Чаще всего используется функция selectList, так что мы рассмотрим ее отдельно. После этого понять остальные функции будет проще простого.
 
-Функция selectList принимает два аргумента: список Filter'ов и список SelectOpt'ов. The former is what limits your results based on characteristics; it allows for equals, less than, is member of, and such. SelectOpts provides for three different features: sorting, limiting output to a certain number of rows, and offsetting results by a certain number of rows.
+Функция selectList принимает два аргумента: список Filter'ов и список SelectOpt'ов. Первый из них определяет ограничения, накладываемые на свойства сущностей, и позволяет использовать предикаты <<равно>>, <<меньше чем>>, <<принадлежит множеству>> и тп. SelectOpt'ы предоставляют три различных возможности --- сортировку, ограничение количества возвращаемых строк и смещение возвращаемого значения на заданное количество строк.
 
 \begin{remark}
-The combination of limits and offsets is very important; it allows for efficient pagination in your webapps.
+Комбинация из ограничения и смещения очень важна, она позволяет реализовать эффективное разбиение на страницы в вашем веб-приложении.
 \end{remark}
 
-Let's jump straight into an example of filtering, and then analyze it.
+Сразу перейдем к примеру с фильтрацией, а затем проанализируем его:
 
 \begin{lstlisting}
     people <- selectList [PersonAge >. 25, PersonAge <=. 30] []
     liftIO $ print people
 \end{lstlisting}%$
 
-As simple as that example is, we really need to cover three points:
+Несмотря на простоту примера, необходимо отметить три момента:
 
 \begin{enumerate}
-\item PersonAge is a constructor for an associated phantom type. That might sound scary, but what's important is that it uniquely identifies the "age" column of the "person" table, and that it knows that the age field is an Int. (That's the phantom part.)
-\item We have a bunch of Persistent filtering operators. They're all pretty straight-forward: just tack a period to the end of what you'd expect. There are three gotchas here, I'll explain below.
-\item The list of filters is ANDed together, so that our constraint means "age is greater than 25 AND age is less than or equal to 30". We'll describe ORing later.
+\item PersonAge является конструктором ассоциативного фантомного типа. Звучит ужасающе, однако действительно важно лишь то, что он однозначно определяет столбец <<age>> таблицы <<person>>, а также знает, что возраст является Int'ом. (В этом и состоит фантомность.)
+\item Мы имеем дело с группой фильтрующих операторов пакета Persistent. Они довольно прямолинейны и делают в точности то, что вы от них ожидаете. Однако тут есть три тонких момента, которые я объясню ниже.
+\item Список фильтров объядиняется логическим И, то есть, ограничение следует читать, как <<возраст больше 25-и И возраст меньше или равен 30-и>>. Использование логического ИЛИ мы рассмотрим позже.
 \end{enumerate}
 
-The one operator that's surprisingly named is "not equals." We use !=., since /=. is used for updates (for "divide-and-set", described later). Don't worry: if you use the wrong one, the compiler will catch you. The other two surprising operators are the "is member" and "is not member". They are, respectively, <-. and /<-. (both end with a period).
+Также имеется оператор с удивительным названием <<не равно>>. Мы используем обозначение \lstinline'!=.', поскольку \lstinline'/=.' используется при UPDATE-запросах (ради <<разделяй-и-устанавливай>>, о котором я расскажу позже). Не беспокойтесь, если вы воспользуетесь неверным оператором, компилятор предупредит вас. Еще два удивительных оператора --- это <<принадлежит множеству>> и <<не пренадлежит множеству>>. Они обозначаются, соответственно, \lstinline'<-.' и \lstinline'/<-.' (оба с точкой на конце).
 
-And regarding ORs, we use the ||. operator. For example:
+Что же касается логического ИЛИ, для него есть оператор \lstinline'||.'. Например:
 
 \begin{lstlisting}
     people <- selectList
@@ -477,20 +477,20 @@ And regarding ORs, we use the ||. operator. For example:
     liftIO $ print people
 \end{lstlisting}%$
 
-This (completely nonsensical) example means: find people who are 26-30, inclusive, OR whose names are neither Adam or Bonny, OR whose age is either 50 or 60.
+Этот (совершенно нелепый) пример означает <<найти людей, чей возраст составляет от 26-и до 30-и лет включительно ИЛИ чье имя не Адам и не Бонни ИЛИ чей возраст --- 50 или 60 лет>>.
 
 \section{SelectOpt}
 
-All of our selectList calls have included an empty list as the second parameter. That specifies no options, meaning: sort however the database wants, return all results, and don't skip any results. A SelectOpt has four constructors that can be used to change all that.
+Все наши вызовы selectList имели пустой список в качестве второго аргумента. Это не задает никаких параметров и означает <<сортируй на усмотрение СУБД, возвращай все результаты, не пропускай никаких результатов>>. SelectOpt имеем четыре конструктора, которые могут быть использованы для изменения этого поведения:
 
 \begin{itemize}
-\item {\bf Asc}. Sort by the given column in ascending order. This uses the same phantom type as filtering, such as PersonAge. 
-\item {\bf Desc}. Same as Asc, in descending order.
-\item {\bf LimitTo}. Takes an Int argument. Only return up to the specified number of results.
-\item {\bf OffsetBy}. Takes an Int argument. Skip the specified number of results.
+\item {\bf Asc}. Сортировать по заданному столбцу в неубывающем порядке. Тут используется такой же фантомный тип, как и при фильтрации, например PersonAge.
+\item {\bf Desc}. Аналогично Asc, только в невозрастающем порядке.
+\item {\bf LimitTo}. Принимает аргумент типа Int. Вернуть не более указанного количества результатов.
+\item {\bf OffsetBy}. Также принимает аргумент типа Int. Пропустить указанное количество результатов.
 \end{itemize}
 
-The following code defines a function that will break down results into pages. It returns all people aged 18 and over, and then sorts them by age (oldest person first). For people with the same age, they are sorted alphabetically by last name, then first name.
+В следующем отрывке кода определяется функция, которая разбивает результат на страницы. Она возвращает всех людей старше 18-и лет, отсортированных по возрасту (более старшие идут первыми). Люди с одинаковым возрастом сортируются по фамилиям, а затем по именам.
 
 \begin{lstlisting}
 resultsForPage pageNumber = do
@@ -513,7 +513,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 \section{Другие действия с данными} % Manipulation
 
-Querying is only half the battle. We also need to be able to add data to and modify existing data in the database.
+Извлечение данных --- это только полдела. Нам также необходимо иметь возможность добавлять данные и модифицировать данные, находящиеся в базе.
 
 \section{Вставка} % Insert 
 
