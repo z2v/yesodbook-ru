@@ -902,9 +902,9 @@ type PostId = Key SqlPersist Post
 
 Описанное выше может показаться несколько сложным, но при написании пользовательского кода все это едва ли когда-нибудь вам понадобится. Просмотрите еще раз эту главу --- нам ни разу не приходилось работать с Key или Generic напрямую. Единственное место, где они могут всплыть, это сообщения компилятора об ошибках. Так что в целом информация из этого раздела вам пригодятся, но вряд ли ею придется пользоваться каждый день.
 
-\section{Произвольные поля} % Custom Fields
+\section{Поля произвольного типа} % Custom Fields
 
-Occassionally, you will want to define a custom field to be used in your datastore. The most common case is an enumeration, such as employment status. For this, Persistent provides a helper Template Haskell function:
+У вас может возникнуть желание использовать в вашем хранилище поля произвольного типа. Наиболее типичный случай --- это перечисление, например состояния найма. Для этого Persistent предоставляет специальную функцию Template Haskell:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
@@ -931,7 +931,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     insert $ Person "Michael" Employed
 \end{lstlisting}%$
 
-derivePersistField stores the data in the database using a string field, and performs marshaling using the Show and Read instances of the datatype. This may not be as efficient as storing via an integer, but it is much more future proof: even if you add extra constructors in the future, your data will still be valid.
+derivePersistField позволяет хранить данные в базе, используя строковые поля, а также реализует сериализацию с помощью экземпляров классов Read и Show вашего типа данных. Это может быть не так эффективно, как использование целых чисел, зато удобнее вот в каком плане. Даже если в будущем вы добавите новые конструкторы, данные в базе останутся валидными.
 
 \section{Persistent: сырой SQL} % Persistent: Raw SQL
 
