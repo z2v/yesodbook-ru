@@ -651,7 +651,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Person
     name String
     age Int Maybe
-    created UTCTime default=now()
+    created UTCTime default=CURRENT_TIME
     deriving Show
 |]
 
@@ -664,7 +664,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 Maybe является встроенным атрибутом из одного слова. Он делает поле необязательным. Это означает, что в Haskell данное поле будет обернуто в Maybe, а в SQL оно может иметь значение NULL.
 
-Атрибут default зависит от используемого бэкенда и может использовать любой синтаксис, лишь бы он был понятен СУБД. В приведенном примере используется встроенная функция СУБД now(). Допустим, теперь мы хотим добавить в сущность Person поле с любимым языком программирования:
+Атрибут default зависит от используемого бэкенда и может использовать любой синтаксис, лишь бы он был понятен СУБД. В приведенном примере используется встроенная функция СУБД CURRENT_TIME. Допустим, теперь мы хотим добавить в сущность Person поле с любимым языком программирования:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
@@ -678,7 +678,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Person
     name String
     age Int Maybe
-    created UTCTime default=now()
+    created UTCTime default=CURRENT_TIME
     language String default='Haskell'
     deriving Show
 |]
@@ -705,7 +705,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Person
     name String
     age Int Maybe
-    created UTCTime default=now()
+    created UTCTime default=CURRENT_TIME
     language String default='Haskell'
     country String "default='Российская Федерация'"
     deriving Show
@@ -747,7 +747,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 \section{Отношения} % Relations
 
-Persistent allows references between your data types in a manner that is consistent with supporting non-SQL databases. We do this by embedding an ID in the related entity. So if a person has many cars:
+Persistent поддерживает ссылки между типами данных, таким образом, что они остаются согласованными в поддерживаемых NoSQL базах данных. Ссылка создается путем добавления ID в связанную сущность. Вот как выглядит пример для человека с большим количеством машин:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
@@ -773,12 +773,12 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     bruce <- insert $ Person "Bruce Wayne"
     insert $ Car bruce "Bat Mobile"
     insert $ Car bruce "Porsche"
-    -- this could go on a while
+    -- это может занять много времени
     cars <- selectList [CarOwnerId ==. bruce] []
     liftIO $ print cars
 \end{lstlisting}%$
- 
-Using this technique, you can define one-to-many relationships. To define many-to-many relationships, we need a join entity, which has a one-to-many relationship with each of the original tables. It is also a good idea to use uniqueness constraints on these. For example, to model a situation where we want to track which people have shopped in which stores:
+
+С помощью этой техники вы можете определять отношения один-ко-многим. Чтобы определить отношение многие-ко-многим, нам понадобится связующая сущность, которая имеет отношения один-ко-многим с каждой из оригинальных таблиц. В данном случае будет хорошей идеей воспользоваться ограничением уникальности. Допустим, мы хотим смоделировать ситуацию, в которой мы отслеживаем, какие люди в каких магазинах делают покупки:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
@@ -817,7 +817,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 \end{lstlisting}%$
 
 \begin{remark}
-Since the Id suffix on a type is used to indicate a foreign key relationship to Persistent, you currently cannot use non-key types that end in Id. A simple workaround is to define a type synonym with a different suffix, e.g.:
+Поскольку суффикс Id в имени типа используется в Persistent для обозначения связи по внешнему ключу, в настоящий момент не представляется возможным использовать неключевые типы, чье имя заканчивается на Id. Простое решение этой проблемы заключается в определении синонима типа с другим суффиксом, например:
 
 \begin{lstlisting}
 data MyExistingTypeEndingInId = ...
