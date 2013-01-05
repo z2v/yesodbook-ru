@@ -830,7 +830,7 @@ Person
 
 \section{Подробнее о типах} % Closer look at types
 
-So far, we've spoken about Person and PersonId without really explaining what they are. In the simplest sense, for a SQL-only system, the PersonId could just be type PersonId = Int64. However, that means there is nothing binding a PersonId at the type level to the Person entity. As a result, you could accidently use a PersonId and get a Car. In order to model this relationship, we use phantom types. So, our next naive step would be:
+До сих пор мы говорили о Person и PersonId без особого объяснения, чем они на самом деле являются. В простейшем случае, если мы говорим только о реляционных базах данных, PersinId мог бы быть просто \lstinline'type PersonId = Int64'. Но в этом случае на уровне типов ничто не связывало бы PersinId и сущность Person. В результате вы могли бы по ошибке воспользоваться PersonId для получения Car. Для моделирования таких отношений мы используем фантомные типы. Итак, наш следующий наивный шаг был бы следующим:
 
 \begin{lstlisting}
 newtype Key entity = Key Int64
@@ -838,32 +838,32 @@ type PersonId = Key Person
 \end{lstlisting}
 
 \begin{remark}
-Prior to Persistent 0.6, we used associated types instead of phantom types. You could solve the problem in that direction as well, but phantoms worked out better.
+До Persistent 0.6 мы использовали ассоциативные типы вместо фантомных типов. Таким способом также можно решить проблему, но фантомы справляются с ней лучше.
 \end{remark}
 
-And that works out really well, until you get to a backend that doesn't use Int64 for its IDs. And that's not just a theoretical question; MongoDB uses ByteStrings instead. So what we need is a key value that can contain an Int and a ByteString. Seems like a great time for a sum type:
+И это действительно отлично работает до тех пор, пока вы не сталкнетесь с бэкендом, который не использует Int64 в качестве ID. И это далеко не теоретический вопрос, поскольку MongoDB для этих целей использует тип ByteString. Итак, нам нужно значение ключа, которое может содержать либо Int64, либо ByteString. Кажется, настало отличное время для применения суммарных типов:
 
 \begin{lstlisting}
 data Key entity = KeyInt Int64 | KeyByteString ByteString
 \end{lstlisting}
 
-But that's just asking for trouble. Next we'll have a backend that uses timestamps, so we'll need to add another constructor to Key. This could go on for a while. Fortunately, we already have a sum type intended for representing arbitrary data: PersistValue:
+Но на самом деле мы только ищем неприятности. В следующий раз нам попадется бэкенд, который использует в качестве ключа временные метки и нам придется ввести дополнительный конструктор для Key. Так может продолжаться какое-то время. К счастью, у нас уже есть суммарный тип, предназначенный для представления произвольных данных, PersistValue:
 
 \begin{lstlisting}
 newtype Key entity = Key PersistValue
 \end{lstlisting}
 
-But this has another problem. Let's say we have a web application that takes an ID as a parameter from the user. It will need to receive that parameter as Text and then try to convert it to a Key. Well, that's simple: write a function to convert a Text to a PersistValue, and then wrap the result in the Key constructor, right?
+Но тут есть другая проблема. Скажем, у нас есть веб-приложение, которое принимает ID в качестве параметра от пользователя. Этому приложению придется принимать параметр, как Text, а затем пытаться преобразовать его в Key. Нет проблем, давайте напишем функцию, которая преобразовывает Text в PersistValue, а затем передадим возвращаемое ее значение в конструктор Key. Правильно?
 
-Wrong. We tried this, and there's a big problem. We end up getting Keys that could never be. For example, if we're dealing with SQL, a key must be an integer. But the approach described above would allow arbitrary textual data in. The result was a bunch of 500 server errors as the database choked on comparing an integer column to text.
+Нет, не правильно. Мы пробовали, и это оказалось большим геморроем. Все закончилось тем, что нам пришлось принимать ключи, которых не может быть. Например, если мы имеем дело с SQL, ключ должен быть целым числом. Но при подходе, описанном выше, в качестве ключа мы вынуждены принимать произвольные текстовые данные. В результате мы получали 500-ые ошибки, потому что СУБД была в шоке от попыток сравнивать целочисленные поля с текстом.
 
-So what we need is a way to convert text to a Key, but have it dependent on the rules of the backend in question. And once phrased that way, the answer is simple: just add another phantom. The real, actual definition of Key in Persistent is:
+Что нам действительно нужно, это способ преобразования текста в Key, но с учетом правил используемого бэкенда. И как только вопрос становится сформулирован таким образом, мы тут же получаем ответ --- добавить еще одного фантома. В действительности, определение Key в Persistent следующее:
 
 \begin{lstlisting}
 newtype Key backend entity = Key { unKey :: PersistValue }
 \end{lstlisting}
 
-This works great: we can have a Text -> Key MongoDB entity function and a Text -> Key SqlPersist entity function, and everything runs smoothly. But now we have a new problem: relations. Let's say we want to represent blogs and blog posts. We would use the entity definition:
+И это прекрасно работает. Теперь мы можем получить функцию \lstinline'Text -> Key MongoDB entity' и функцию \lstinline'Text -> Key SqlPersist entity', после чего все работает, как по маслу. Но теперь есть другая проблема --- отношения. Скажем, мы хотим представлять блоги и посты в блогах. Будем использовать следующее определение сущностей:
 
 \begin{lstlisting}
 Blog
@@ -873,23 +873,23 @@ Post
     blogId BlogId
 \end{lstlisting}
 
-But what would that look like in terms of our Key datatype?
+Но как это будет выглядеть с точки зрения типа данных Key?
 
 \begin{lstlisting}
 data Blog = Blog { blogTitle :: Text }
-data Post = Post { postTitle :: Text, postBlogId :: Key <what goes here?> Blog }
+data Post = Post { postTitle :: Text, postBlogId :: Key <что должно быть здесь?> Blog }
 \end{lstlisting}
 
-We need something to fill in as the backend. In theory, we could hardcode this to SqlPersist, or Mongo, but then our datatypes will only work for a single backend. For an individual application, that might be acceptable, but what about libraries defining datatypes to be used by multiple applications, using multiple backends?
+Мы должны указать какой-то бэкенд. В теории, мы можем захардкодить SqlPersist или Mongo, но тогда наши типы данных будут работать только с одним бэкендом. Для одного приложения это может быть приемлемым, но как насчет библиотек с определениями типов данных, которые могут использоваться в различных библиотеках с различными бэкендами?
 
-So things got a little more complicated. Our types are actually:
+Так что, все становится чуть сложнее. На самом деле наши типы такие:
 
 \begin{lstlisting}
 data BlogGeneric backend = Blog { blogTitle :: Text }
 data PostGeneric backend = Post { postTitle :: Text, postBlogId :: Key backend (BlogGeneric backend) }
 \end{lstlisting}
 
-Notice that we still keep the short names for the constructors and the records. Finally, to give a simple interface for normal code, we define some type synonyms:
+Обратите внимание, что мы все еще используем короткие имена для конструкторов и записей. Наконец, чтобы предоставить простой интерфейс для нормального кода, мы определяем кое-какие синонимы типов:
 
 \begin{lstlisting}
 type Blog = BlogGeneric SqlPersist
@@ -898,9 +898,9 @@ type Post = PostGeneric SqlPersist
 type PostId = Key SqlPersist Post
 \end{lstlisting}
 
-And no, SqlPersist isn't hard-coded into Persistent anywhere. That sqlSettings parameter you've been passing to mkPersist is what tells us to use SqlPersist. Mongo code will use mongoSettings instead.
+И нет, SqlPersist не захардкожен где бы то ни было в Persistent. Это параметр sqlSettings, что вы передали в mkPersist, говорит нам использовать SqlPersist. В коде, использующем MongoDB, вместо него будет использован параметр mongoSettings.
 
-This might be quite complicated under the surface, but user code hardly ever touches this. Look back through this whole chapter: not once did we need to deal with the Key or Generic stuff directly. The most common place for it to pop up is in compiler error messages. So it's important to be aware that this exists, but it shouldn't affect you on a day-to-day basis.
+Описанное выше может показаться несколько сложным, но при написании пользовательского кода все это едва ли когда-нибудь вам понадобится. Просмотрите еще раз эту главу --- нам ни разу не приходилось работать с Key или Generic напрямую. Единственное место, где они могут всплыть, это сообщения компилятора об ошибках. Так что в целом информация из этого раздела вам пригодятся, но вряд ли ею придется пользоваться каждый день.
 
 \section{Произвольные поля} % Custom Fields
 
