@@ -634,9 +634,9 @@ deleteWhere & Удалить по множеству фильтров \\ \hline
 
 \section{Атрибуты} % Attributes
 
-So far, we have seen a basic syntax for our persist blocks: a line for the name of our entities, and then an indented line for each field with two words: the name of the field and the datatype of the field. Persistent handles more than this: you can assign an arbitrary list of attributes after the first two words on a line.
+До сих пор мы видели базовый синтаксис для наших persist-блоков --- строка с именем сущности, за которой для кажлого поля идет по одной строке с отступами, состоящей из двух слов, имени поля и типа данных поля. Persistent поддерживает не только это. После двух слов в строке вы можете указать произвольный список атрибутов.
 
-Suppose we want to have a Person entity with an (optional) age and the timestamp of when he/she was added to the system. For entities already in the database, we want to just use the current date-time for that timestamp.
+Допустим, вы хотите, чтобы сущность Person имела необязательный возраст, а также время добавления его или ее в систему. Для сущностей, уже находящихся в базе данных, в качестве этого времени мы хотим использовать текущее время.
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
@@ -662,9 +662,9 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     insert $ Person "Greg" Nothing time
 \end{lstlisting}%$
 
-Maybe is a built in, single word attribute. It makes the field optional. In Haskell, this means it is wrapped in a Maybe. In SQL, it makes the column nullable.
+Maybe является встроенным атрибутом из одного слова. Он делает поле необязательным. Это означает, что в Haskell данное поле будет обернуто в Maybe, а в SQL оно может иметь значение NULL.
 
-The default attribute is backend specific, and uses whatever syntax is understood by the database. In this case, it uses the database's built-in now() function. Suppose that we now want to add a field for a person's favorite programming language:
+Атрибут default зависит от используемого бэкенда и может использовать любой синтаксис, лишь бы он был понятен СУБД. В приведенном примере используется встроенная функция СУБД now(). Допустим, теперь мы хотим добавить в сущность Person поле с любимым языком программирования:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
@@ -688,10 +688,10 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 \end{lstlisting}%$
 
 \begin{remark}
-The default (default выделено, как код) attribute has absolutely no impact on the Haskell code itself; you still need to fill in all values. This will only affect the database schema and automatic migrations.
+Атрибут default абсолютно никак не затрагивает код на Haskell, то есть, вам по прежнему придется заполнять все значения. Атрибут влияет только на схему базы данных и автоматические миграции.
 \end{remark}
 
-We need to surround the string with single quotes so that the database can properly interpret it. Finally, Persistent can use double quotes for containing white space, so if we want to set someone's default home country to be El Salvador:
+Мы должны окружить строку в одинарные кавычки, чтобы СУБД могла правильно интерпретировать ее. Также Persistent позволяет использовать двойные кавычки для строк, содержащих пробелы. Например, если мы хотим сделать страной по-умолчанию Российскую Федерацию, то должны написать:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
@@ -707,15 +707,15 @@ Person
     age Int Maybe
     created UTCTime default=now()
     language String default='Haskell'
-    country String "default='El Salvador'"
+    country String "default='Российская Федерация'"
     deriving Show
 |]
 
 main = withSqliteConn ":memory:" $ runSqlConn $ do
     runMigration migrateAll
 \end{lstlisting}%$
- 
-One last trick you can do with attributes is to specify the names to be used for the SQL tables and columns. This can be convenient when interacting with existing databases.
+
+Последний трюк, который вы можете проделать с атрибутами --- это указать имена таблиц и столбцов, используемые в SQL. Это может пригодиться при взаимодействии с существующими базами данных.
 
 \begin{lstlisting}
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
