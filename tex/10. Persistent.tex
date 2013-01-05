@@ -557,16 +557,16 @@ Entity представляет собой тип данных, который �
 
 \section{Обновление} % Update
 
-Now, in the context of that discussion, let's think about updating. The simplest way to update is:
+Теперь подумаем об обновлении в контексте нашего обсуждения. Вот простейший способ сделать обновление:
 
 \begin{lstlisting}
 let michael = Person "Michael" 26
     michaelAfterBirthday = michael { personAge = 27 }
 \end{lstlisting}
 
-But that's not actually updating anything, it's just creating a new Person value based on the old one. When we say update, we're not talking about modifications to the values in Haskell. (We better not be of course, since Haskell data types are immutable.)
+Однако в действительности этот код ничего не обновляет. Он просто создает новое значение типа Person, основанное на старом значении. Когда мы говорим об обновлении, мы имеем ввиду не модификацию значений в Haskell. (И вправду, не стоило бы делать это, поскольку данные в Haskell неизменяемы.) % в оригинале "since Haskell data types are immutable", мне кажется, это опечатка: https://github.com/yesodweb/yesodweb.com-content/pull/27
 
-Instead, we're looking at ways of modifying rows in a table. And the simplest way to do that is with the update function.
+На самом деле, мы ищем способ изменить строки в таблице. И проще всего сделать это с помощью функции update:
 
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
@@ -574,7 +574,7 @@ Instead, we're looking at ways of modifying rows in a table. And the simplest wa
     resultsForPage 1 >>= liftIO . print
 \end{lstlisting}%$
 
-update takes two arguments: an ID, and a list of Updates. The simplest update is assignment, but it's not always the best. What if you want to increase someone's age by 1, but you don't have their current age? Persistent has you covered:
+Функция update принимает два аргумента: ID и список Update'ов. Простейший способ обновления поля заключается в присвоении ему нового значения, однако этот способ не лучший. Что, если вы хотите увеличить чей-то возраст на единицу, но текущий возраст вам не известен? В Persistent предусмотрено и это:
 
 \begin{lstlisting}
 haveBirthday personId = update personId [PersonAge +=. 1]
@@ -587,28 +587,28 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     resultsForPage 1 >>= liftIO . print
 \end{lstlisting}%$
 
-And as you might expect, we have all the basic mathematical operators: +=., -=., *=., and /=. (full stop). These can be convenient for updating a single record, but they are also essential for proper ACID guarantees. Imagine the alternative: pull out a Person, increment the age, and update the new value. If you have two threads/processes working on this database at the same time, you're in for a world of hurt (hint: race conditions).
+Как и следовало ожидать, в нашем распоряжении есть все базовые математические операторы: \lstinline'+=.', \lstinline'-=.', \lstinline'*=.' и \lstinline'/=.'. Они не только удобны для обновления единичной записи, но и необходимы для соблюдения гарантий ACID. Представьте, что бы мы делали без этих операторов. Нам приходилось бы извлекать из базы Person, увеличивать возраст, а затем обновлять значение в базе данных на новое. Как только у вас появляется два процесса или потока, одновременно работающих с базой данных, вы попадаете в мир боли (подсказка: состоняие гонки).
 
-Sometimes you'll want to update many fields at once (give all your employees a 5\% pay increase, for example). updateWhere takes two parameters: a list of filters, and a list of updates to apply.
+Иногда вы хотите обновить несколько строк одновременно (повысить зарплату на 5\% всем вашим работникам, например). Функция updateWhere принимает два аргумента: список фильтров и список одновлений, которые следует применить. % в оригинале "Sometimes you'll want to update many fields", мне кажется, это опечатка: https://github.com/yesodweb/yesodweb.com-content/pull/28
 
 \begin{lstlisting}
-    updateWhere [PersonFirstName ==. "Michael"] [PersonAge *=. 2] -- it's been a long day
+    updateWhere [PersonFirstName ==. "Michael"] [PersonAge *=. 2] -- это был длинный день
 \end{lstlisting}
 
-Occassionally, you'll just want to completely replace the value in a database with a different value. For that, you use (surprise) the replace function.
+Иногда хочется просто заменить одно значение в базе данных на другое. Для этого (сюрприз!) воспользуйтесь функцией replace:
 
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
     replace personId $ Person "John" "Doe" 20
     update personId [PersonAge =. 27]
     haveBirthday personId
-    updateWhere [PersonFirstName ==. "Michael"] [PersonAge *=. 2] -- it's been a long day
+    updateWhere [PersonFirstName ==. "Michael"] [PersonAge *=. 2] -- это был длинный день
     resultsForPage 1 >>= liftIO . print
 \end{lstlisting}%$
 
 \section{Удаление} % Delete
 
-Как ни печально, иногда мы вынуждены расстаться с нашими данными. Чтобы сделать это, у нас есть три функции:
+Как ни печально, иногда мы вынуждены расстаться с нашими данными. Для этого у нас есть аж три функции:
 
 \begin{center}
 \begin{tabular}{ | l | l |}
@@ -626,7 +626,7 @@ deleteWhere & Удалить по множеству фильтров \\ \hline
     deleteWhere [PersonFirstName ==. "Michael"]
 \end{lstlisting}%$
 
-С помощью deleteWhere мы можем удалить вообще все данные из таблицы, нужно только подсказать GHC, какая таблица нас интересует:
+С помощью deleteWhere мы можем удалить вообще все данные из таблицы. Нужно только подсказать GHC, какая таблица нас интересует:
 
 \begin{lstlisting}
     deleteWhere ([] :: [Filter Person])
