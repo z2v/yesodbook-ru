@@ -935,12 +935,12 @@ derivePersistField позволяет хранить данные в базе, �
 
 \section{Persistent: сырой SQL} % Persistent: Raw SQL
 
-The Persistent package provides a type safe interface to data stores. It tries to be backend-agnostic, such as not relying on relational features of SQL. My experience has been you can easily perform 95\% of what you need to do with the high-level interface. (In fact, most of my web apps use the high level interface exclusively.)
+Пакет Persistent предоставляет типобезопасный интерфейс к хранилищу данных. Он старается не зависить от используемого бэкенда, например, не полагаясь на реляционные возможности SQL. По моему опыту в 95\% случаев вы с легкостью решите стоящую перед вами задачу, используя высокоуровневый интерфейс. (В действительности, большинство моих веб-приложений используют только высокоуровневый интерфейс.)
 
-But occassionally you'll want to use a feature that's specific to a backend. One feature I've used in the past is full text search. In this case, we'll use the SQL "LIKE" operator, which is not modeled in Persistent. We'll get all people with the last name "Snoyman" and print the records out.
+Но иногда возникает желаение использовать возможности, специфичные для конкретного бэкенда. Одной из таких возможностей, которую мне приходилось использовать, был полнотекстовый поиск. В этом случае в SQL-запросе требуется использовать LIKE, который не моделируется в Persistent. Давайте попробуем найти всех людей с фамилией <<Snoyman>> и вывести найденные записи.
 
 \begin{remark}
-Actually, you can express a LIKE operator directly in the normal syntax due to a feature added in Persistent 0.6, which allows backend-specific operators. But this is still a good example, so let's roll with it.
+На самом деле, вы можете воспользоваться оператором LIKE с помощью нормального синтаксиса, поскольку в Persistent 0.6 была добавлена возможность, позволяющая использовать операторы, специфичные для бэкенда. Но это все равно хороший пример, так что давайте рассмотрим его.
 \end{remark}
 
 \begin{lstlisting}
@@ -973,20 +973,20 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
     insert $ Person "Greg Weber"
     insert $ Person "Rick Richardson"
 
-    -- Persistent does not provide the LIKE keyword, but we'd like to get the
-    -- whole Snoyman family...
+    -- Persistent не предоставляет ключевого слова LIKE, но нам хотелось бы
+    -- получить всю семью Snoyman'ов...
     let sql = "SELECT name FROM Person WHERE name LIKE '%Snoyman'"
     C.runResourceT $ withStmt sql []
                 C.$$ CL.mapM_ $ liftIO . print
 \end{lstlisting}%$
 
-There is also higher-level support that allows for automated data marshaling. Please see the Haddock API docs for more details.
+Также существует высокоуровневая поддержка сериализации. Подробности вы можете найти в Haddock-документации по API.
 
 \section{Интеграция с Yesod} % Integration with Yesod
 
-So you've been convinced of the power of Persistent. How do you integrate it with your Yesod application? If you use the scaffolding, most of the work is done for you already. But as we normally do, we'll build up everything manually here to point out how it works under the surface.
+Итак, вы прониклись всей мощью Persistent. Как теперь интегрировать его с Yesod-приложением? Если вы использовали автоматическую генерацию шаблона приложения, большая часть работы уже была проделана за вас. Но, по традиции, сейчас мы проделаем все вручную, чтобы лучше понять, как все устроено.
 
-The yesod-persistent package provides the meeting point between Persistent and Yesod. It provides the YesodPersist typeclass, which standardizes access to the database via the runDB method. Let's see this in action.
+Пакет yesod-persistent представляет собой <<клей>> между Persistent и Yesod. Он предоставляет класс типов YesodPersist, который стандартизует доступ к базе данных с помощью runDB. Вот как это выглядит в действии.
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, FlexibleContexts #-}
@@ -995,7 +995,7 @@ The yesod-persistent package provides the meeting point between Persistent and Y
 import Yesod
 import Database.Persist.Sqlite
 
--- Define our entities as usual
+-- Определяем наши сущности, как обычно
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Person
     firstName String
@@ -1004,22 +1004,22 @@ Person
     deriving Show
 |]
 
--- We keep our connection pool in the foundation. At program initialization, we
--- create our initial pool, and each time we need to perform an action we check
--- out a single connection from the pool.
+-- Мы являемся держателями пула соединений. Когда программа инициализируется, мы
+-- создаем начальный пул, и каждый раз, когда нам нужно произвести действие,
+-- мы выделяем соединение из пула
 data PersistTest = PersistTest ConnectionPool
 
--- We'll create a single route, to access a person. It's a very common
--- occurrence to use an Id type in routes.
+-- Мы создаем один-единственный маршрут для доступа к человеку. Это довольно распространенная
+-- практика, когда в маршрутах используется Id.
 mkYesod "PersistTest" [parseRoutes|
 /person/#PersonId PersonR GET
 |]
 
--- Nothing special here
+-- Тут ничего особенного
 instance Yesod PersistTest
 
--- Now we need to define a YesodPersist instance, which will keep track of
--- which backend we're using and how to run an action.
+-- Теперь нам нужно определить экземпляр класса Yesod Persist, который будет следить
+-- за тем, какой бэкенд мы используем и как следует выполнять действия
 instance YesodPersist PersistTest where
     type YesodPersistBackend PersistTest = SqlPersist
 
@@ -1027,8 +1027,8 @@ instance YesodPersist PersistTest where
         PersistTest pool <- getYesod
         runSqlPool action pool
 
--- We'll just return the show value of a person, or a 404 if the Person doesn't
--- exist.
+-- Мы просто возвращаем строковое представление челавека
+-- или ошибку 404, если такой Person не существует
 getPersonR :: PersonId -> Handler RepPlain
 getPersonR personId = do
     person <- runDB $ get404 personId
@@ -1044,24 +1044,24 @@ main = withSqlitePool "test.db3" openConnectionCount $ \pool -> do
     warpDebug 3000 $ PersistTest pool
 \end{lstlisting}%$
 
-There are two important pieces here for general use. runDB is used to run a DB action from within a Handler. Within the runDB, you can use any of the functions we've spoken about so far, such as insert and selectList.
+Тут есть два важных момента. Для выполнения действий над базой данных в обработчике используется runDB. Внутри runDB вы можете использовать все те функции, о которых шла речь выше, например, insert и selectList. 
 
 \begin{remark}
-The type of runDB is runDB :: YesodDB sub master a -> GHandler sub master a. YesodDB is defined as:
+runDB имеет тип \lstinline'runDB :: YesodDB sub master a -> GHandler sub master a'. YesodDB определен, как:
 
 \begin{lstlisting}
 type YesodDB sub master = YesodPersistBackend master (GHandler sub master)
 \end{lstlisting}
 
-Since it is built on top of the YesodPersistBackend associated type, it uses the appropriate database backend based on the current site.
+Поскольку он построен на ассоциативном типе YesodPersistBackend, он использует подходящий для текущего сайта бэкенд.
 \end{remark}
 
-The other new feature is get404. It works just like get, but instead of returning a Nothing when a result can't be found, it returns a 404 message page. The getPersonR function is a very common approach used in real-world Yesod applications: get404 a value and then return a response based on it.
+Другая новая фишка --- это get404. Эта функция работает в точности, как get, только вместо того, чтобы возвращать Nothing, когда результат не может быть найден, она возвращает страницу с сообщением об ошибке 404. В функции getPersonR использован очень распространенный в реальных приложениях на Yesod подход --- значение получается через функцию get404, а затем в зависимости от результата возвращается ответ.
 
 \section{Заключение} % Summary
 
-Persistent brings the type safety of Haskell to your data access layer. Instead of writing error-prone, untyped data access, or manually writing boilerplate marshal code, you can rely on Persistent to automate the process for you.
+Persistent приносит строгую типизацию языка Haskell в ваш слой доступа к данным. Вместо того, чтобы писать склонный к возникновению ошибок, нетипизированный доступ к данным, или вручную писать шаблонный код сериализации, вы можете автоматизировать работу, используя Persistent.
 
-The goal is to provide everything you need, most of the time. For the times when you need something a bit more powerful, Persistent gives you direct access to the underlying data store, so you can write whatever 5-way joins you want.
+Цель состоит в том, чтобы большую часть времени предоставлять все необходимое. В тех же случаях, когда вам нужно более мощное средство, Persistent предоставляет прямой доступ к нижележащему хранилищу данных, так что вы можете написать любой 5-way join, какой пожелаете.
 
-Persistent integrates directly into the general Yesod workflow. Not only do helper packages like yesod-persistent provide a nice layer, but packages like yesod-form and yesod-auth also leverage Persistent's features as well.
+Persistent напрямую интегрируется в общий рабочий процесс с Yesod. И речь тут идет не только о небольших пакетах вроде yesod-persistent --- пакеты вроде yesod-form и yesod-auth также прекрасно взаимодействуют с Persistent.  % also leverage Persistent's features as well.
