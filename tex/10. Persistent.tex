@@ -517,44 +517,43 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 \section{Вставка} % Insert 
 
-It's all well and good to be able to play with data in the database, but how does it get there in the first place? The answer is the insert function. You just give it a value, and it gives back an ID.
+Иметь возможность работать с данными из базы --- это здорово и замечательно, но как эти данные туда попадают? Для этого есть функция insert. Вы просто передаете ей значение, а она возвращает ID.
 
-At this point, it makes sense to explain a bit of the philosophy behind Persistent. In many other ORM solutions, the datatypes used to hold data are opaque: you need to go through their defined interfaces to get at and modify the data. That's not the case with Persistent: we're using plain old Algebraic Data Types for the whole thing. This means you still get all the great benefits of pattern matching, currying and everything else you're used to.
+В связи с этим имеет смысл немного пояснить философию Persistent. Во многих ORM типы, используемые для работы с данными, непрозрачны. Вам приходится продираться через определяемый ими интерфейс, чтобы получить, а затем изменить данные. Однако в Persistent все иначе --- для всего используются старые добрые алгебраические типы данных. Таким образом, вы по-прежнему можете иметь огромный выигрышь от использования сопастовления с образцом, каррирования и всего остального, к чему вы привыкли.
 
-However, there are a few things we can't do. For one, there's no way to automatically update values in the database every time the record is updated in Haskell. Of course, with Haskell's normal stance of purity and immutability, this wouldn't make much sense anyway, so I don't shed any tears over it.
+Однако есть вещи, которые мы не можем делать. Например, нет способа автоматически одновлять данные в базе данных при каждом их изменении в Haskell. Конечно, учитывая позицию языка Haskell в отношении чистоты и неизменяемости, от этого все равно было бы мало проку, так что не будем лить слезы.
 
-However, there is one issue that newcomers are often bothered by: why are IDs and values completely separate? It seems like it would be very logical to embed the ID inside the value. In other words, instead of having:
+Тем не менее, есть момент, который часто беспокоит новичков. Почему ID и значения совершенно разделены? Казалось бы, куда логичнее было бы включить ID в само значение. Другими словами, вместо:
 
 \begin{lstlisting}
 data Person = Person { name :: String }
 \end{lstlisting}
 
-have
+... мы бы имели:
 
 \begin{lstlisting}
 data Person = Person { personId :: PersonId, name :: String }
 \end{lstlisting}
 
-Well, there's one problem with this right off the bat: how do we do an insert? If a Person needs to have an ID, and we get the ID by inserting, and an insert needs a Person, we have an impossible loop. We could solve this with undefined, but that's just asking for trouble.
+Одна из проблем сразу бросается в глаза. Как прикажете производить вставку? Если Person требуется ID, а ID возвращается функцией insert, которой в свою очередь требуется Person, мы получаем проблему курицы и яйца. Мы могли бы решить эту проблему, используя неопределенный ID, однако это верный способ нарваться на неприятности.
 
-OK, you say, let's try something a bit safer:
+Вы скажете, хорошо, давайте попробуем что-то более безопасное:
 
 \begin{lstlisting}
 data Person = Person { personId :: Maybe PersonId, name :: String }
 \end{lstlisting}
 
-I definitely prefer insert \$ Person Nothing "Michael" to insert \$ Person undefined "Michael". And now our types will be much simpler, right? For example, selectList could return a simple [Person] instead of that ugly [Entity SqlPersist Person].
+Намного предочтительнее писать \lstinline'insert \$ Person Nothing "Michael"' вместо \lstinline'insert \$ Person undefined "Michael"'. И теперь наши типы стали намного проще, не так ли? Например, selectList теперь может возвращать просто \lstinline'[Person]' вместо уродливого \lstinline'[Entity SqlPersist Person]'.
 
 \begin{remark}
-Entity is a datatype that ties together both the ID and value of an entity. Since IDs can be different based on backend, we also need to provide the Persistent backend we're using. The datatype Entity SqlPersist Person can be read as <<the ID and value of a person stored in a SQL database>>.
+Entity представляет собой тип данных, который связывает ID и значение сущности воедино. Поскольку ID могут быть разными в зависимости от бэкенда, необходимо также предоставить используемый бэкенд пакета Persistent. Тип данных \lstinline'Entity SqlPersist Person' следует читать как <<ID и значение некого человека, хранящееся в SQL базе данных>>.
 \end{remark}
 
+Проблема заключается в том, что <<уродство>> оказывается невероятно полезным. Запись \lstinline'Entity SqlPersist Person' делает очевидным тот факт, что мы работаем со значением, которое существует в базе данных. Допустим, мы хотим создать ссылку, в которой пресутствует PersonId (не такой уж редкий случай, как мы скоро выясним). \lstinline'Entity SqlPersist Person' недвусмысленно предоставляет доступ к требуемой информации. Тем временем использование обертки Maybe приводит к потребности в дополнительных проверках во время выполнения, вместо того, чтобы убедиться в корректности программы еще на этапе компиляции.
 
-The problem is that the <<ugliness>> is incredibly useful. Having Entity SqlPersist Person makes it obvious, at the type level, that we're dealing with a value that exists in the database. Let's say we want to create a link to another page that requires the PersonId (not an uncommon occurrence as we'll discuss later). The Entity SqlPersist Person form gives us unambiguous access to that information; embedding PersonId within Person with a Maybe wrapper means an extra runtime check for Just, instead of a more error-proof compile time check.
+Наконец, в случае присоединения ID к значению имеет место семантическое несоответствие. Person --- это значение. Два человека являются идентичными (с точки зрения базы данных), если все их поля одинаковы. Присоединяя ID к значению, мы начинаем говорить не о человеке, а о строке в базе данных. Равенство перестает быть равентсвом, оно превращается в идентичность: <<это тот же самый человек>> вместо <<это такой же человек>>.
 
-Finally, there's a semantic mismatch with embedding the ID within the value. The Person is the value. Two people are identical (in the context of a database) if all their fields are the same. By embedding the ID in the value, we're no longer talking about a person, but about a row in the database. Equality is no longer really equality, it's identity: is this the same person, as opposed to an equivalent person.
-
-In other words, there are some annoyances with having the ID separated out, but overall, it's the right approach, which in the grand scheme of things leads to better, less buggy code.
+Другими словами, есть нечто раздражающее в отделении ID от значения, но в конце концов, это правильный подход, который в великой схеме вещей ведет к более хорошему, менее дырявому коду.
 
 \section{Обновление} % Update
 
