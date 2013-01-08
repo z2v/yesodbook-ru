@@ -40,13 +40,13 @@ $doctype 5
         <link rel=stylesheet href=@{Stylesheet}>
     <body>
         <h1 .page-title>#{pageTitle}
-        <p>Here is a list of your friends:
+        <p>Вот список ваших друзей:
         $if null friends
-            <p>Sorry, I lied, you don't have any friends.
+            <p>Прошу прощения, я соврал, у вас нет друзей.
         $else
             <ul>
                 $forall Friend name age <- friends
-                    <li>#{name} (#{age} years old)
+                    <li>#{name} (#{age} лет)
         <footer>^{copyright}
 \end{lstlisting}
 
@@ -92,7 +92,7 @@ $(function(){
 как-то так:
 
 \begin{lstlisting}
-<p>Hello, my name is #{name}
+<p>Привет, меня зовут #{name}
 \end{lstlisting}
 
 
@@ -257,10 +257,10 @@ Hamlet - это самый сложный из языков семейства. 
 
 \begin{lstlisting}
 <body>                                                                          
-<p>Some paragraph.</p>                                                          
+<p>Какой-то абзац.</p>                                                          
 <ul>                                                                            
-<li>Item 1</li>                                                                 
-<li>Item 2</li>                                                                 
+<li>Пункт 1</li>                                                                 
+<li>Пункт 2</li>                                                                 
 </ul>                                                                           
 </body>   
 \end{lstlisting}
@@ -268,10 +268,10 @@ Hamlet - это самый сложный из языков семейства. 
 будет выглядеть следующим образом:
 \begin{lstlisting}
 <body>                                                                          
-    <p>Some paragraph.                                                          
+    <p>Какой-то абзац.
     <ul>                                                                        
-        <li>Item 1                                                              
-        <li>Item 2    
+        <li>Пункт 1                                                              
+        <li>Пункт 2    
 \end{lstlisting}
 
 В целом, мы считаем, что этот способ более прост в использования, чем 
@@ -280,7 +280,7 @@ Hamlet - это самый сложный из языков семейства. 
 создать следующий HTML:
 
 \begin{lstlisting}
-<p>Paragraph <i>italic</i> end.</p>
+<p>Абзац <i>курсив</i> конец.</p>
 \end{lstlisting}
 
 Мы хотим быть уверенными, что пробелы останутся после слова "Paragraph" и
@@ -289,9 +289,9 @@ Hamlet - это самый сложный из языков семейства. 
 
 \begin{lstlisting}
 <p>                                                                             
-    Paragraph #                                                                 
-    <i>italic                                                                   
-    \ end.         
+    Абзац #
+    <i>курсив                                                    
+    \ конец.         
 \end{lstlisting}
 
 Правила дли использования escape-пробелов очень простые:
@@ -305,7 +305,7 @@ Hamlet - это самый сложный из языков семейства. 
 Это сделано намеренно, чтобы позволять копировать уже существующий HTML-код.
 То есть пример выше может быть записан как:
 \begin{lstlisting}
-<p>Paragraph <i>italic</i> end.
+<p>Абзац <i>курсив</i> конец.
 \end{lstlisting}
 
 Заметим, что Hamlet автоматически закроет первый тэг, в то время как внутренний
@@ -355,11 +355,11 @@ data Person = Person
 
 main :: IO ()
 main = putStrLn $ renderHtml [shamlet|
-<p>Hello, my name is #{name person} and I am #{show $ age person}.
+<p>Привет, меня зовут #{name person} и мне #{show $ age person}.
 <p>
-    Let's do some funny stuff with my name: #
+    Давайте сделаем с моим именем разные смешные штуки: #
     <b>#{sort $ map toLower (name person)}
-<p>Oh, and in 5 years I'll be #{show ((+) 5 (age person))} years old.
+<p>Ох, а через 5 лет мне будет #{show ((+) 5 (age person))}.
 |]
   where
     person = Person "Michael" 26
@@ -387,15 +387,15 @@ render Home _ = "/home"
 footer :: HtmlUrl MyRoute
 footer = [hamlet|
 <footer>
-    Return to #
-    <a href=@{Home}>Homepage
+    Назад на #
+    <a href=@{Home}>Домашнюю страницу
     .
 |]
 
 main :: IO ()
 main = putStrLn $ renderHtml $ [hamlet|
 <body>
-    <p>This is my page.
+    <p>Это моя страница.
     ^{footer}
 |] render
 \end{lstlisting}
@@ -432,11 +432,11 @@ main = putStrLn $ renderHtml $ [hamlet|
 
 \begin{lstlisting}
 $if isAdmin
-    <p>Welcome to the admin section.
+    <p>Добро пожаловать в админскую секцию.
 $elseif isLoggedIn
-    <p>You are not the administrator.
+    <p>Вы не администратор.
 $else
-    <p>I don't know who you are. Please log in so I can decide if you get access.
+    <p>Я не знаю, кто Вы. Пожалуйста, войдите в систему, чтобы я мог понять, есть ли у вас доступ.
 \end{lstlisting}
 
 Все те же самые правила обычной интерполяции применяются и к содержимому 
@@ -452,9 +452,9 @@ $else
 
 \begin{lstlisting}
 $maybe name <- maybeName
-    <p>Your name is #{name}
+    <p>Ваc зовут #{name}
 $nothing
-    <p>I don't know your name.
+    <p>Я не знаю Вашего имени.
 \end{lstlisting}
 
 Помимо простых идентификаторов вы можете использовать слева от стрелки некоторые другие, 
@@ -462,7 +462,7 @@ $nothing
 
 \begin{lstlisting}
 $maybe Person firstName lastName <- maybePerson
-    <p>Your name is #{firstName} #{lastName}
+    <p>Ваше имя - #{firstName} #{lastName}
 \end{lstlisting}
 
 Выражение справа от стрелки подчиняется тем же правилам интерполяции, 
@@ -474,7 +474,7 @@ $maybe Person firstName lastName <- maybePerson
 
 \begin{lstlisting}
 $if null people
-    <p>No people.
+    <p>Нет людей.
 $else
     <ul>
         $forall person <- people
@@ -493,19 +493,21 @@ Hamlet предоставляет вам те же самые преимущес
 \begin{lstlisting}
 $case foo
     $of Left bar
-        <p>It was left: #{bar}
+        <p>Он был слева: #{bar}
     $of Right baz
-        <p>It was right: #{baz}
+        <p>Он был справа: #{baz}
 \end{lstlisting}
 
 \subsection{With}
 
 Мы заканчиваем обзор выражений языка, рассматривая \texttt{with}. Это, по сути,
-просто удобный способ объявления синонима для длинного выражения
+просто удобный способ объявления синонима для длинного выражения. К примеру, 
+в данном примере мы определяем один раз переменную с помощью \texttt{with}, а затем
+используем ее дважды.
 
 \begin{lstlisting}
 $with foo <- some very (long ugly) expression that $ should only $ happen once
-    <p>But I'm going to use #{foo} multiple times. #{foo}
+    <p>Я использую эту переменную #{foo} несколько раз. #{foo}
 \end{lstlisting}
 
 \subsection{Doctype}
@@ -518,9 +520,9 @@ lstinline!\$doctype 5! для современных интернет-прило
 $doctype 5
 <html>
     <head>
-        <title>Hamlet is Awesome
+        <title>Hamlet просто чудесен
     <body>
-        <p>All done.
+        <p>Все готово.
 \end{lstlisting}
 
 Мы всë ещë поддерживаем и старый синтаксис: три восклицательных знака \texttt{!!!}.
@@ -576,7 +578,7 @@ article {
 будет определить общий используемый цвет как переменную:
 
 \begin{lstlisting}
-@textcolor: #ccc; /* just because we hate our users */
+@textcolor: #ccc; /* просто потому, что мы ненавидим наших пользователей */
 body { color: #{textcolor} }
 a:link, a:visited { color: #{textcolor} }
 \end{lstlisting}
@@ -643,7 +645,7 @@ Javascript автоматически минифицирован. Это не с
 %TODO: название в примеры??
 Квазицитиование
 \begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-} -- we're using Text below
+{-# LANGUAGE OverloadedStrings #-} -- мы используем Text чуть ниже
 {-# LANGUAGE QuasiQuotes #-}
 
 import Text.Hamlet (HtmlUrl, hamlet)
@@ -669,16 +671,16 @@ $doctype 5
 |]
 
 main :: IO ()
-main = putStrLn $ renderHtml $ template "My Title" render
+main = putStrLn $ renderHtml $ template "Мой заголовок" render
 \end{lstlisting}
 
 %TODO: название в примеры??
 Внешние файлы
 \begin{lstlisting}
 
-{-# LANGUAGE OverloadedStrings #-} -- we're using Text below
+{-# LANGUAGE OverloadedStrings #-} -- мы используем Text чуть ниже
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE CPP #-} -- to control production versus debug
+{-# LANGUAGE CPP #-} -- чтобы контролировать "боевой" режим против отладочного
 
 import Text.Lucius (CssUrl, luciusFile, luciusFileDebug, renderCss)
 import Data.Text (Text)
@@ -753,10 +755,10 @@ data Msg = Hello | Apples Int
 для чтения формате, поэтому мы определяем некоторую функцию рендеринга:
 \begin{lstlisting}
 renderEnglish :: Msg -> Text
-renderEnglish Hello = "Hello"
-renderEnglish (Apples 0) = "You did not buy any apples."
-renderEnglish (Apples 1) = "You bought 1 apple."
-renderEnglish (Apples i) = T.concat ["You bought ", T.pack $ show i, " apples."]
+renderEnglish Hello = "Привет"
+renderEnglish (Apples 0) = "Вы не купили яблок."
+renderEnglish (Apples 1) = "Вы купили одно яблоко."
+renderEnglish (Apples i) = T.concat ["Вы купили ", T.pack $ show i, " яблок."]
 \end{lstlisting}
 
 Теперь мы хотим интерполировать эти значения типа Msg напрямую в шаблоне.
@@ -806,10 +808,10 @@ renderUrl Stylesheet _ = "/style.css"
 data Msg = Hello | Apples Int
 
 renderEnglish :: Msg -> Text
-renderEnglish Hello = "Hello"
-renderEnglish (Apples 0) = "You did not buy any apples."
-renderEnglish (Apples 1) = "You bought 1 apple."
-renderEnglish (Apples i) = T.concat ["You bought ", T.pack $ show i, " apples."]
+renderEnglish Hello = "Привет"
+renderEnglish (Apples 0) = "Вы не купили яблок."
+renderEnglish (Apples 1) = "Вы купили одно яблоко."
+renderEnglish (Apples i) = T.concat ["Вы купили ", T.pack $ show i, " яблок."]
 
 template :: Int -> HtmlUrlI18n Msg MyRoute
 template count = [ihamlet|
@@ -850,13 +852,13 @@ data Item = Item
 
 items :: [Item]
 items =
-    [ Item "apples" 5
-    , Item "bananas" 10
+    [ Item "яблоки" 5
+    , Item "бананы" 10
     ]
 
 main :: IO ()
 main = forM_ items $ \item -> TLIO.putStrLn
-    [lt|You have #{show $ itemQty item} #{itemName item}.|]
+    [lt|У вас есть #{show $ itemQty item} #{itemName item}.|]
 \end{lstlisting}
 
 Несколько быстрых подсказок по этому простому примеру:
