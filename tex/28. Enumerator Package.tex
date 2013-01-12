@@ -746,7 +746,7 @@ run_ $ socketEnumerator $$ parseBody $ decompress $ bodyIteratee
 \section{Упражнения}
 
 \begin{enumerate}
-\item Написать enumeratee который принимает шестнадцатеричные символы (например, <<DEADBEEF>>), и записывает их в Word8. Его сигнатура типа должна быть \lstinline'Enumeratee Char Word8 m b'.
+\item Написать enumeratee, который принимает шестнадцатеричные символы (например, <<DEADBEEF>>), и записывает их в Word8. Его сигнатура типа должна быть \lstinline'Enumeratee Char Word8 m b'.
 \item Написать противоположный enumeratee, например \lstinline'Enumeratee Word8 Char m b'.
 \item Создать тест quickcheck, который проверяет, что эти две функции работают правильно.
 \end{enumerate}
@@ -754,9 +754,9 @@ run_ $ socketEnumerator $$ parseBody $ decompress $ bodyIteratee
 \section{Выводы}
 
 \begin{itemize}
-\item Enumeratee является конвеером связывающим enumerator с iteratee.
+\item Enumeratee является конвеером, связывающим enumerator с iteratee.
 \item Странная сигнатура типа Enumeratee скрывает множество мощных возможностей. Особенно обратите внимание, как схожа его сигнатура типа с Enumerator.
-\item Вы можете слить Enumeratee в Iteratee используя \lstinline'joinI \$ enumeratee \$\$ iteratee'.
+\item Вы можете слить Enumeratee в Iteratee, используя \lstinline'joinI \$ enumeratee \$\$ iteratee'.
 \item Не забывайте, что вы можете использовать экземпляр Monad для Iteratee при создании собственных enumeratees.
 \item Вы всегда можете составить несколько enumeratee вместе, как это сделано в http-enumerator.
 \end{itemize}
