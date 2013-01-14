@@ -3,12 +3,18 @@
 \usepackage{fontspec}
 \defaultfontfeatures{Mapping=tex-text}  % For archaic input (e.g. convert -- to en-dash)
 
-\setmainfont{Times New Roman}
-\setmonofont{Courier New}
-\setsansfont{Sans Serif}
 
 \usepackage{polyglossia}
 \setdefaultlanguage{russian}
+
+\setmainfont{Times New Roman}
+\setmonofont{Courier New}
+\setsansfont{Arial}
+
+\newfontfamily\cyrillicfont[Script=Cyrillic]{Times New Roman}
+\newfontfamily\cyrillicfontsf[Script=Cyrillic]{Arial}
+\newfontfamily\cyrillicfonttt[Script=Cyrillic]{Courier New}
+
 \usepackage{indentfirst}
 
 \usepackage{listings}
