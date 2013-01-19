@@ -4,15 +4,15 @@
 
 Если вы уже хорошо владеете Haskell, можете пропустить эту главу. Также, если вы предпочитаете начать непосредственно с погружения в Yesod, то вы всегда сможете потом к этой главе вернуться.
 
-Если вам необходимо более полное введение в Haskell, я бы порекомендовал <<Real World Haskell>> или <<Learn You a Haskell>>.\marginpar{Возможно, стоит вставить ссылки на книги (в оригинале ссылок нет).}
+Если вам необходимо более полное введение в Haskell, я бы порекомендовал книги <<Real World Haskell>> или <<Learn You a Haskell>>.\marginpar{Возможно, стоит вставить ссылки на книги (в оригинале ссылок нет).}
 
 \section{Терминология}
 
-Даже у хорошо знакомых с языком Haskell порой может возникать путаница с терминологией. Сформулируем некоторые основные термины, которые мы будем использовать на протяжении всей книги.
+Даже у людей, хорошо знакомых с языком Haskell, порой может возникать путаница с терминологией. Сформулируем некоторые основные термины, которые мы будем использовать на протяжении всей книги.
 
 \subsection{Тип данных}
 
-Это один из основных строительных блоков строго типизированных языков, к которым относится и Haskell. Некоторые типы данных, такие как \lstinline'Int', можно считать элементарными, а остальные типы строятся на их основе для создания более сложных значений. Например, вы могли бы представить человека следующим типом:
+Это один из основных строительных блоков языков со строгой типизацией, к которым относится и Haskell. Некоторые типы данных, такие как \lstinline'Int', можно считать элементарными, а остальные типы строятся на их основе для создания более сложных значений. Например, вы могли бы представить человека следующим типом:
 
 \begin{lstlisting}
 data Person = Person Text Int
@@ -34,8 +34,7 @@ data Person = Person Text Int
 
 \subsection{Конструктор типа}
 
-% Как-то два раза подряд "в приведённых выше примерах". Может, перефразировать?
-В приведённых выше примерах \lstinline'Person', \lstinline'Make' и \lstinline'Vehicle'~--- конструкторы типов.
+В свою очередь \lstinline'Person', \lstinline'Make' и \lstinline'Vehicle'~--- это конструкторы типов.
 
 \subsection{Переменные типов}
 
@@ -47,8 +46,7 @@ data Person = Person Text Int
 
 Тем, кто работает в среде Windows или Mac, настоятельно рекомендуется скачать \href{http://hackage.haskell.org/platform/}{Haskell Platform}\footnote{\href{http://hackage.haskell.org/platform/}{\texttt{http://hackage.haskell.org/platform/}}}. Многие дистрибутивы Linux содержат Haskell Platform в своих репозиториях. Например, в дистрибутивах, основанных на Debian, стоит начать с выполнения команды \texttt{apt-get install haskell-platform}. Если в вашем дистрибутиве Haskell Platform недоступна, вы можете установить её вручную, следуя инструкциям на официальном сайте.
 
-% Запятая с тире... Обычно такое в диалогах только встречается, нужно экспертное мнение
-Ещё один важный инструмент, который вам нужно будет обновить,~--- \texttt{alex}. Haskell Platform включает версию 2, но используемой Yesod программе минификации JavaScript, \href{http://hackage.haskell.org/package/hjsmin}{hjsmin}\footnote{\href{http://hackage.haskell.org/package/hjsmin}{\texttt{http://hackage.haskell.org/package/hjsmin}}}, требуется версия 3. Не забудьте выполнить \texttt{cabal install alex} после установки Haskell Platform, иначе получите сообщения об ошибках в отношении пакета \href{http://hackage.haskell.org/package/language-javascript}{language-javascript}\footnote{\href{http://hackage.haskell.org/package/language-javascript}{\texttt{http://hackage.haskell.org/package/language-javascript}}}.
+Ещё один важный инструмент, который вам нужно будет обновить~--- это \texttt{alex}. Haskell Platform включает версию 2, но используемой Yesod программе минификации JavaScript, \href{http://hackage.haskell.org/package/hjsmin}{hjsmin}\footnote{\href{http://hackage.haskell.org/package/hjsmin}{\texttt{http://hackage.haskell.org/package/hjsmin}}}, требуется версия 3. Не забудьте выполнить \texttt{cabal install alex} после установки Haskell Platform, иначе получите сообщения об ошибках в отношении пакета \href{http://hackage.haskell.org/package/language-javascript}{language-javascript}\footnote{\href{http://hackage.haskell.org/package/language-javascript}{\texttt{http://hackage.haskell.org/package/language-javascript}}}.
 
 \begin{remark}
 Некоторым нравится жить на острие прогресса и устанавливать последнюю версию GHC до того, как она станет доступна в Haskell Platform. Мы стараемся поддерживать совместимость Yesod со всеми современными версиями GHC, но официально мы поддерживаем только Haskell Platform. Если вы всё-таки решили пойти по пути ручной установки GHC, то имейте в виду:
@@ -75,7 +73,7 @@ data Person = Person Text Int
 
 \section{Указания компилятору}
 
-По умолчанию GHC работает в режиме, очень близком к Haskell98. Однако с ним также поставляется большое число языковых расширений, предоставляющих более мощные классы типов, изменения в синтаксисе и прочее. Есть несколько способов заставить GHC включить эти расширения. В большинстве фрагментов кода, приведённых в этой книге, вы увидите указания компилятору, которые выглядят следующим образом:
+По-умолчанию GHC работает в режиме, очень близком к Haskell98. Однако с ним также поставляется большое число языковых расширений, предоставляющих более мощные классы типов, изменения в синтаксисе и прочее. Есть несколько способов заставить GHC включить эти расширения. В большинстве фрагментов кода, приведённых в этой книге, вы увидите указания компилятору, которые выглядят следующим образом:
 
 \begin{lstlisting}
 {-# LANGUAGE MyLanguageExtension #-}
@@ -89,7 +87,7 @@ data Person = Person Text Int
 
 Лично я никогда не использую подход с аргументами командной строки. Это личное предпочтение, но мне нравится, когда мои настройки явным образом указаны в файле. В общем случае также рекомендуется избегать помещения расширений в файл \texttt{cabal}. Впрочем, в сгенерированном Yesod шаблоне сайта \marginpar{Нужно добавить ссылку на главу <<Scaffolding and the Site Template>>} мы намеренно применяем этот подход, чтобы избежать необходимости задавать одни и те же указания компилятору в каждом исходном файле.
 
-В конечном счёте мы будем использовать в этой книге немало языковых расширений (начальный каркас сайта использует 11). Мы не будем рассматривать назначение каждого из них. За этим, пожалуйста, обращайтесь к \href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{документации на GHC}\footnote{\href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{\texttt{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}}}.
+В конечном счёте мы будем использовать в этой книге немало языковых расширений (начальный каркас сайта использует 11). Мы не будем рассматривать назначение каждого из них. За этим, пожалуйста, обращайтесь к \href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{документации по GHC}\footnote{\href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{\texttt{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}}}.
 
 \section{Перегруженные строки}
 
@@ -169,7 +167,7 @@ main = do
 Новый синтаксис выражается в возможности разместить тип внутри класса и экземпляра. Вместо этого мы также можем использовать \lstinline'data', что создаст новый тип данных вместо ссылки на уже существующий.
 
 \begin{remark}
-Есть и другие способы использования ассоциированных типов вне контекста класса типов. Однако в Yesod все наши ассоциированные типы являются, фактически, частью класса типов. Более подробную информацию о семействах типов можно найти на соответствующей \href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{странице Haskell wiki}\footnote{\href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{\texttt{http://www.haskell.org/haskellwiki/GHC/Type\_families}}}.
+Есть и другие способы использования ассоциированных типов вне контекста класса типов. Однако в Yesod все наши ассоциированные типы являются, фактически, частью класса типов. Более подробную информацию о семействах типов можно найти на соответствующей \href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{странице Haskell Wiki}\footnote{\href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{\texttt{http://www.haskell.org/haskellwiki/GHC/Type\_families}}}.
 \end{remark}
 
 \section{Template Haskell}
@@ -191,9 +189,7 @@ $(hamletFile "myfile.hamlet")
 
 Приятная особенность~--- код на TH может выполнять произвольные действия ввода-вывода, и, следовательно, мы можем разместить входные данные во внешних файлах, которые будут разбираться во время компиляции. Одним из примеров использования этой возможости является получение шаблонов HTML, CSS и JavaScript, проверяемых во время компиляции.
 
-% если ВАШ код .. НАШИХ файлов.. то МЫ можем...
-%Кажется, тут несоответствие. Могу ошибаться.
-Если ваш код на Template Haskell используется для генерации объявлений и располагается на верхнем уровне наших файлов, то мы можем избавиться от знаков доллара и скобок. Иными словами,
+Если код на Template Haskell используется для генерации объявлений и располагается на верхнем уровне наших файлов, то мы можем избавиться от знаков доллара и скобок. Иными словами,
 
 \begin{lstlisting}
 {-# LANGUAGE TemplateHaskell #-}
@@ -212,14 +208,13 @@ myThCode
 Может быть полезно посмотреть, какой код генерирует для вас Template Haskell. Для этого вам нужно использовать опцию GHC \texttt{-ddump-splices}.
 
 \begin{remark}
-Есть ещё много других особенностей Template Haskell, которые здесь не рассматриваются. Более подробную информацию можете посмотреть на \href{http://www.haskell.org/haskellwiki/Template\_Haskell}{странице Haskell wiki}\footnote{\href{http://www.haskell.org/haskellwiki/Template\_Haskell}{\texttt{http://www.haskell.org/haskellwiki/Template\_Haskell}}}.
+Есть ещё много других особенностей Template Haskell, которые здесь не рассматриваются. Более подробную информацию можете посмотреть на \href{http://www.haskell.org/haskellwiki/Template\_Haskell}{странице Haskell Wiki}\footnote{\href{http://www.haskell.org/haskellwiki/Template\_Haskell}{\texttt{http://www.haskell.org/haskellwiki/Template\_Haskell}}}.
 \end{remark}
 
 \subsection{QuasiQuotes}
 
 QuasiQuotes (QQ)~--- это небольшое расширение Template Haskell, которое позволяет нам включать произвольные данные в файлы с исходным кодом на Haskell. Например, выше упоминалась функция Template Haskell \lstinline'hamletFile', которая считывает содержимое шаблона из внешнего файла. У нас также есть обработчик квазицитирования, называемый hamlet, который считывает содержимое, хранящееся непосредственно в исходном коде:
 
-% возможно, имеет смысл перевести строку внутри примера.
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes #-}
 
