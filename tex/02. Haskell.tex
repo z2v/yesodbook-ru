@@ -23,9 +23,9 @@ data Person = Person Text Int
 Существует три способа, с помощью которых вы можете создать новый тип данных:
 
 \begin{itemize}
-  \item Определение \lstinline'type', такое как \lstinline'type GearCount = Int', просто создает синоним существующего типа. Система типов не станет препятствовать вам использовать \lstinline'Int' везде, где требуется \lstinline'GearCount'. Использование такого типа может сделать ваш код более самодокументируемым.
+  \item Определение \lstinline'type', такое как \lstinline'type GearCount = Int', просто создаёт синоним существующего типа. Система типов не станет препятствовать вам использовать \lstinline'Int' везде, где требуется \lstinline'GearCount'. Использование такого типа может сделать ваш код более самодокументируемым.
   \item Определение \lstinline'newtype', например, \lstinline'newtype Make = Make Text'. В этом случае вы не можете случайно использовать \lstinline'Text' вместо \lstinline'Make', компилятор не даст вам этого сделать. Обёртка, создаваемая посредством \lstinline'newtype', всегда удаляется во время компиляции и не создаёт накладных расходов.
-  \item Определение \lstinline'data', как в приведенном выше примере с \lstinline'Person'. Вы можете также создавать алгебраические типы данных (АТД), такие как \lstinline'data Vehicle = Bycicle GearCount | Car Make Model'.
+  \item Определение \lstinline'data', как в приведённом выше примере с \lstinline'Person'. Вы можете также создавать алгебраические типы данных (АТД), такие как \lstinline'data Vehicle = Bycicle GearCount | Car Make Model'.
 \end{itemize}
 
 \subsection{Конструктор данных}
