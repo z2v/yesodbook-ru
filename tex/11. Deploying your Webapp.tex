@@ -12,7 +12,7 @@
 
 %But we're not there yet. And even if we were, such a solution will never work for everyone. This chapter covers the different options you have for deployment, and gives some general recommendations on what you should choose in different situations.
 %
-Однако, пока что это не так, и, даже если бы это было так, подобное решение никогда бы не подошло абсолюно всем. Данная глава описывает различные существующие варианты развёртывания и даёт некоторые общие рекомендации касательно того, какой из них следует выбрать в том или ином случае.
+Однако пока что это не так, и, даже если бы это было так, подобное решение никогда бы не подошло абсолютно всем. Данная глава описывает различные существующие варианты развёртывания и даёт некоторые общие рекомендации касательно того, какой из них следует выбрать в том или ином случае.
 
 %Compiling
 \section{Компиляция}
@@ -59,11 +59,11 @@ cabal clean && cabal configure && cabal build
 %* It is significantly faster.
 %* Like FastCGI, it can run behind a frontend server like Nginx, using reverse HTTP proxy.
 %* In addition, it is a fully capable server of its own accord, and can therefore be used without any frontend server.
-Таким образом, из двух оставшихся вариантов Warp является рекомендуемым потому, что:
+Таким образом, из двух оставшихся вариантов Warp является рекомендуемым, потому что:
 \begin{itemize}
   \item Он значительно быстрее;
-  \item Как и FastCGI может быть запущен за фронтенд сервером, таким как Nginx, в режиме обратного прокси;
-  \item Кроме того, он является полностью функциональным сервером, и, потому, может быть использован сам по себе, без какого-либо фронтенда.
+  \item Как и FastCGI может быть запущен за фронтенд сервером, таким как Nginx в режиме обратного прокси;
+  \item Кроме того, он является полностью функциональным сервером, и потому может быть использован сам по себе, без какого-либо фронтенда.
 \end{itemize}
 %
 %So that leaves one last question: should Warp run on its own, or via reverse proxy behind a frontend server? For most use cases, I recommend the latter, because:
@@ -81,10 +81,10 @@ cabal clean && cabal configure && cabal build
   \item Вы можете использовать Nginx как балансировщик нагрузки или SSL прокси. (Хотя, используя warp-tls, вполне можно запускать https сайт на одном только Warp).
 \end{itemize}
 
-Таким образом, моя итоговая рекомендация будет: используйте Nginx как обратный прокси для Warp.
+Таким образом, моя итоговая рекомендация следующая: используйте Nginx как обратный прокси для Warp.
 
 %A number of people in the Yesod community disagree with me here, and believe that the increased performance and decreased complexity of skipping the Nginx step make standalone Warp a better choice. Feel free to follow either approach, they are both perfectly valid.
-Некоторые участники сообщества Yesod не согласны со мной в этом вопросе и полагают, что увеличенная производительность и уменьшенная сложность решения с одним только Warp, делают его лучшим выбором. Так что, поступайте как считаете правильным, оба подхода абсолютно корректны.
+Некоторые участники сообщества Yesod не согласны со мной в этом вопросе и полагают, что увеличенная производительность и уменьшенная сложность решения с одним только Warp делают его лучшим выбором. Так что, поступайте как считаете правильным, оба подхода абсолютно корректны.
 
 %
 %Configuration
@@ -92,7 +92,7 @@ cabal clean && cabal configure && cabal build
 %
 %In general, Nginx will listen on port 80 and your Yesod/Warp app will listen on some unprivileged port (lets say 4321). You will then need to provide a nginx.conf file, such as:
 %
-В общем случае, Nginx будет ожидать соединений на 80 порту, а ваше Yesod/Warp приложение будет слушать какой-нибудь другой непривилегированный порт (скажем, 4321). В таком случае ваш nginx.conf файл будет выглядеть примерно так:
+В общем случае, Nginx будет ожидать соединений на 80 порту, а ваше Yesod/Warp приложение будет слушать какой-нибудь другой непривилегированный порт (скажем, 4321). В таком случае ваш файл nginx.conf будет выглядеть примерно так:
 
 % Оригинальные комментарии в конфиг файле
 %
@@ -119,7 +119,7 @@ http {
 %
 %You can add as many server blocks as you like. A common addition is to ensure users always access your pages with the www prefix on the domain name, ensuring the RESTful principle of canonical URLs. (You could just as easily do the opposite and always strip the www, just make sure that your choice is reflected in both the nginx config and the approot of your site.) In this case, we would add the block:
 
-Вы можете добавлять сколько угодно блоков \lstinline{server}. Общая практика~--- добавлять блок, который гарантирует, что ваши пользователи всегда будут получать страницы с префиксом \lstinline{www} в имени домена, соблюдая, таким образом, RESTful принцип канонических URLов. (Вы можете с тем же успехом делать обратное и всегда удалять префикс \lstinline{www}. Главное, не забудьте отразить это и в файле конфигурации nginx и в approot вашего сайта).
+Вы можете добавлять сколько угодно блоков \lstinline{server}. Общая практика~--- добавлять блок, который гарантирует, что ваши пользователи всегда будут получать страницы с префиксом \lstinline{www} в имени домена, соблюдая таким образом RESTful принцип канонических URLов. (Вы можете с тем же успехом делать обратное и всегда удалять префикс \lstinline{www}. Главное, не забудьте отразить это и в файле конфигурации nginx и в approot вашего сайта).
 
 \begin{lstlisting}
 server {
@@ -132,7 +132,7 @@ server {
 %A highly recommended optimization is to serve static files from a separate domain name, therefore bypassing the cookie transfer overhead. Assuming that our static files are stored in the static folder within our site folder, and the site folder is located at /home/michael/sites/mysite, this would look like:
 %
 
-Крайне рекомендуется в качестве оптимизации раздавать статические файлы с отдельного домена, избегая таким образом ненужной передачи cookie. Предполагая, что наши статические файлы хранятся в подпапке \lstinline{static} папки нашего сайта, которая имеет пут /home/michael/sites/mysite, это выглядело бы следующим образом:
+Крайне рекомендуется в качестве оптимизации раздавать статические файлы с отдельного домена, избегая таким образом ненужной передачи cookie. Предполагая, что наши статические файлы хранятся в подкаталоге \lstinline{static} каталога нашего сайта, который имеет путь /home/michael/sites/mysite, это выглядело бы следующим образом:
 
 % Оригинальный коментарий
 %    # Since yesod-static appends a content hash in the query string,
@@ -153,7 +153,7 @@ server {
 %
 %In order for this to work, your site must properly rewrite static URLs to this alternate domain name. The scaffolded site is set up to make this fairly simple via the Settings.staticRoot function and the definition of urlRenderOverride. However, if you just want to get the benefit of nginx's faster static file serving without dealing with separate domain names, you can instead modify your original server block like so:
 
-Для того, чтобы это заработало, ваш сайт должен корректно изменять статические URLы так, чтобы они указывали на этот альтернативный домен. Сайт-каркас настроен таким образом, чтобы упростить эту задачу используя функцию \lstinline{Settings.staticRoot} и определение \lstinline{urlRenderOverride}. Однако, если вам надо всего лишь использовать преимущества Nginx при раздаче статических файлов без использования отдельных доменных имён, вы можете просто модифицировать исходный блок server следующим образом:
+Для того, чтобы это заработало, ваш сайт должен корректно изменять статические URLы так, чтобы они указывали на этот альтернативный домен. Сайт-каркас настроен таким образом, чтобы упростить эту задачу используя функцию \lstinline{Settings.staticRoot} и определение \lstinline{urlRenderOverride}. Однако если вам надо всего лишь использовать преимущества Nginx при раздаче статических файлов без использования отдельных доменных имён, вы можете просто модифицировать исходный блок server следующим образом:
 %
 % Оригинальные коментарии из конфига
 %
@@ -205,7 +205,7 @@ exec /home/michael/sites/mysite/dist/build/mysite/mysite
 %
 %Some people may prefer using FastCGI for deployment. In this case, you'll need to add an extra tool to the mix. FastCGI works by receiving new connection from a file descriptor. The C library assumes that this file descriptor will be 0 (standard input), so you need to use the spawn-fcgi program to bind your application's standard input to the correct socket.
 %
-Некоторые предпочитают использовать FastCGI для развёртывания своих приложений. В этом случае вам потребуется ещё один инструмент. FastCGI работает принимая новые соединения из файлового дескриптора. Стандартная библиотека C предполагает, что этот файловый дескриптор будет равен 0 (стандартый поток ввода), а значит, надо использовать специальную программу spawn-fcgi, которая свяжет стандратный поток ввода вашего приложения с правильным сокетом.
+Некоторые предпочитают использовать FastCGI для развёртывания своих приложений. В этом случае вам потребуется ещё один инструмент. FastCGI работает, принимая новые соединения из файлового дескриптора. Стандартная библиотека C предполагает, что этот файловый дескриптор будет равен 0 (стандартый поток ввода), а значит, надо использовать специальную программу spawn-fcgi, которая свяжет стандратный поток ввода вашего приложения с правильным сокетом.
 
 %It can be very convenient to use Unix named sockets for this instead of binding to a port, especially when hosting multiple applications on a single host. A possible script to load up your app could be:
 Может оказаться очень удобным использовать для этих целей именованные сокеты Unix вместо привязки к порту, особенно если вы собираетесь запускать несколько приложений на одном физическом сервере. Возможный сценарий для запуска вашего приложения может выглядеть следующим образом:
@@ -314,7 +314,7 @@ RewriteRule ^(.*) bloggy.cgi/$1 [L]
 %For this example, I've left off some of the basic FastCGI settings like mime-types. I also have a more complex file in production that prepends "www." when absent and serves static files from a separate domain. However, this should serve to show the basics.
 %
 
-Для этого примера я опустил некоторые из основных настроек FastCGI, такие как mime-типы. В реальном приложении у меня используется более сложный файл, который добавляет префикс ``www.'' в начало URL, если он отсутствует, а также раздаёт статические файлы с отдельного домена. Однако, следующего примера должно быть достаточно, чтобы понять основы.
+Для этого примера я опустил некоторые из основных настроек FastCGI, такие как mime-типы. В реальном приложении у меня используется более сложный файл, который добавляет префикс ``www.'' в начало URL, если он отсутствует, а также раздаёт статические файлы с отдельного домена. Однако следующего примера должно быть достаточно, чтобы понять основы.
 
 %Here, "/home/michael/fastcgi" is the fastcgi application. The idea is to rewrite all requests to start with "/app", and then serve everything beginning with "/app" via the FastCGI executable.
 Здесь ``/home/michael/fastcgi''~--- это fastcgi приложение. Идея состоит в том, чтобы перенаправлять все запросы на ``/app'', после чего раздавать всё, начинающееся с ``/app'' через исполняемый файл FastCGI.
