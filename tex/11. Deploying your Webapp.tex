@@ -205,7 +205,7 @@ exec /home/michael/sites/mysite/dist/build/mysite/mysite
 %
 %Some people may prefer using FastCGI for deployment. In this case, you'll need to add an extra tool to the mix. FastCGI works by receiving new connection from a file descriptor. The C library assumes that this file descriptor will be 0 (standard input), so you need to use the spawn-fcgi program to bind your application's standard input to the correct socket.
 %
-Некоторые предпочитают использовать FastCGI для развёртывания своих приложений. В этом случае вам потребуется ещё один инструмент. FastCGI работает, принимая новые соединения из файлового дескриптора. Стандартная библиотека C предполагает, что этот файловый дескриптор будет равен 0 (стандартый поток ввода), а значит, надо использовать специальную программу spawn-fcgi, которая свяжет стандратный поток ввода вашего приложения с правильным сокетом.
+Некоторые предпочитают использовать FastCGI для развёртывания своих приложений. В этом случае вам потребуется ещё один инструмент. FastCGI работает, принимая новые соединения из файлового дескриптора. Стандартная библиотека C предполагает, что этот файловый дескриптор будет равен 0 (стандартный поток ввода), а значит, надо использовать специальную программу spawn-fcgi, которая свяжет стандартный поток ввода вашего приложения с правильным сокетом.
 
 %It can be very convenient to use Unix named sockets for this instead of binding to a port, especially when hosting multiple applications on a single host. A possible script to load up your app could be:
 Может оказаться очень удобным использовать для этих целей именованные сокеты Unix вместо привязки к порту, особенно если вы собираетесь запускать несколько приложений на одном физическом сервере. Возможный сценарий для запуска вашего приложения может выглядеть следующим образом:
@@ -236,7 +236,7 @@ server {
 %
 %That should look pretty familiar from above. The only last trick is that, with Nginx, you need to manually specify all of the FastCGI variables. It is recommended to store these in a separate file (say, fastcgi.conf) and then add include fastcgi.conf; to the end of your http block. The contents of the file, to work with WAI, should be:
 
-Этот пример должен выгядеть знакомым, учитывая описанные ранее варианты. Последний трюк состоит в том, что с Nginx вам необходимо вручную задать все переменные FastCGI. Рекомендуется хранить эти переменные в отдельном файле (скажем, fastcgi.conf), и добавлять \lstinline{include fastcgi.conf;} в конец блока \lstinline{http}. Содержимое этого файла, настроенного для работы через WAI, должно быть следующим:
+Этот пример должен выглядеть знакомым, учитывая описанные ранее варианты. Последний трюк состоит в том, что с Nginx вам необходимо вручную задать все переменные FastCGI. Рекомендуется хранить эти переменные в отдельном файле (скажем, fastcgi.conf), и добавлять \lstinline{include fastcgi.conf;} в конец блока \lstinline{http}. Содержимое этого файла, настроенного для работы через WAI, должно быть следующим:
 
 \begin{lstlisting}
 fastcgi_param  QUERY_STRING       $query_string;
@@ -258,7 +258,7 @@ fastcgi_param  SERVER_NAME        $server_name;
 %
 %Another nifty backend is wai-handler-webkit. This backend combines Warp and QtWebkit to create an executable that a user simply double-clicks. This can be a convenient way to provide an offline version of your application.
 
-Другой замечательный способ запускать ваше приложение~--- \footnotehref{http://hackage.haskell.org/package/wai-handler-webkit}{wai-handler-webkit}. Он объединяет Warp и QtWebkit для создания исполняемого файла, который может быть запущен при помощи простого двойного целчка мышью. Это может быть удобным способом сделать оффлайн версию вашего приложения.
+Другой замечательный способ запускать ваше приложение~--- \footnotehref{http://hackage.haskell.org/package/wai-handler-webkit}{wai-handler-webkit}. Он объединяет Warp и QtWebkit для создания исполняемого файла, который может быть запущен при помощи простого двойного щелчка мышью. Это может быть удобным способом сделать оффлайн версию вашего приложения.
 %
 %One of the very nice conveniences of Yesod for this is that your templates are all compiled into the executable, and thus do not need to be distributed with your application. Static files do, however.
 
