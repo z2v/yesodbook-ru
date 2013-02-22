@@ -39,7 +39,7 @@ TEXOPTS += -output-directory=$(OUTPUT_DIR)
 #-
 # Цели для сборки
 #-
-.PHONY: all tmp-dir clean
+.PHONY: all tmp-dir clean build-examples clean-examples
 
 all: tmp-dir $(YESODBOOK)
 
@@ -58,3 +58,14 @@ tmp-dir:
 clean:
 	-rm -rf $(OUTPUT_DIR)
 	-rm -f $(YESODBOOK)
+
+build-examples:
+	@for f in $(HSSRCS); do \
+		ghc $$f > /dev/null; \
+	done
+
+clean-examples:
+	-rm -f $(HSSRCS:.hs=.o)
+	-rm -f $(HSSRCS:.hs=.hi)
+	-rm -f $(HSSRCS:.hs=)
+	-rm -f hs/client_session_key.aes
