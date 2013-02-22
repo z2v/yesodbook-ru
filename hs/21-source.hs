@@ -2,7 +2,8 @@
     QuasiQuotes, MultiParamTypeClasses, GADTs, FlexibleContexts
   #-}
 import Yesod
-import Data.Text (Text, unpack)
+import Control.Monad.Logger (runStderrLoggingT)
+import Data.Text (Text)
 import Control.Applicative ((<$>), (<*>))
 import Database.Persist.Sqlite
 import Database.Persist.Query.GenericSql (selectSourceConn)
@@ -119,12 +120,12 @@ getResult :: DocId -> Doc -> Text -> IO Result
 getResult docid doc qstring = do
     excerpt' <- S.buildExcerpts
         excerptConfig
-        [T.unpack $ escape $ docContent doc]
+        [escape $ docContent doc]
         "searcher"
-        (unpack qstring)
+        qstring
     let excerpt =
             case excerpt' of
-                ST.Ok bss -> preEscapedToMarkup $ decodeUtf8With ignore $ L.concat bss
+                ST.Ok t -> preEscapedToMarkup $ T.concat t
                 _ -> ""
     return Result
         { resultId = docid
@@ -145,7 +146,7 @@ escape =
 
 getResults :: Text -> Handler [Result]
 getResults qstring = do
-    sphinxRes' <- liftIO $ S.query config "searcher" (unpack qstring)
+    sphinxRes' <- liftIO $ S.query config "searcher" qstring
     case sphinxRes' of
         ST.Ok sphinxRes -> do
             let docids = map (Key . PersistInt64 . ST.documentId) $ ST.matches sphinxRes
@@ -217,7 +218,7 @@ fullDocSource conn = mconcat
     ]
 
 docSource :: Connection -> C.Source (C.ResourceT IO) X.Event
-docSource conn = selectSourceConn conn [] [] C.$= CL.concatMap entityToEvents
+docSource conn = C.transPipe runStderrLoggingT $ selectSourceConn conn [] [] C.$= CL.concatMap entityToEvents
 
 toName :: Text -> X.Name
 toName x = X.Name x (Just "http://sphinxsearch.com/") (Just "sphinx")
@@ -245,6 +246,5 @@ endEvents =
 
 main :: IO ()
 main = withSqlitePool "searcher.db3" 10 $ \pool -> do
-    runSqlPool (runMigration migrateAll) pool
+    runStderrLoggingT $ runSqlPool (runMigration migrateAll) pool
     warpDebug 3000 $ Searcher pool
-
