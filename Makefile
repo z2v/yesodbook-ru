@@ -7,8 +7,8 @@ space := $(e) $(e)
 #-
 MASTER_TEX := Developing\ Web\ Applications\ with\ Haskell\ and\ Yesod.tex
 
-# Имена исходных файлов TeX содержат пробелы. Поэтому для корректной работы make 
-# сначала экранируем все пробелы без разбора, а затем снимаем экранирование 
+# Имена исходных файлов TeX содержат пробелы. Поэтому для корректной работы make
+# сначала экранируем все пробелы без разбора, а затем снимаем экранирование
 # с полезных пробелов между файлами
 TEXSRCS := $(wildcard tex/[S012]*.tex)
 TEXSRCS := $(subst $(space),\$(space),$(TEXSRCS))
@@ -52,7 +52,7 @@ $(YESODBOOK): tex/$(MASTER_TEX) $(TEXSRCS) $(HSSRCS) $(IMAGES)
 	cd .. && \
 	cp $(OUTPUT_DIR)/$(YESODBOOK) .
 
-tmp-dir: 
+tmp-dir:
 	@mkdir -p $(OUTPUT_DIR)
 
 clean:
