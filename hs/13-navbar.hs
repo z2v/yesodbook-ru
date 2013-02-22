@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell, FlexibleContexts,
-             QuasiQuotes, TypeFamilies, MultiParamTypeClasses, GADTs #-}
+             QuasiQuotes, MultiParamTypeClasses, GADTs #-}
 import Yesod
 import Database.Persist.Sqlite
 import Data.Text (Text)

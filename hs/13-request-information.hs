@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell,
-             QuasiQuotes, TypeFamilies, MultiParamTypeClasses, GADTs #-}
+             QuasiQuotes, MultiParamTypeClasses, GADTs #-}
 import Yesod
 import Data.Text (Text)
 import Data.List (sortBy)
