@@ -4,6 +4,7 @@ import Yesod
 import Database.Persist.Sqlite
 import Data.Text (Text)
 import Data.Time
+import Control.Monad.Logger (runStderrLoggingT)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Link
@@ -65,5 +66,5 @@ postAddLinkR = do
 
 main :: IO ()
 main = withSqlitePool "links.db3" 10 $ \pool -> do
-    runSqlPool (runMigration migrateAll) pool
+    runStderrLoggingT $ runSqlPool (runMigration migrateAll) pool
     warpDebug 3000 $ LinksExample pool
