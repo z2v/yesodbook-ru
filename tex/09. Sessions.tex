@@ -44,50 +44,7 @@ HTTP является протоколом без состояния. И хот�
 
 Как и в большинстве фреймворков, сессия в Yesod представляет собой хранилище пар ключ-значение. Базовое API сессии сводится к четырём функциям: \lstinline'lookupSession' получает значение для ключа (если имеется), \lstinline'getSession' возвращает все пары ключ/значение, \lstinline'setSession' задаёт значение для ключа, а \lstinline'deleteSession' очищает значение для ключа.
 
-\begin{lstlisting}
-{-# LANGUAGE TypeFamilies, QuasiQuotes, TemplateHaskell, MultiParamTypeClasses, OverloadedStrings #-}
-import Yesod
-import Control.Applicative ((<$>), (<*>))
-import qualified Web.ClientSession as CS
-
-data SessionExample = SessionExample
-
-mkYesod "SessionExample" [parseRoutes|
-/ Root GET POST
-|]
-
-getRoot :: Handler RepHtml
-getRoot = do
-    sess <- getSession
-    hamletToRepHtml [hamlet|
-<form method=post>
-    <input type=text name=key>
-    <input type=text name=val>
-    <input type=submit>
-<h1>#{show sess}
-|]
-
-postRoot :: Handler ()
-postRoot = do
-    (key, mval) <- runInputPost $ (,) <$> ireq textField "key" <*> iopt textField "val"
-    case mval of
-        Nothing -> deleteSession key
-        Just val -> setSession key val
-    liftIO $ print (key, mval)
-    redirect Root
-
-instance Yesod SessionExample where
-    -- Устанавливаем таймаут сессии в 1 минуту, чтобы облегчить тестирование
-    makeSessionBackend _ = do
-        key <- CS.getKey CS.defaultKeyFile
-        return $ Just $ clientSessionBackend key 1
-
-instance RenderMessage SessionExample FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
-main :: IO ()
-main = warpDebug 3000 SessionExample
-\end{lstlisting}%$
+\lstinputlisting{../hs/09-session-example.hs}
 
 \section{Сообщения}
 
@@ -97,55 +54,7 @@ Yesod предоставляет пару функций, чтобы сдела�
 
 Рекомендуется вызывать \lstinline'getMessage' в \lstinline'defaultLayout', так любое доступное сообщение покажется пользователю немедленно, без необходимости помнить о добавлении вызова \lstinline'getMessage' в каждом обработчике.
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell,
-             QuasiQuotes, MultiParamTypeClasses #-}
-
-import Yesod
-
-data Messages = Messages
-
-mkYesod "Messages" [parseRoutes|
-/ RootR GET
-/set-message SetMessageR POST
-|]
-
-instance Yesod Messages where
-    defaultLayout widget = do
-        pc <- widgetToPageContent widget
-        mmsg <- getMessage
-        hamletToRepHtml [hamlet|
-$doctype 5
-<html>
-    <head>
-        <title>#{pageTitle pc}
-        ^{pageHead pc}
-    <body>
-        $maybe msg <- mmsg
-            <p>Your message was: #{msg}
-        ^{pageBody pc}
-|]
-
-instance RenderMessage Messages FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
-getRootR :: Handler RepHtml
-getRootR = defaultLayout [whamlet|
-<form method=post action=@{SetMessageR}>
-    My message is: #
-    <input type=text name=message>
-    <input type=submit>
-|]
-
-postSetMessageR :: Handler ()
-postSetMessageR = do
-    msg <- runInputPost $ ireq textField "message"
-    setMessage $ toHtml msg
-    redirect RootR
-
-main :: IO ()
-main = warpDebug 3000 Messages
-\end{lstlisting}%$
+\lstinputlisting{../hs/09-messages.hs}
 
 \begin{figure}[tbh]
   \centering
