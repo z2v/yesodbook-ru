@@ -33,7 +33,8 @@ instance Yesod SessionExample where
     -- Устанавливаем таймаут сессии в 1 минуту, чтобы облегчить тестирование
     makeSessionBackend _ = do
         key <- CS.getKey CS.defaultKeyFile
-        return $ Just $ clientSessionBackend key 1
+        (cacher, _) <- clientSessionDateCacher 60
+        return $ Just $ clientSessionBackend2 key cacher
 
 instance RenderMessage SessionExample FormMessage where
     renderMessage _ _ = defaultFormMessage
