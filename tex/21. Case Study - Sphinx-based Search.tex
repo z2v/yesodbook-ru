@@ -361,7 +361,7 @@ docSource :: Connection -> C.Source (C.ResourceT IO) X.Event
 docSource conn = selectSourceConn conn [] [] C.$= CL.concatMap entityToEvents
 \end{lstlisting}%$
 
-Оператор \$= соединяет источник с каналом, возвращая новый источник. Теперь, когда у нас есть источник \lstinline!Event!'ов, все, что нам нужно~--- это окружить его событиями начала и конца документа. Благодаря тому, что Source является экземпляром класса \lstinline!Monoid!, это проще простого:
+Оператор \lstinline'$=' соединяет источник с каналом, возвращая новый источник. Теперь, когда у нас есть источник \lstinline!Event!'ов, все, что нам нужно~--- это окружить его событиями начала и конца документа. Благодаря тому, что Source является экземпляром класса \lstinline!Monoid!, это проще простого:
 
 \begin{lstlisting}
 fullDocSource :: Connection -> C.Source (C.ResourceT IO) X.Event

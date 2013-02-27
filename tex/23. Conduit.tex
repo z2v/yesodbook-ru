@@ -463,7 +463,7 @@ instance (MonadTransControl t, Resource m, Monad (t m))
 
     resourceLiftBase = lift . resourceLiftBase
     resourceBracket_ a b c =
-        control' \$ \run -> resourceBracket_ a b (run c)
+        control' $ \run -> resourceBracket_ a b (run c)
       where
         control' f = liftWith f >>= restoreT . return 
 \end{lstlisting}

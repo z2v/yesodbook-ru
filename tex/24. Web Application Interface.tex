@@ -164,7 +164,7 @@ main = run 3000 $ gzip def application
 
 Мы добавили строку импорта чтобы получить доступ к middleware и затем просто применили gzip
 к нашему приложению. Вы также можете \emph{выстроить в цепочку} несколько middleware:
-к примеру, строка \lstinline{gzip False \$ jsonp \$ othermiddleware \$ myapplication}
+к примеру, строка \lstinline{gzip False $ jsonp $ othermiddleware $ myapplication}
 вполне корректна. Но следует заметить, что важен порядок применения middleware. К примеру
 для jsonp нужны несжатые данные, то есть, если вы его примените после применения gzip,
 то получите проблемы.
