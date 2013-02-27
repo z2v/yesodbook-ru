@@ -33,8 +33,8 @@ else
 	TEXOPTS := -interaction=nonstopmode
 endif
 
-OUTPUT_DIR := $(abspath ./tmp)
-TEXOPTS += -output-directory=$(OUTPUT_DIR)
+OUTPUT_DIR ?= tmp
+TEXOPTS += -output-directory=$(abspath $(OUTPUT_DIR))
 
 #-
 # Цели для сборки
@@ -59,13 +59,15 @@ clean:
 	-rm -rf $(OUTPUT_DIR)
 	-rm -f $(YESODBOOK)
 
+BINDIR ?= $(OUTPUT_DIR)/bin
+OBJDIR ?= $(OUTPUT_DIR)/obj
+
 build-examples:
-	@for f in $(HSSRCS); do \
-		ghc $$f > /dev/null; \
-	done
+	@mkdir -p $(BINDIR)
+	@mkdir -p $(OBJDIR)
+	@cp $(HSSRCS) $(OBJDIR)
+	$(foreach f, $(subst hs/,$(OBJDIR)/,$(HSSRCS)), ghc $(f) -o $(subst $(OBJDIR),$(BINDIR),$(f:.hs=)) > $(f:.hs=.log);)
 
 clean-examples:
-	-rm -f $(HSSRCS:.hs=.o)
-	-rm -f $(HSSRCS:.hs=.hi)
-	-rm -f $(HSSRCS:.hs=)
-	-rm -f hs/client_session_key.aes
+	-rm -rf $(BINDIR)
+	-rm -rf $(OBJDIR)

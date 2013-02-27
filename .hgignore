@@ -4,9 +4,3 @@ tmp
 *.backup
 *~
 *.pdf
-*.hi
-*.o
-*.aes
-
-syntax: regexp
-^hs/[^.]+$
