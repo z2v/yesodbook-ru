@@ -5,7 +5,7 @@ space := $(e) $(e)
 #-
 # Исходные файлы
 #-
-MASTER_TEX := Developing\ Web\ Applications\ with\ Haskell\ and\ Yesod.tex
+MASTERTEX := Developing\ Web\ Applications\ with\ Haskell\ and\ Yesod.tex
 
 # Имена исходных файлов TeX содержат пробелы. Поэтому для корректной работы make
 # сначала экранируем все пробелы без разбора, а затем снимаем экранирование
@@ -21,7 +21,7 @@ IMAGES := $(wildcard img/*.png)
 #-
 # Итоговый файл
 #-
-YESODBOOK := $(MASTER_TEX:.tex=.pdf)
+YESODBOOK := $(MASTERTEX:.tex=.pdf)
 
 #-
 # Строка для запуска TeX
@@ -33,41 +33,35 @@ else
 	TEXOPTS := -interaction=nonstopmode
 endif
 
-OUTPUT_DIR ?= tmp
-TEXOPTS += -output-directory=$(abspath $(OUTPUT_DIR))
+BUILDDIR := tmp
+BINDIR := $(BUILDDIR)/bin
+OBJDIR := $(BUILDDIR)/obj
+TEXDIR := $(BUILDDIR)/tex
+TEXOPTS += -output-directory=$(abspath $(TEXDIR))
 
 #-
 # Цели для сборки
 #-
-.PHONY: all tmp-dir clean build-examples clean-examples
+.PHONY: all clean examples
 
-all: tmp-dir $(YESODBOOK)
+all: $(YESODBOOK)
 
-$(YESODBOOK): tex/$(MASTER_TEX) $(TEXSRCS) $(HSSRCS) $(IMAGES)
+$(YESODBOOK): tex/$(MASTERTEX) $(TEXSRCS) $(HSSRCS) $(IMAGES)
 	rm -f $(YESODBOOK)
+	mkdir -p $(TEXDIR)
 	cd tex && \
-	$(TEX) $(TEXOPTS) $(MASTER_TEX) && \
-	$(TEX) $(TEXOPTS) $(MASTER_TEX) && \
-	$(TEX) $(TEXOPTS) $(MASTER_TEX) && \
+	$(TEX) $(TEXOPTS) $(MASTERTEX) && \
+	$(TEX) $(TEXOPTS) $(MASTERTEX) && \
+	$(TEX) $(TEXOPTS) $(MASTERTEX) && \
 	cd .. && \
-	cp $(OUTPUT_DIR)/$(YESODBOOK) .
-
-tmp-dir:
-	@mkdir -p $(OUTPUT_DIR)
+	cp $(TEXDIR)/$(YESODBOOK) .
 
 clean:
-	-rm -rf $(OUTPUT_DIR)
+	-rm -rf $(BUILDDIR)
 	-rm -f $(YESODBOOK)
 
-BINDIR ?= $(OUTPUT_DIR)/bin
-OBJDIR ?= $(OUTPUT_DIR)/obj
-
-build-examples:
+examples:
 	@mkdir -p $(BINDIR)
 	@mkdir -p $(OBJDIR)
 	@cp $(HSSRCS) $(OBJDIR)
 	$(foreach f, $(subst hs/,$(OBJDIR)/,$(HSSRCS)), ghc $(f) -o $(subst $(OBJDIR),$(BINDIR),$(f:.hs=)) > $(f:.hs=.log);)
-
-clean-examples:
-	-rm -rf $(BINDIR)
-	-rm -rf $(OBJDIR)
