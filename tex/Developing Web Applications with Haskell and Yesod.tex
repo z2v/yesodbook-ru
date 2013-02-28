@@ -18,6 +18,15 @@
 \usepackage{indentfirst}
 
 \usepackage{listings}
+\begingroup
+    \catcode0=12 %
+    \makeatletter
+    \g@addto@macro\lst@DefEC{%
+        \lst@CCECUse\lst@ProcessLetter
+        АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя%
+        ^^00% end marker
+    }%
+\endgroup
 
 
 % fancy headers
