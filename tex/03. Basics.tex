@@ -8,25 +8,7 @@
 
 Давайте начнём эту книгу, как полагается: сделаем простую веб-страницу, на которой
 выводится <<\texttt{Здравствуй, Мир!}>>:
-
-\begin{lstlisting}
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
-import Yesod
-
-data HelloWorld = HelloWorld
-
-mkYesod "HelloWorld" [parseRoutes|
-/ HomeR GET
-|]
-
-instance Yesod HelloWorld
-
-getHomeR :: Handler RepHtml
-getHomeR = defaultLayout [whamlet|Здравствуй, Мир!|]
-
-main :: IO ()
-main = warpDebug 3000 HelloWorld
-\end{lstlisting}
+\lstinputlisting{../hs/03-hello-world.hs}
 
 Если вы сохраните этот код в файл \lstinline!helloworld.hs! и запустите его командой
 \lstinline!runhaskell helloworld.hs!, то получите веб-сервер, запущенный на порту 3000.
@@ -214,28 +196,7 @@ Warp является для Yesod основным способом развё�
 В нашем <<здравствуй-мире>> мы определили только один ресурс
 (\lstinline!HomeR!). Веб-приложение обычно намного более интересно, когда в нём больше
 одной страницы. Давайте посмотрим:
-
-\begin{lstlisting}
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses,
-             TemplateHaskell, OverloadedStrings #-}
-import Yesod
-
-data Links = Links
-
-mkYesod "Links" [parseRoutes|
-/ HomeR GET
-/page1 Page1R GET
-/page2 Page2R GET
-|]
-
-instance Yesod Links
-
-getHomeR  = defaultLayout [whamlet|<a href=@{Page1R}>Go to page 1!|]
-getPage1R = defaultLayout [whamlet|<a href=@{Page2R}>Go to page 2!|]
-getPage2R = defaultLayout [whamlet|<a href=@{HomeR}>Go home!|]
-
-main = warpDebug 3000 Links
-\end{lstlisting}
+\lstinputlisting{../hs/03-routes.hs}
 
 В целом это очень похоже на <<Здравствуй, Мир>>. Тип-основание теперь \lstinline!Links!
 вместо \lstinline!HelloWorld!, и помимо ресурса \lstinline!HomeR! мы добавили
@@ -245,9 +206,8 @@ main = warpDebug 3000 Links
 Единственная действительно новая особенность находится внутри квазицитирования
 \lstinline'whamlet'. Мы углубимся в изучение этого синтаксиса в
 \hyperref[chap:shakespeare]{главе о Shakespeare}, но мы можем увидеть, что
-
 \begin{lstlisting}
-<a href=@{Page1R}> Перейти на страницу 1!
+<a href=@{Page1R}>Перейти на страницу 1!
 \end{lstlisting}
 создаёт ссылку на ресурс \lstinline!Page1R!. Здесь важно отметить, что \lstinline!Page1R!~---
 это конструктор данных. Делая каждый ресурс конструктором данных, мы получаем
