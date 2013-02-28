@@ -71,9 +71,10 @@ instance RenderRoute HelloWorld where
   renderRoute HomeR = ([], [])
 
 instance YesodDispatch HelloWorld HelloWorld where
-    yesodDispatch master sub toMaster app404 app405 method pieces =
+    yesodDispatch logger master sub toMaster app404 app405 method pieces =
         case dispatch pieces of
             Just f -> f
+                logger
                 master
                 sub
                 toMaster
@@ -85,20 +86,16 @@ instance YesodDispatch HelloWorld HelloWorld where
         dispatch = Yesod.Routes.Dispatch.toDispatch
             [ Yesod.Routes.Dispatch.Route [] False onHome
             ]
-        onHome [] = Just $ \master sub toMaster _app404 app405 method ->
+        onHome [] = Just $ \logger master sub toMaster _app404 app405 method ->
             case method of
                 "GET" -> yesodRunner
+                    logger
                     (fmap chooseRep getHomeR)
                     master
                     sub
                     (Just HomeR)
                     toMaster
                 _ -> app405 HomeR
-
-getHomeR = return ()
-
-main :: IO ()
-main = return ()
 \end{lstlisting}
 %$
 
@@ -225,9 +222,6 @@ instance RenderRoute Links where
     renderRoute HomeR  = ([], [])
     renderRoute Page1R = (["page1"], [])
     renderRoute Page2R = (["page2"], [])
-
-main :: IO ()
-main = return ()
 \end{lstlisting}
 
 % FIXME: похоже, что returnRoute - это опечатка в книге, а на самом деле
