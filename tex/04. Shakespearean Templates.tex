@@ -204,6 +204,7 @@ renderMyRoute Home = "http://example.com/profile/home"
 renderMyRoute Time = "http://example.com/display/time"
 \end{lstlisting}
 
+\begin{remark}
 Функции рендеринга URL обычно чуть более сложные, чем описанный выше пример.
 Они должны уметь работать с параметрами строки запросов (query string parameters),
 с аргументами конструкторов и более правильно управляться с доменными именами.
@@ -219,6 +220,7 @@ renderMyRoute :: Render MyRoute
 renderMyRoute Home _ = ...                                                      
 renderMyRoute Time _ = ...   
 \end{lstlisting}
+\end{remark}
 
 Что ж, хорошо, у нас теперь есть наша функция рендеринга в строку, и у нас есть
 типобезопасные URL, встроенные в шаблоны. Как всë это работает вместе?
