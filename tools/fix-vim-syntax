@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+
+sed -i'' -e 's/\(end{lstlisting}\)/\1%stopzone/' "$*"
