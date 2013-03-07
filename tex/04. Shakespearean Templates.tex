@@ -674,10 +674,10 @@ data Msg = Hello | Apples Int
 для чтения формате, поэтому мы определяем некоторую функцию рендеринга:
 \begin{lstlisting}
 renderEnglish :: Msg -> Text
-renderEnglish Hello = "Привет"
-renderEnglish (Apples 0) = "Вы не купили яблок."
-renderEnglish (Apples 1) = "Вы купили одно яблоко."
-renderEnglish (Apples i) = T.concat ["Вы купили ", T.pack $ show i, " яблок."]
+renderEnglish Hello = "Hello"
+renderEnglish (Apples 0) = "You did not buy any apples."
+renderEnglish (Apples 1) = "You bought 1 apple."
+renderEnglish (Apples i) = T.concat ["You bought T.pack $ show i, " apples."]
 \end{lstlisting}
 
 Теперь мы хотим интерполировать эти значения типа Msg напрямую в шаблоне.

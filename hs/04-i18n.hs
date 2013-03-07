@@ -16,11 +16,11 @@ renderUrl Stylesheet _ = "/style.css"
 
 data Msg = Hello | Apples Int
 
-renderEnglish :: Msg -> Text
-renderEnglish Hello = "Привет"
-renderEnglish (Apples 0) = "Вы не купили яблок."
-renderEnglish (Apples 1) = "Вы купили одно яблоко."
-renderEnglish (Apples i) = T.concat ["Вы купили ", T.pack $ show i, " яблок."]
+renderRussian :: Msg -> Text
+renderRussian Hello = "Привет"
+renderRussian (Apples 0) = "Вы не купили яблок."
+renderRussian (Apples 1) = "Вы купили одно яблоко."
+renderRussian (Apples i) = T.concat ["Вы купили ", T.pack $ show i, if i < 5 then " яблока." else " яблок."]
 
 template :: Int -> HtmlUrlI18n Msg MyRoute
 template count = [ihamlet|
@@ -35,4 +35,4 @@ template count = [ihamlet|
 
 main :: IO ()
 main = putStrLn $ renderHtml
-     $ (template 5) (toHtml . renderEnglish) renderUrl
+     $ (template 5) (toHtml . renderRussian) renderUrl
