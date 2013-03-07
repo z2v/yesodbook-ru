@@ -341,31 +341,7 @@ renderMyRoute Time _ = ...
 применится к результату вычисления, что значит, что все экземпляры класса
 \lstinline!ToHtml! могут быть сынтерполированы. Возьмите, к примеру, следующий код.
 
-\begin{lstlisting}
--- Пока что игнорируйте QuasiQuotes и функцию shamlet, мы всë это объясним позже
-{-# LANGUAGE QuasiQuotes #-}
-
-import Text.Hamlet (shamlet)
-import Text.Blaze.Html.Renderer.String (renderHtml)
-import Data.Char (toLower)
-import Data.List (sort)
-
-data Person = Person
-    { name :: String
-    , age  :: Int
-    }
-
-main :: IO ()
-main = putStrLn $ renderHtml [shamlet|
-<p>Привет, меня зовут #{name person} и мне #{show $ age person}.
-<p>
-    Давайте сделаем с моим именем разные смешные штуки: #
-    <b>#{sort $ map toLower (name person)}
-<p>Ох, а через 5 лет мне будет #{show ((+) 5 (age person))}.
-|]
-  where
-    person = Person "Michael" 26
-\end{lstlisting}
+\lstinputlisting{../hs/04-var-interpolation.hs}
 
 Что же с нашими расхваленными типобезопасными URL? Они почти что идентичны
 интерполяции переменных по всем показателям, за исключением того, что они
@@ -373,34 +349,7 @@ main = putStrLn $ renderHtml [shamlet|
 знака вставки \verb'^', которое позволяет вам вставить другой шаблон того же типа.
 Код ниже демонстрирует обе описанные концепции.
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-import Text.Hamlet (HtmlUrl, hamlet)
-import Text.Blaze.Html.Renderer.String (renderHtml)
-import Data.Text (Text)
-
-data MyRoute = Home
-
-render :: MyRoute -> [(Text, Text)] -> Text
-render Home _ = "/home"
-
-footer :: HtmlUrl MyRoute
-footer = [hamlet|
-<footer>
-    Назад на #
-    <a href=@{Home}>Домашнюю страницу
-    .
-|]
-
-main :: IO ()
-main = putStrLn $ renderHtml $ [hamlet|
-<body>
-    <p>Это моя страница.
-    ^{footer}
-|] render
-\end{lstlisting}
+\lstinputlisting{../hs/04-url-interpolation.hs}
 
 \subsection{Атрибуты}
 В последнем примере, мы добавили \texttt{href} атрибут в тэг \texttt{a}. Давайте
@@ -644,42 +593,10 @@ a:link, a:visited { color: #{textcolor} }
 и корректный синтаксис. Вы можете посмотреть простейшие примеры каждого подхода
 на следующих примерах
 
-%TODO: название в примеры??
-Квазицитиование
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-} -- мы используем Text чуть ниже
-{-# LANGUAGE QuasiQuotes #-}
+\lstinputlisting[caption=Квазицитрование]{../hs/04-quasiquoter.hs}
 
-import Text.Hamlet (HtmlUrl, hamlet)
-import Data.Text (Text)
-import Text.Blaze.Html.Renderer.String (renderHtml)
-
-data MyRoute = Home | Time | Stylesheet
-
-render :: MyRoute -> [(Text, Text)] -> Text
-render Home _ = "/home"
-render Time _ = "/time"
-render Stylesheet _ = "/style.css"
-
-template :: Text -> HtmlUrl MyRoute
-template title = [hamlet|
-$doctype 5
-<html>
-    <head>
-        <title>#{title}
-        <link rel=stylesheet href=@{Stylesheet}>
-    <body>
-        <h1>#{title}
-|]
-
-main :: IO ()
-main = putStrLn $ renderHtml $ template "Мой заголовок" render
-\end{lstlisting}
-
-%TODO: название в примеры??
-Внешние файлы
-\begin{lstlisting}
-
+% Выносить в отдельный файл не стал, так как пример состоит из двух файлов
+\begin{lstlisting}[caption=Внешние файлы]
 {-# LANGUAGE OverloadedStrings #-} -- мы используем Text чуть ниже
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE CPP #-} -- чтобы контролировать "боевой" режим против отладочного
@@ -790,46 +707,7 @@ type HtmlUrlI18n msg url = Translate msg -> Render url -> Html
 \lstinline!renderSpanish! или \lstinline!renderKlingon! в этот шаблон. И он
 сгенерирует хорошо переведенный контент (качество которого, конечно, зависит от
 ваших переводчиков). Программа целиком будет выглядеть так:
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-import Data.Text (Text)
-import qualified Data.Text as T
-import Text.Hamlet (HtmlUrlI18n, ihamlet)
-import Text.Blaze.Html (toHtml)
-import Text.Blaze.Html.Renderer.String (renderHtml)
-
-data MyRoute = Home | Time | Stylesheet
-
-renderUrl :: MyRoute -> [(Text, Text)] -> Text
-renderUrl Home _ = "/home"
-renderUrl Time _ = "/time"
-renderUrl Stylesheet _ = "/style.css"
-
-data Msg = Hello | Apples Int
-
-renderEnglish :: Msg -> Text
-renderEnglish Hello = "Привет"
-renderEnglish (Apples 0) = "Вы не купили яблок."
-renderEnglish (Apples 1) = "Вы купили одно яблоко."
-renderEnglish (Apples i) = T.concat ["Вы купили ", T.pack $ show i, " яблок."]
-
-template :: Int -> HtmlUrlI18n Msg MyRoute
-template count = [ihamlet|
-$doctype 5
-<html>
-    <head>
-        <title>i18n
-    <body>
-        <h1>_{Hello}
-        <p>_{Apples count}
-|]
-
-main :: IO ()
-main = putStrLn $ renderHtml
-     $ (template 5) (toHtml . renderEnglish) renderUrl
-\end{lstlisting}
+\lstinputlisting{../hs/04-i18n.hs}
 
 \section{Другие Шекспировские возможности}
 
@@ -838,30 +716,7 @@ main = putStrLn $ renderHtml
 создания интерполированных строк, который очень нравится тем, кто привык к
 скриптовым языкам вроде Ruby или Python. Конечно, утилиты этого пакета можно
 использовать не только для \texttt{Yesod}.
-
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, OverloadedStrings #-}
-
-import Text.Shakespeare.Text
-import qualified Data.Text.Lazy.IO as TLIO
-import Data.Text (Text)
-import Control.Monad (forM_)
-
-data Item = Item
-    { itemName :: Text
-    , itemQty :: Int
-    }
-
-items :: [Item]
-items =
-    [ Item "яблоки" 5
-    , Item "бананы" 10
-    ]
-
-main :: IO ()
-main = forM_ items $ \item -> TLIO.putStrLn
-    [lt|У вас есть #{show $ itemQty item} #{itemName item}.|]
-\end{lstlisting}
+\lstinputlisting{../hs/04-shakespeare-text.hs}
 
 Несколько быстрых подсказок по этому простому примеру:
 \begin{itemize}
