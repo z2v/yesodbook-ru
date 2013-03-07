@@ -1,3 +1,34 @@
 #!/usr/bin/env sh
 
-sed -i'' -e 's/\(end{lstlisting}\)/\1%stopzone/' "$@"
+usage () {
+    echo "Usage: `basename $0` [add|del] file1 [file2] ..."
+    exit
+}
+
+ACTION=$1
+shift
+
+case ${ACTION} in
+    add)
+        REGEXP='s/\(end{lstlisting}\)/\1%stopzone/'
+        ;;
+    del)
+        REGEXP='s/%stopzone//g'
+        ;;
+    *)
+        echo "Unknown command '${ACTION}'."
+        usage
+        ;;
+esac
+
+# GNU sed требует слитного написания опции -i, а BSD sed - раздельного
+case `uname` in
+    FreeBSD)
+        SPACE=' '
+        ;;
+    *)
+        SPACE=
+        ;;
+esac
+
+sed -i${SPACE}'' -e ${REGEXP} "$@"
