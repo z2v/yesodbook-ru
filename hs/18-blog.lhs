@@ -474,7 +474,7 @@ main :: IO ()
 main = do
     -- создаём новый пул
     pool <- createSqlitePool "blog.db3" 10
-    -- выполнить необходимую миграцию
+    -- выполняем необходимую миграцию
     runNoLoggingT $ runSqlPool (runMigration migrateAll) pool
     -- создаём новый менеджер HTTP
     manager <- newManager def
