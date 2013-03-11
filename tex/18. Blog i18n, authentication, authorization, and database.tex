@@ -6,16 +6,16 @@
 Хотя в целом мы рекомендуем размещать шаблоны, определения сущностей Persist и маршрутизацию в отдельных файлах, здесь, для удобства, мы будем держать всё это в одном файле. Единственным исключением, как вы увидите ниже, будут локализованные сообщения.
 
 Начнём с расширений языка. В коде сгенерированного шаблона сайта расширения языка указаны в файле cabal, так что вам не нужно будет указывать их в ваших файлах Haskell.
- 
+
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, GADTs, FlexibleContexts,
              MultiParamTypeClasses #-}
 \end{lstlisting}
- 
-Теперь импорт. 
 
-\begin{lstlisting} 
+Теперь импорт.
+
+\begin{lstlisting}
 import Yesod
 import Yesod.Auth
 import Yesod.Form.Nic (YesodNic, nicHtmlField)
@@ -35,32 +35,32 @@ import Control.Applicative ((<$>), (<*>), pure)
 \begin{lstlisting}
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 \end{lstlisting}
- 
+
 Данные пользователей. В более сложных приложениях мы бы также хранили дату регистрации, отображаемое имя и т.д.
- 
+
 \begin{lstlisting}
 User
    email Text
    UniqueUser email
 \end{lstlisting}
- 
-Запись в блоге. 
- 
+
+Запись в блоге.
+
 \begin{lstlisting}
 Entry
    title Text
    posted UTCTime
    content Html
 \end{lstlisting}
- 
+
 Мы должны добавить \lstinline!deriving!, поскольку \lstinline!Html! не определяет экземпляры для \lstinline!Read!, \lstinline!Show! или \lstinline!Eq!. Если вы получаете сообщение об ошибке <<cannot derive>> в своём собственном коде, попробуйте добавить \lstinline!deriving!.
- 
+
 \begin{lstlisting}
    deriving
 \end{lstlisting}
- 
+
 И комментарий к записи.
- 
+
 \begin{lstlisting}
 Comment
    entry EntryId
@@ -70,23 +70,23 @@ Comment
    text Textarea
 |]
 \end{lstlisting}
- 
+
 Каждый сайт имеет тип-основание. Это значение инициализируется перед запуском приложения и доступно в течение всего времени работы. В нашем мы будем хранить пул соединений с базой данных и менеджер HTTP-соединения. Как они будут инициализированы~--- смотрите в конце этого файла.
- 
+
 \begin{lstlisting}
 data Blog = Blog
    { connPool :: ConnectionPool
    , httpManager :: Manager
    }
 \end{lstlisting}
- 
+
 Чтобы упростить локализацию и сделать её дружественной к переводчику, у нас есть специальный формат файлов для перевода сообщений. Для каждого языка существует отдельный файл, который именуется на основе кода языка (например, <<en>>, <<es>>, <<de-DE>>) и размещается в одноимённом каталоге. Также мы указываем основной языковой файл (в данном случае, <<en>>) в качестве языка по умолчанию.
- 
+
 \begin{lstlisting}
 mkMessage "Blog" "../messages-blog" "en"
 \end{lstlisting}
- 
-Содержимое нашего файла <<en>>: 
+
+Содержимое нашего файла <<en>>:
 
 \begin{lstlisting}
     NotAnAdmin: You must be an administrator to access this page.
@@ -120,7 +120,7 @@ mkMessage "Blog" "../messages-blog" "en"
 \end{lstlisting}
 
 А теперь настроим таблицу маршрутизации. У нас будет четыре записи: домашняя страница, страница со списком записей (\lstinline!BlogR!), страница отдельной записи (\lstinline!EntryR!) и подсайт аутентификации. Обратите внимание, что \lstinline!BlogR! и \lstinline!EntryR! принимают методы GET и POST. POST используется для добавления в блог, соответственно, новой записи и нового комментария.
- 
+
 \begin{lstlisting}
 mkYesod "Blog" [parseRoutes|
 / RootR GET
@@ -129,31 +129,31 @@ mkYesod "Blog" [parseRoutes|
 /auth AuthR Auth getAuth
 |]
 \end{lstlisting}
- 
+
 Каждый тип-основание должен быть экземпляром класса типов \lstinline!Yesod!. Именно здесь мы настраиваем различные параметры.
- 
+
 \begin{lstlisting}
 instance Yesod Blog where
 \end{lstlisting}
 
 Корень нашего приложения. Обратите внимание, что для того, чтобы \lstinline!BrowserID! работал правильно, это должен быть корректный URL.
- 
+
 \begin{lstlisting}
     approot = ApprootStatic "http://localhost:3000"
 \end{lstlisting}
- 
+
 Наша схема авторизации. Мы хотим, чтобы соблюдались следующие правила:
 
 \begin{itemize}
-\item Только администраторы могут добавлять новую запись. 
-\item Только зарегистрированные пользователи могут добавлять комментарии. 
+\item Только администраторы могут добавлять новую запись.
+\item Только зарегистрированные пользователи могут добавлять комментарии.
 \item Все остальные страницы доступны всем.
 \end{itemize}
 
 Мы сконфигурировали наши маршруты в RESTful-стиле: действия, которые могут вносить изменения, всегда используют метод POST. В результате мы можем легко проверить, является ли запрос запросом на запись: если вторым параметром передано \lstinline!True!, значит это так.
 
-Во-первых, мы будем авторизовать запросы на добавление новой записи. 
- 
+Во-первых, мы будем авторизовать запросы на добавление новой записи.
+
 \begin{lstlisting}
     isAuthorized BlogR True = do
         mauth <- maybeAuth
@@ -164,8 +164,8 @@ instance Yesod Blog where
                 | otherwise    -> unauthorizedI MsgNotAnAdmin
 \end{lstlisting}
 
-Также мы будем авторизовать запросы на добавление нового комментария. 
- 
+Также мы будем авторизовать запросы на добавление нового комментария.
+
 \begin{lstlisting}
     isAuthorized (EntryR _) True = do
         mauth <- maybeAuth
@@ -173,33 +173,33 @@ instance Yesod Blog where
             Nothing -> return AuthenticationRequired
             Just _  -> return Authorized
 \end{lstlisting}
- 
+
 Все остальные запросы авторизуем всегда.
- 
+
 \begin{lstlisting}
     isAuthorized _ _ = return Authorized
 \end{lstlisting}
- 
-Указываем, куда должен быть перенаправлен пользователь, если он получает \lstinline!AuthenticationRequired!. 
- 
+
+Указываем, куда должен быть перенаправлен пользователь, если он получает \lstinline!AuthenticationRequired!.
+
 \begin{lstlisting}
     authRoute _ = Just (AuthR LoginR)
 \end{lstlisting}
- 
-Здесь мы определяем внешний вид нашего сайта. Функция получает содержимое отдельной страницы и оборачивает его в стандартный шаблон. 
- 
+
+Здесь мы определяем внешний вид нашего сайта. Функция получает содержимое отдельной страницы и оборачивает его в стандартный шаблон.
+
 \begin{lstlisting}
     defaultLayout inside = do
 \end{lstlisting}
- 
-Yesod поощряет подход <<get-following-post>>, когда после POST-запроса пользователь перенаправляется на другую страницу. Чтобы позволить POST-странице дать пользователю какой-то отклик, у нас есть функции \lstinline!getMessage! и \lstinline!setMessage!. Хорошей идеей будет всегда проверять на наличие ожидающих сообщений в вашей функции \lstinline!defaultLayout!. 
- 
+
+Yesod поощряет подход <<get-following-post>>, когда после POST-запроса пользователь перенаправляется на другую страницу. Чтобы позволить POST-странице дать пользователю какой-то отклик, у нас есть функции \lstinline!getMessage! и \lstinline!setMessage!. Хорошей идеей будет всегда проверять на наличие ожидающих сообщений в вашей функции \lstinline!defaultLayout!.
+
 \begin{lstlisting}
         mmsg <- getMessage
 \end{lstlisting}
 
-Чтобы объединить вместе HTML, CSS и JavaScript, мы используем виджеты. В конце концов мы должны развернуть всё это в обычный HTML. Для этого есть функция \lstinline!widgetToPageContent!. Мы передадим ей виджет, состоящий из содержимого, которое мы получили от отдельной страницы (\lstinline!inside!), и стандартного CSS для всех страниц. Для создания последнего мы используем язык шаблонов Lucius. 
- 
+Чтобы объединить вместе HTML, CSS и JavaScript, мы используем виджеты. В конце концов мы должны развернуть всё это в обычный HTML. Для этого есть функция \lstinline!widgetToPageContent!. Мы передадим ей виджет, состоящий из содержимого, которое мы получили от отдельной страницы (\lstinline!inside!), и стандартного CSS для всех страниц. Для создания последнего мы используем язык шаблонов Lucius.
+
 \begin{lstlisting}
         pc <- widgetToPageContent $ do
             toWidget [lucius|
@@ -218,9 +218,9 @@ textarea {
 |]
             inside
 \end{lstlisting}%$
- 
-В заключение мы используем новый шаблон Hamlet, чтобы обернуть отдельные части (заголовок, содержимое тегов \lstinline!<head>! и \lstinline!<body>!) в конечный результат. 
- 
+
+В заключение мы используем новый шаблон Hamlet, чтобы обернуть отдельные части (заголовок, содержимое тегов \lstinline!<head>! и \lstinline!<body>!) в конечный результат.
+
 \begin{lstlisting}
         hamletToRepHtml [hamlet|
 $doctype 5
@@ -234,46 +234,46 @@ $doctype 5
         ^{pageBody pc}
 |]
 \end{lstlisting}
- 
-Это простая функция для проверки, является ли пользователь администратором. В реальных приложениях мы, скорее всего, будем хранить признак администратора в базе данных или проверять через какую-то внешнюю систему. А сейчас я просто жёстко задам адрес своей электронной почты. 
- 
+
+Это простая функция для проверки, является ли пользователь администратором. В реальных приложениях мы, скорее всего, будем хранить признак администратора в базе данных или проверять через какую-то внешнюю систему. А сейчас я просто жёстко задам адрес своей электронной почты.
+
 \begin{lstlisting}
 isAdmin :: User -> Bool
 isAdmin user = userEmail user == "michael@snoyman.com"
 \end{lstlisting}
- 
-Чтобы получить доступ к базе данных, нам нужно создать экземпляр \lstinline!YesodPersist!, который указывает, какой сервер мы используем и как выполнять действия. 
- 
+
+Чтобы получить доступ к базе данных, нам нужно создать экземпляр \lstinline!YesodPersist!, который указывает, какой сервер мы используем и как выполнять действия.
+
 \begin{lstlisting}
 instance YesodPersist Blog where
    type YesodPersistBackend Blog = SqlPersist
-   runDB f = do 
+   runDB f = do
        master <- getYesod
        let pool = connPool master
        runSqlPool f pool
 \end{lstlisting}
- 
-Это синоним типа для удобства. Он определяется автоматически при генерации шаблона сайта. 
- 
+
+Это синоним типа для удобства. Он определяется автоматически при генерации шаблона сайта.
+
 \begin{lstlisting}
 type Form x = Html -> MForm Blog Blog (FormResult x, Widget)
 \end{lstlisting}
- 
-Для использования yesod-form и yesod-auth нам нужен экземпляр \lstinline!RenderMessage! для \lstinline!FormMessage!. Это позволит контролировать локализацию отдельных сообщений форм. 
- 
+
+Для использования yesod-form и yesod-auth нам нужен экземпляр \lstinline!RenderMessage! для \lstinline!FormMessage!. Это позволит контролировать локализацию отдельных сообщений форм.
+
 \begin{lstlisting}
 instance RenderMessage Blog FormMessage where
     renderMessage _ _ = defaultFormMessage
 \end{lstlisting}
- 
+
 Этот экземпляр нужен для того, чтобы использовать встроенный HTML-редактор Nic. Используем значения по умолчанию для CDN-hosted версии Nic.
- 
+
 \begin{lstlisting}
 instance YesodNic Blog
 \end{lstlisting}
- 
-Чтобы использовать yesod-auth, нам нужен экземпляр \lstinline!YesodAuth!. 
- 
+
+Чтобы использовать yesod-auth, нам нужен экземпляр \lstinline!YesodAuth!.
+
 \begin{lstlisting}
 instance YesodAuth Blog where
     type AuthId Blog = UserId
@@ -283,13 +283,13 @@ instance YesodAuth Blog where
 \end{lstlisting}
 
 Мы будем использовать систему \footnotehref{https://browserid.org/}{BrowserID}, использующую адрес электронной почты в качестве вашего идентификатора. Это позволит в будущем легко перейти на другие системы для локально аутентифицируемых адресов электронной почты (также входит в yesod-auth).
- 
+
 \begin{lstlisting}
     authPlugins _ = [authBrowserId]
 \end{lstlisting}
- 
-Эта функция принимает регистрационные данные пользователя (то есть, адрес электронной почты) и возвращает \lstinline!UserId!. 
- 
+
+Эта функция принимает регистрационные данные пользователя (то есть, адрес электронной почты) и возвращает \lstinline!UserId!.
+
 \begin{lstlisting}
     getAuthId creds = do
         let email = credsIdent creds
@@ -297,9 +297,9 @@ instance YesodAuth Blog where
         res <- runDB $ insertBy user
         return $ Just $ either entityKey id res
 \end{lstlisting}%$
- 
-Обработчик домашней страницы. Одна важная деталь здесь~--- это использование \lstinline'`setTitleI`', что позволяет использовать локализованные сообщения в заголовке страницы. Мы также используем это сообщение с \lstinline'`_{Msg...}`'-интерполяцией в Hamlet. 
- 
+
+Обработчик домашней страницы. Одна важная деталь здесь~--- это использование \lstinline'`setTitleI`', что позволяет использовать локализованные сообщения в заголовке страницы. Мы также используем это сообщение с \lstinline'`_{Msg...}`'-интерполяцией в Hamlet.
+
 \begin{lstlisting}
 getRootR :: Handler RepHtml
 getRootR = defaultLayout $ do
@@ -310,9 +310,9 @@ getRootR = defaultLayout $ do
    <a href=@{BlogR}>_{MsgSeeArchive}
 |]
 \end{lstlisting}%$
- 
-Определяем форму для добавления новых записей. Мы хотим, чтобы пользователь заполнил заголовок и содержание, а дату создания записи заполним автоматически с помощью \lstinline'`getCurrentTime`'. 
- 
+
+Определяем форму для добавления новых записей. Мы хотим, чтобы пользователь заполнил заголовок и содержание, а дату создания записи заполним автоматически с помощью \lstinline'`getCurrentTime`'.
+
 \begin{lstlisting}
 entryForm :: Form Entry
 entryForm = renderDivs $ Entry
@@ -320,9 +320,9 @@ entryForm = renderDivs $ Entry
     <*> aformM (liftIO getCurrentTime)
     <*> areq nicHtmlField (fieldSettingsLabel MsgNewEntryContent) Nothing
 \end{lstlisting}
- 
-Получаем список всех записей и для администратора отображаем форму создания новой записи. 
- 
+
+Получаем список всех записей и для администратора отображаем форму создания новой записи.
+
 \begin{lstlisting}
 getBlogR :: Handler RepHtml
 getBlogR = do
@@ -340,9 +340,9 @@ $else
             <li>
                 <a href=@{EntryR entryId}>#{entryTitle entry}
 \end{lstlisting}%$
- 
-У нас есть три варианта: пользователь-администратор вошёл в систему, обычный пользователь вошёл в систему и пользователь не вошёл в систему. В первом случае мы должны отобразить форму создания записи. Во втором мы ничего не делаем. В третьем мы отображаем ссылку для входа. 
- 
+
+У нас есть три варианта: пользователь-администратор вошёл в систему, обычный пользователь вошёл в систему и пользователь не вошёл в систему. В первом случае мы должны отобразить форму создания записи. Во втором мы ничего не делаем. В третьем мы отображаем ссылку для входа.
+
 \begin{lstlisting}
 $maybe Entity _ user <- muser
     $if isAdmin user
@@ -355,9 +355,9 @@ $nothing
         <a href=@{AuthR LoginR}>_{MsgLoginToPost}
 |]
 \end{lstlisting}%$
- 
-Обрабатываем добавление новой записи. Мы не делаем никакой проверки авторизации, так как \lstinline!isAuthorized! делает это за нас. Если в форме заданы корректные значения, мы добавляем запись в базу данных и перенаправляем пользователя на эту запись. В противном случае мы просим пользователя попробовать ещё раз. 
- 
+
+Обрабатываем добавление новой записи. Мы не делаем никакой проверки авторизации, так как \lstinline!isAuthorized! делает это за нас. Если в форме заданы корректные значения, мы добавляем запись в базу данных и перенаправляем пользователя на эту запись. В противном случае мы просим пользователя попробовать ещё раз.
+
 \begin{lstlisting}
 postBlogR :: Handler RepHtml
 postBlogR = do
@@ -376,9 +376,9 @@ postBlogR = do
         <input type=submit value=_{MsgNewEntry}>
 |]
 \end{lstlisting}%$
- 
-Форма для комментариев, очень похожая на \lstinline!entryForm! выше. Она принимает \lstinline!EntryID! записи, к которой относится комментарий. Используя \lstinline!pure!, мы вкладываем это значение в результирующее значение \lstinline!Comment!, не позволяя ему появиться в сгенерированном HTML. 
- 
+
+Форма для комментариев, очень похожая на \lstinline!entryForm! выше. Она принимает \lstinline!EntryID! записи, к которой относится комментарий. Используя \lstinline!pure!, мы вкладываем это значение в результирующее значение \lstinline!Comment!, не позволяя ему появиться в сгенерированном HTML.
+
 \begin{lstlisting}
 commentForm :: EntryId -> Form Comment
 commentForm entryId = renderDivs $ Comment
@@ -388,9 +388,9 @@ commentForm entryId = renderDivs $ Comment
     <*> areq textField (fieldSettingsLabel MsgCommentName) Nothing
     <*> areq textareaField (fieldSettingsLabel MsgCommentText) Nothing
 \end{lstlisting}
- 
+
 Показываем отдельную запись, комментарии и, для зарегистрированных пользователей, форму добавления комментария.
- 
+
 \begin{lstlisting}
 getEntryR :: EntryId -> Handler RepHtml
 getEntryR entryId = do
@@ -428,9 +428,9 @@ getEntryR entryId = do
                     <a href=@{AuthR LoginR}>_{MsgLoginToComment}
 |]
 \end{lstlisting}%$
- 
-Получаем добавляемый комментарий. 
- 
+
+Получаем добавляемый комментарий.
+
 \begin{lstlisting}
 postEntryR :: EntryId -> Handler RepHtml
 postEntryR entryId = do
@@ -450,9 +450,9 @@ postEntryR entryId = do
         <input type=submit value=_{MsgAddCommentButton}>
 |]
 \end{lstlisting}%$
- 
-Наконец, наша главная функция. 
- 
+
+Наконец, наша главная функция.
+
 \begin{lstlisting}
 main :: IO ()
 main = do
