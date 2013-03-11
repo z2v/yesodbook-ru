@@ -7,44 +7,7 @@
 
 WAI использует пакет \footnotehref{http://hackage.haskell.org/package/conduit}{conduit} для того, чтобы обрабатывать тела потоковых запросов, и эффективно формирует ответы при помощи \footnotehref{http://hackage.haskell.org/package/blaze-builder}{blaze-builder}. \footnotehref{http://hackage.haskell.org/package/aeson}{aeson} использует \footnotehref{http://hackage.haskell.org/package/attoparser}{attoparsec} для разбора текста; используя \footnotehref{http://hackage.haskell.org/package/attoparsec-conduit}{attoparsec-conduit} мы получаем простое взаимодействие с WAI. В итоге код выглядит следующим образом:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Network.Wai (Response, responseLBS, Application, requestBody)
-import Network.HTTP.Types (status200, status400)
-import Network.Wai.Handler.Warp (run)
-import Data.Aeson.Parser (json)
-import Data.Conduit.Attoparsec (sinkParser)
-import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (Value, encode, object, (.=))
-import Control.Exception (SomeException)
-import Data.ByteString (ByteString)
-import Data.Conduit (ResourceT, ($$))
-import Control.Exception.Lifted (handle)
-
-main :: IO ()
-main = run 3000 app
-
-app :: Application
-app req = handle invalidJson $ do
-    value <- requestBody req $$ sinkParser json
-    newValue <- liftIO $ modValue value
-    return $ responseLBS
-        status200
-        [("Content-Type", "application/json")]
-        $ encode newValue
-
-invalidJson :: SomeException -> ResourceT IO Response
-invalidJson ex = return $ responseLBS
-    status400
-    [("Content-Type", "application/json")]
-    $ encode $ object
-        [ ("message" .= show ex)
-        ]
-
--- Бизнес-логика будет находиться в этой функции
-modValue :: Value -> IO Value
-modValue = return
-\end{lstlisting}%$
+\lstinputlisting{../hs/20-server.hs}
 
 \section {Клиент}
 
@@ -56,38 +19,4 @@ modValue = return
   \item Есть несколько различных функций для инициализации запроса. Мы используем \lstinline!http!, которая позваляет нам получать прямой доступ к потоку данных. Есть и другие, более высокоуровневые функции (такие как \lstinline!httpLbs!), которые позволяют игнорировать вопросы с источниками и дают возможность получить напрямую тело целиком.
 \end{itemize}
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Network.HTTP.Conduit
-    ( http, parseUrl, withManager, RequestBody (RequestBodyLBS)
-    , requestBody, method, Response (..)
-    )
-import Data.Aeson (Value (Object, String))
-import Data.Aeson.Parser (json)
-import Data.Conduit (($$))
-import Data.Conduit.Attoparsec (sinkParser)
-import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (encode, (.=), object)
-
-main :: IO ()
-main = withManager $ \manager -> do
-    value <- liftIO makeValue
-    -- Нам надо знать размер тела запроса, поэтому преобразуем его к
-    -- ByteString
-    let valueBS = encode value
-    req' <- liftIO $ parseUrl "http://localhost:3000/"
-    let req = req' { method = "POST", requestBody = RequestBodyLBS valueBS }
-    Response status version headers body <- http req manager
-    resValue <- body $$ sinkParser json
-    liftIO $ handleResponse resValue
-
--- Фунция бизнес-логики приложения, создающая значение для запроса
-makeValue :: IO Value
-makeValue = return $ object
-    [ ("foo" .= ("bar" :: String))
-    ]
-
--- Функция бизнес-логики приложения, обрабатывающая ответ от сервера
-handleResponse :: Value -> IO ()
-handleResponse = print
-\end{lstlisting}
+\lstinputlisting{../hs/20-client.hs}
