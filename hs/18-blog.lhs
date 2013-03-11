@@ -34,6 +34,7 @@ import Database.Persist.Sqlite
     )
 import Data.Time (UTCTime, getCurrentTime)
 import Control.Applicative ((<$>), (<*>), pure)
+import Control.Monad.Logger (runNoLoggingT)
 \end{code}%$
 
 Сначала мы настроим наши сущности Persistent. Мы создадим наши типы данных
@@ -474,7 +475,7 @@ main = do
     -- создаём новый пул
     pool <- createSqlitePool "blog.db3" 10
     -- выполнить необходимую миграцию
-    runSqlPool (runMigration migrateAll) pool
+    runNoLoggingT $ runSqlPool (runMigration migrateAll) pool
     -- создаём новый менеджер HTTP
     manager <- newManager def
     -- запускаем наш сервер
