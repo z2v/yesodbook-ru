@@ -17,6 +17,7 @@ TEXSRCS := $(subst .tex\,.tex,$(TEXSRCS))
 # Здесь имена без пробелов - сойдёт и так
 HSSRCS := $(wildcard hs/*.hs)
 IMAGES := $(wildcard img/*.png)
+BLOGLHS := 18-blog.lhs
 
 #-
 # Итоговый файл
@@ -46,7 +47,7 @@ TEXOPTS += -output-directory=$(abspath $(TEXDIR))
 
 all: $(YESODBOOK)
 
-$(YESODBOOK): tex/$(MASTERTEX) $(TEXSRCS) $(HSSRCS) $(IMAGES)
+$(YESODBOOK): tex/$(MASTERTEX) $(TEXSRCS) $(HSSRCS) $(IMAGES) hs/$(BLOGLHS)
 	rm -f $(YESODBOOK)
 	mkdir -p $(TEXDIR)
 	cd tex && \
@@ -60,8 +61,16 @@ clean:
 	-rm -rf $(BUILDDIR)
 	-rm -f $(YESODBOOK)
 
-examples:
+dirs:
 	@mkdir -p $(BINDIR)
 	@mkdir -p $(OBJDIR)
+
+examples: blog | dirs
 	@cp $(HSSRCS) $(OBJDIR)
 	$(foreach f, $(subst hs/,$(OBJDIR)/,$(HSSRCS)), ghc $(f) -o $(subst $(OBJDIR),$(BINDIR),$(f:.hs=)) > $(f:.hs=.log);)
+
+blog: hs/$(BLOGLHS) | dirs
+	@cp hs/$(BLOGLHS) $(OBJDIR)
+	@cp -r hs/messages-blog $(BUILDDIR)
+	cd $(OBJDIR) && \
+	ghc $(BLOGLHS) -o ../bin/$(BLOGLHS:.lhs=) > $(BLOGLHS:.lhs=.log)
