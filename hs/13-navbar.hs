@@ -35,13 +35,13 @@ getRootR :: Handler RepHtml
 getRootR = defaultLayout [whamlet|
 <form method=post action=@{AddLinkR}>
     <p>
-        Add a new link to #
+        Добавить ссылку на #
         <input type=url name=url value=http://>
-        \ titled #
+        \ с названием #
         <input type=text name=title>
         \ #
-        <input type=submit value="Add link">
-<h2>Existing links
+        <input type=submit value="Добавить">
+<h2>Добавленные ссылки:
 ^{existingLinks}
 |]
 
@@ -61,7 +61,7 @@ postAddLinkR = do
     title <- runInputPost $ ireq textField "title"
     now <- liftIO getCurrentTime
     runDB $ insert $ Link title url now
-    setMessage "Link added"
+    setMessage "Ссылка добавлена"
     redirect RootR
 
 main :: IO ()

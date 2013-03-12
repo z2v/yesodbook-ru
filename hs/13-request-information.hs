@@ -33,11 +33,11 @@ instance RenderMessage People FormMessage where
 getRootR :: Handler RepHtml
 getRootR = defaultLayout [whamlet|
 <p>
-    <a href="?sort=name">Sort by name
+    <a href="?sort=name">Сортировать по имени
     \ | #
-    <a href="?sort=age">Sort by age
+    <a href="?sort=age">Сортировать по возрасту
     \ | #
-    <a href="?">No sort
+    <a href="?">Без сортировки
 ^{showPeople}
 |]
 
