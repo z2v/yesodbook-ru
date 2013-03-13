@@ -32,8 +32,6 @@ $(function() {
     toWidget [hamlet| <h1> Это один способ вставки контента |]
     [whamlet| <h2> А это другой |]
     toWidgetBody [julius| alert("Это вставлено в само тело"); |]
-
-main = warpDebug 3000 W
 \end{lstlisting}
 Этот код порождает следующий HTML (отступы добавлены):
 \begin{lstlisting}[language=HTML]
@@ -194,8 +192,6 @@ getRootR = defaultLayout $ do
     headerClass <- lift newIdent
     toWidget [hamlet|<h1 .#{headerClass}>My Header|]
     toWidget [lucius| .#{headerClass} { color: green; } |]
-
-main = warpDebug 3000 W
 \end{lstlisting}
 
 \begin{remark}
@@ -378,8 +374,6 @@ $doctype 5
 
 instance Yesod MyApp where
     defaultLayout = myLayout
-
-main = warpDebug 3000 MyApp
 \end{lstlisting}
 
 \begin{remark}
@@ -425,11 +419,6 @@ $doctype 5
         <article>
             ^{pageBody pc}
 |]
-
-instance Yesod MyApp where
-    defaultLayout = myLayout
-
-main = warpDebug 3000 MyApp
 \end{lstlisting}
 
 \section{Выводы}
