@@ -66,11 +66,11 @@ dirs:
 	@mkdir -p $(OBJDIR)
 
 examples: blog | dirs
-	@cp $(HSSRCS) $(OBJDIR)
+	@cp -pu $(HSSRCS) $(OBJDIR)
 	$(foreach f, $(subst hs/,$(OBJDIR)/,$(HSSRCS)), ghc $(f) -o $(subst $(OBJDIR),$(BINDIR),$(f:.hs=)) > $(f:.hs=.log);)
 
 blog: hs/$(BLOGLHS) | dirs
-	@cp hs/$(BLOGLHS) $(OBJDIR)
-	@cp -r hs/messages-blog $(BUILDDIR)
+	@cp -pu hs/$(BLOGLHS) $(OBJDIR)
+	@cp -rpu hs/messages-blog $(BUILDDIR)
 	cd $(OBJDIR) && \
 	ghc $(BLOGLHS) -o ../bin/$(BLOGLHS:.lhs=) > $(BLOGLHS:.lhs=.log)
