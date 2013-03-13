@@ -132,37 +132,7 @@ myFunc = something "hello"
 
 Основная идея семейства типов~--- устанавливать некоторую ассоциацию между двумя различными типами. Предположим, мы хотим написать функцию, которая безопасным образом получает первый элемент списка. Но мы не хотим, чтобы она работала только на списках; нам бы хотелось, чтобы она трактовала \lstinline'ByteString' как список, состоящий из элементов типа \lstinline'Word8'. Чтобы этого добиться, нам нужно ввести некоторый ассоциированный тип, чтобы указать, каково содержимое определённого типа.
 
-\begin{lstlisting}
-{-# LANGUAGE TypeFamilies, OverloadedStrings #-}
-
-import Data.Word (Word8)
-import qualified Data.ByteString as S
-import Data.ByteString.Char8 () -- получить обособленно определённый экземпляр IsString
-
-class SafeHead a where
-    type Content a
-    safeHead :: a -> Maybe (Content a)
-
-instance SafeHead [a] where
-    type Content [a] = a
-    safeHead [] = Nothing
-    safeHead (x:_) = Just x
-
-instance SafeHead S.ByteString where
-    type Content S.ByteString = Word8
-    safeHead bs
-        | S.null bs = Nothing
-        | otherwise = Just $ S.head bs
-
-main :: IO ()
-main = do
-    print $ safeHead ("" :: String)
-    print $ safeHead ("hello" :: String)
-
-    print $ safeHead ("" :: S.ByteString)
-    print $ safeHead ("hello" :: S.ByteString)
-\end{lstlisting}
-%$  
+\lstinputlisting{../hs/02-type-families.hs}
 
 Новый синтаксис выражается в возможности разместить тип внутри класса и экземпляра. Вместо этого мы также можем использовать \lstinline'data', что создаст новый тип данных вместо ссылки на уже существующий.
 
