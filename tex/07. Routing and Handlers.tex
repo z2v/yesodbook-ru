@@ -115,7 +115,6 @@ Yesod рассчитывает на получение канонических 
 наше приложение. К счастью, система типов может защитить нас:
 \begin{lstlisting}
 newtype Natural = Natural Int
-    deriving (Show, Read, Eq, Num, Ord)
 instance PathPiece Natural where
     toPathPiece (Natural i) = T.pack $ show i
     fromPathPiece s =
@@ -124,14 +123,6 @@ instance PathPiece Natural where
                 | i < 1 -> Nothing
                 | otherwise -> Just $ Natural i
             [] -> Nothing
-mkYesod "Fibs" [parseRoutes|
-/fibs/#Natural FibsR GET
-|]
-instance Yesod Fibs
-fibs = 1 : 1 : zipWith (+) fibs (tail fibs)
-getFibsR :: Natural -> GHandler Fibs Fibs RepPlain
-getFibsR (Natural i) = return $ RepPlain $ toContent $ show $ fibs !! (i - 1)
-main = warpDebug 3000 Fibs
 \end{lstlisting}%$
 
 В строке 1 мы определяем для \lstinline!Int! изоморфный тип, который
@@ -167,7 +158,6 @@ instance PathMultiPiece Page where
     toPathMultiPiece (Page x y z) = x : y : z
     fromPathMultiPiece (x:y:z) = Just $ Page x y z
     fromPathMultiPiece _ = Nothing
-main = return ()
 \end{lstlisting}%$
 
 \subsection{Наименование ресурса}
@@ -282,8 +272,6 @@ mkYesod "Simple" [parseRoutes|
 getHomeR :: Handler RepHtml
 getHomeR = defaultLayout [whamlet|<h1>This is simple
 |]
-instance Yesod Simple
-main = warpDebug 3000 Simple
 \end{lstlisting}
 
 Посмотрите на сигнатуру типа для \lstinline!getHomeR!. Первый
@@ -334,9 +322,6 @@ handleDateR year month day =
 
 getWikiR :: [Text] -> Handler RepPlain
 getWikiR = return . RepPlain . toContent . T.unwords
-
-instance Yesod Args
-main = warpDebug 3000 Args
 \end{lstlisting}%$
 
 Аргументы имеют типы динамических компонент каждого маршрута, в порядке
