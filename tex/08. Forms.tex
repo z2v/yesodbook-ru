@@ -1,0 +1,910 @@
+\chapter{Формы}
+Я уже упоминал граничное условие: если данные приходят в приложение или
+покидают его, мы должны их проверять. Вероятно, наиболее сложная проверка
+происходит в формах.  Программировать формы не так просто; в идеальных
+условиях мы хотели бы иметь решение, которое может следующее:
+
+\begin{itemize}
+    \item гарантировать, что данные корректны;
+    \item преобразовывать строковые данные формы в типы данных Haskell;
+    \item генерировать код HTML для отображения формы;
+    \item генерировать Javascript, выполняющий валидацию на стороне клиента и
+        предоставляющий более дружелюбные пользователю виджеты, например, для
+        выбора даты;
+    \item строить более сложные формы, объединяя вместе более простые;
+    \item автоматически присваивать полям имена, которые гарантированно будут
+        уникальными.
+\end{itemize}
+
+Пакет yesod-form предоставляет все эти возможности с помощью простого,
+декларативного API. Он построен на базе виджетов Yesod для упрощения стилевого
+оформления форм и применения Javascript надлежащим образом. И, как и везде в
+Yesod, для обеспечения корректной работы используется система типов Haskell.
+
+\section{Краткий обзор}
+\lstinputlisting{../hs/08-synopsis.hs}
+
+\section{Виды форм}
+Погружение в непосредственное рассмотрение типов нам следует начать с обзора
+различных видов форм. Их три категории:
+\begin{description}
+    \item[Аппликативные] \hfill \\
+        Наиболее широко используемые (см. пример выше). Аппликативные формы
+        позволяют нам объединять сообщения об ошибках друг с другом, сохраняя
+        при этом декларативный высокоуровневый подход. Более детальную
+        информацию об аппликативном подходе можно почерпнуть
+        в~\footnotehref{http://www.haskell.org/haskellwiki/Applicative\_functor}%
+        {Haskell-вики}.
+
+    \item[Монадические] \hfill \\
+        Более мощная альтернатива аппликативным. Гибкость достигается за счёт
+        несколько большей многословности. Бывают полезны, если необходимо
+        создать форму, которая не укладывается в стандартный двухстолбцовый
+        формат.
+
+    \item[Формы для ввода] \hfill \\
+        Используются только для получения ввода. Не генерируют никакого HTML для
+        получения ввода пользователя. Полезны для взаимодействия с уже
+        существующими формами.
+\end{description}
+
+В дополнение, существует ряд различных переменных для каждого вида формы и поля,
+которые вам захочется установить:
+\begin{itemize}
+    \item Обязательное поле или нет?
+    \item Данные должны передаваться методом GET или POST?
+    \item У поля есть значение по умолчанию или нет?
+\end{itemize}
+
+Главная цель~--- минимизировать число определений полей и позволить им
+работать в максимально возможном количестве контекстов. Один из результатов
+этого~--- мы пришли к добавлению нескольких дополнительных параметров для
+каждого поля. В обзоре, вы, наверное, заметили такие слова как
+\lstinline'areq' и дополнительный параметр \lstinline'Nothing'. В рамках
+данной главы мы обсудим зачем они нужны, а сейчас представьте себе, что сделав
+эти параметры явными, мы получили возможность повторно использовать отдельные
+поля (например,~%
+\footnotehref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod-Form-Fields.html\#v:intField}%
+{\lstinline'intField'}) большим количеством различных способов.
+
+Короткое замечание по поводу именования. Каждая форма имеет однобуквенный
+префикс (\texttt{A}, \texttt{M} или~\texttt{I}), который используется в
+нескольких местах, как например в \lstinline'MForm'. Мы также будем
+использовать~\lstinline'req' и~\lstinline'opt' для обозначения обязательных
+(required) и необязательных (optional) полей соответственно. В итоге,
+обязательное аппликативное поле мы создаём с помощью~\lstinline'areq', а
+необязательное поле для ввода данных~--- с помощью~\lstinline'iopt'.
+
+\section{Типы}
+Модуль
+\footnotehref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod.Form.Types.html}{\texttt{Yesod.Form.Types}}
+определяет набор типов. Давайте начнём с нескольких вспомогательных:
+
+\begin{description}
+    \item[Enctype] \hfill \\
+        Тип кодировки: либо \lstinline'UrlEncoded', либо
+        \lstinline'Multipart'. Этот тип данных объявляет экземпляр
+        для~\lstinline'ToHtml', так что вы можете его использовать
+        непосредственно в шаблонах~\texttt{Hamlet}.
+
+    \item[Env] \hfill \\
+        Отображает имя параметра в список значений.
+
+    \item[FileEnv] \hfill \\
+        Отображает имя параметра в соответствующий загруженный файл.
+
+    \item[Ints] \hfill \\
+        Как было сказано во введении, \texttt{yesod-form} автоматически
+        присваивает уникальное имя каждому полю. \lstinline'Ints' используется
+        для отслеживания следующего номера для присваивания.
+
+    \item[FormResult] \hfill \\
+        Имеет одно из трёх возможных состояний: \lstinline'FormMissing'~---
+        если данные не были переданы, \lstinline'FormFailure'~--- если
+        произошла ошибка при разборе формы (например, не заполнено
+        обязательное поле или содержимое поля некорректно)
+        или~\lstinline'FormSuccess', когда всё прошло гладко.
+\end{description}
+
+Три следующих типа данных используются для определения отдельных полей.
+
+\begin{remark}
+Поле~--- это отдельная порция информации, например, число, строка или адрес
+электронной почты. Поля собирают вместе для построения форм.
+\end{remark}
+
+\begin{description}
+    \item[Field] \hfill \\
+        Определяют два вида функциональности: как преобразовать текстовый ввод
+        пользователя в значение языка Haskell и как создавать виджет, который
+        будет показан пользователю.  \texttt{yesod-form} определяет ряд
+        отдельных полей в
+        модуле~\footnotehref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod.Form.Fields.html}{\lstinline'Yesod.Form.Fields'}.
+
+    \item[FieldSettings] \hfill \\
+        Основная информация о том, как поле следует отображать: отображаемое имя,
+        необязательная подсказка, и, возможно, явно заданные атрибуты
+        \lstinline'id' и~\lstinline'name'. (Если ничего не указано, то они
+        генерируются автоматически.)
+
+        \begin{remark}
+            \lstinline'FieldSettings' предоставляет
+            экземпляр~\lstinline'IsString', так что, когда вам понадобится
+            указать значение типа~\lstinline'FieldSettings', вы можете
+            обойтись просто строковым литералом. Так мы делали во введении.
+        \end{remark}
+
+    \item[FieldView] \hfill \\
+        Промежуточный формат, содержащий кучу информации об отображении поля.
+        Едва ли будет использоваться напрямую. Детали рассмотрим ниже.
+\end{description}
+
+И наконец, мы добрались до важного: сами формы. Есть три типа данных для форм:
+\lstinline'MForm' для монадических, \lstinline'AForm' для аппликативных и
+\lstinline'IForm' (определённая
+в~\footnotehref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod-Form-Input.html\#t:IForm}{\lstinline'IForm'})
+для форм ввода данных.
+
+\lstinline'MForm' на самом деле является синонимом типа для стека монад,
+который предоставляет следующие возможности:
+\begin{itemize}
+    \item Монада \lstinline'Reader' предоставляет нам параметры
+        (\lstinline'Env' и~\lstinline'FileEnv'), аргумент основного сайта
+        (master site) и список языков, которые поддерживаются пользователем.
+        Последние два используются для интернационализации (подробнее об этом
+        ниже).
+
+    \item Монада \lstinline'Writer' отслеживает \lstinline'Enctype'. Для формы
+        значение всегда будет~\lstinline'UrlEncoded', за исключением случая,
+        когда присутствует поле для загрузки файла. Тогда будет использовано
+        значение~\lstinline'Multipart'.
+
+    \item Монада \lstinline'State' хранит \lstinline'Ints' для отслеживания
+        следующего генерируемого уникального имени.
+\end{itemize}
+
+Форма \lstinline'AForm' устроена сходно. Однако, есть несколько важных различий:
+\begin{itemize}
+    \item Она генерирует список \lstinline'FieldViews'. Это позволяет нам
+        оперировать абстракцией отображения форм, выбирая соответствующую
+        функцию для отрисовки страницы в самом конце. Во введении мы
+        использовали \lstinline'renderDivs', которая создаёт связку тегов div.
+        Другим вариантом может быть \lstinline'renderTable'.
+
+    \item У неё нет экземпляра \lstinline'Monad'. Задача
+        \lstinline'Applicative' заключается в том, чтобы позволить форме
+        выполниться целиком, собрать как можно больше информации, и выдать
+        результат. Это не работает в контексте \lstinline'Monad'.
+\end{itemize}
+
+\lstinline'IForm' ещё проще: она возвращает либо список ошибок, либо результат.
+
+\section{Преобразование}
+<<Минуточку>>,~--- скажете вы. <<Вы говорите, что во введении использовались
+аппликативные формы, но я уверен, что сигнатура типа
+указывает~\lstinline'MForm'. Не были ли они монадическими?>>. Да, верно,
+итоговая форма, которую мы создали, была монадической. Но на самом деле
+произошло вот что: мы преобразовали аппликативную форму в монадическую.
+
+Повторюсь, наша цель заключается в том, чтобы повторно использовать как можно
+больше кода и минимизировать число функций в API. А монадические формы
+являются более мощными, чем аппликативные, поэтому, грубо говоря, всё, что
+может быть выражено аппликативными формами, может быть выражено и
+монадическими. Есть две основые функции, которые нас здесь выручают:
+\lstinline'aformToForm' преобразует любую аппликативную форму в монадическую,
+а \lstinline'formToAForm' преобразует определённые виды монадических форм в их
+аппликативные варианты.
+
+<<\textbf{Ещё} минутку>>,~--- настаиваете вы. <<Я не видел никаких
+\lstinline'aformToForm'!>>. Это тоже верно.  Функция~\lstinline'renderDivs'
+позаботилась об этом для нас.
+
+\section{Создание аппликативных форм}
+Теперь, когда я (надеюсь) убедил вас, что во введении мы действительно имели
+дело с аппликативными формами, давайте попытаемся понять, как они создаются.
+Начнём с простого примера:
+
+\begin{lstlisting}
+data Car = Car
+    { carModel :: Text
+    , carYear :: Int
+    }
+  deriving Show
+
+carAForm :: AForm Synopsis Synopsis Car
+carAForm = Car
+    <$> areq textField "Модель" Nothing
+    <*> areq intField "Год выпуска" Nothing
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable carAForm
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+Здесь мы явным образом разделили аппликативные и монадические формы.
+В~\lstinline'carAForm' мы использовали операторы~\lstinline'<$>'
+и~\lstinline'<*>'. Это не должно удивлять; они часто используются в коде,
+использующем аппликативный стиль. Также у нас по одной строчке для каждой
+записи нашего типа данных~\lstinline'Car'. Возможно не удивляет, что мы
+использовали \lstinline'textField' для записи с типом~\lstinline'Text' и
+\lstinline'intField' для записи с типом~\lstinline'Int'.
+
+Давайте взглянем поближе на функцию~\lstinline'areq'. Её (упрощённая)
+сигнатура типа~--- \lstinline'Field a -> FieldSettings -> Maybe a -> AForm a'.
+Первый аргумент определяет тип данных поля, как его разбирать и как
+отображать.  Следующий аргумент, \lstinline'FieldSettings', даёт нам метку,
+подсказку, имя и идентификатор поля. В данном случае, мы используем вышу
+упомянутый экземпляр~\lstinline'IsString' для~\lstinline'FieldSettings'.
+
+А что с \lstinline'Maybe a'? Этот аргумент предоставляет необязательное
+значение по умолчанию.  Например, если мы хотим, чтобы наша форма подставляла
+для года машины значение по умолчанию <<2007>>, мы будем использовать
+\lstinline'areq intField "Year" (Just 2007)'. Мы даже можем сделать это
+уровнем выше, и получить форму, которая принимает необязательный аргумент,
+задающий значения по умолчанию.
+
+\begin{lstlisting}[caption={Формы со значениями по умолчанию}]
+carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+carAForm mcar = Car
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq intField "Год выпуска" (carYear <$> mcar)
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable (carAForm $ Just $ Car "Forte" 2010)
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+\subsection{Необязательные поля}
+Предположим, что нам нужно необязательное поле (например, цвет машины). Всё
+что нужно~--- это воспользоваться функцией \lstinline'aopt'.
+
+\begin{lstlisting}[caption={Необязательные поля}]
+data Car = Car
+    { carModel :: Text
+    , carYear :: Int
+    , carColor :: Maybe Text
+    }
+  deriving Show
+
+carAForm :: AForm Synopsis Synopsis Car
+carAForm = Car
+    <$> areq textField "Модель" Nothing
+    <*> areq intField "Год выпуска" Nothing
+    <*> aopt textField "Цвет" Nothing
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable carAForm
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+Как и в случае обязательных полей, последний аргумент~--- необязательное
+значение по умолчанию.  В итоге, тут получается двойное оборачивание
+в~\lstinline'Maybe'. Это может показаться чрезмерным (и так и есть), но
+существенно упрощает написание кода, который принимает в качестве
+необязательного параметра форму со значениями по умолчанию, как в следующем
+примере.
+
+\begin{lstlisting}[caption={Необязательные поля со значениями по умолчанию}]
+data Car = Car
+    { carModel :: Text
+    , carYear :: Int
+    , carColor :: Maybe Text
+    }
+  deriving Show
+
+carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+carAForm mcar = Car
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq intField  "Год выпуска"  (carYear  <$> mcar)
+    <*> aopt textField "Цвет" (carColor <$> mcar)
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+\section{Валидация}
+Как мы можем сделать, чтобы наша форма принимала только машины, созданные
+после 1990 года?  Если вы помните, мы говорили выше, что \lstinline'Field' сам
+по себе содержит информацию о том, что представляет собой корректное значение. То
+есть, всё что нам надо сделать~--- это написать новый \lstinline'Field',
+верно? Это будет несколько утомительно. Вместо этого, давайте изменим уже
+существующее поле.
+
+\begin{lstlisting}
+carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+carAForm mcar = Car
+    <$> areq textField    "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска"  (carYear  <$> mcar)
+    <*> aopt textField    "Цвет" (carColor <$> mcar)
+  where
+    errorMessage :: Text
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
+
+    carYearField = check validateYear intField
+
+    validateYear y
+        | y < 1990 = Left errorMessage
+        | otherwise = Right y
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+Хитрость в функции~\lstinline'check'. Она принимает функцию
+(\lstinline'validateYear'), которая возвращает либо сообщение об ошибке, либо
+модифицированное значение поле. В этом примере, мы не изменяли значение
+вообще. Это самый частый случай использования. И так как этот вид проверки
+довольно распространён, у нас есть сокращение:
+
+\begin{lstlisting}
+carYearField = checkBool (>= 1990) errorMessage intField
+\end{lstlisting}
+
+\begin{lstlisting}
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+Функция \lstinline'checkBool' принимает два параметра: условие, которое должно
+быть выполнено, и сообщение об ошибке, которое следует отобразить, если
+условие не верно.
+
+\begin{remark}
+Вы могли заметить явное указание \lstinline'Text' в сигнатуре типа функции
+\lstinline'errorMessage'. При использовании расширения OverloadedStrings это
+необходимо. Чтобы поддерживать интернационализацию, сообщения могут иметь
+множество различных типов, и у GHC нет возможности определить, какой
+экземпляр~\lstinline'IsString' вам нужен.
+\end{remark}
+
+Это замечательно~--- гарантировать, что наша машина не очень старая. А если мы
+хотим убедиться в том, что указанный год не из будущего? Чтобы получить
+текущий год, нам надо будет выполнить немного \lstinline'IO'. Для таких
+случаев, нам потребуется функция~\lstinline'checkM':
+
+\begin{lstlisting}
+carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
+
+inPast y = do
+    thisYear <- liftIO getCurrentYear
+    return $ if y <= thisYear
+        then Right y
+        else Left ("Да у вас машина времени!" :: Text)
+
+getCurrentYear :: IO Int
+getCurrentYear = do
+    now <- getCurrentTime
+    let today = utctDay now
+    let (year, _, _) = toGregorian today
+    return $ fromInteger year
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "серый"
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+Функция \lstinline'inPast' вернёт результат типа \lstinline'Either'. Однако,
+она использует монаду~\lstinline'Handler'. Мы используем \lstinline'liftIO getCurrentYear',
+чтобы получить текущий год, и затем сравниваем его с годом, указанным
+пользователем. Также обратите внимание, как мы можем связывать вместе
+несколько валидаторов.
+
+\begin{remark}
+Так как валидатор \lstinline'checkM' работает в монаде \lstinline'Handler', он
+имеет доступ ко всем операциям, которые вы можете обычно выполнять в Yesod.
+Это особенно полезно для выполнения операций с базой данных, которые мы
+рассмотрим в главе~\hyperref[chap:persistent]{Persistent}.
+\end{remark}
+
+\section{Поля посложнее}
+Наше поле для ввода цвета хорошее, но не совсем дружественное пользователю.
+Что мы хотим на самом деле~--- это выпадающий список.
+
+\begin{lstlisting}[caption={Выпадающие списки}]
+data Car = Car
+    { carModel :: Text
+    , carYear :: Int
+    , carColor :: Maybe Color
+    }
+  deriving Show
+
+data Color = Red | Blue | Gray | Black
+    deriving (Show, Eq, Enum, Bounded)
+
+carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+carAForm mcar = Car
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска" (carYear <$> mcar)
+    <*> aopt (selectFieldList colors) "Цвет" (carColor <$> mcar)
+  where
+    colors :: [(Text, Color)]
+    colors = [("Красный", Red), ("Синий", Blue), ("Серый", Gray), ("Чёрный", Black)]
+    errorMessage :: Text
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
+
+    carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
+
+    inPast y = do
+        thisYear <- liftIO getCurrentYear
+        return $ if y <= thisYear
+            then Right y
+            else Left ("Да у вас машина времени!" :: Text)
+
+getCurrentYear :: IO Int
+getCurrentYear = do
+    now <- getCurrentTime
+    let today = utctDay now
+    let (year, _, _) = toGregorian today
+    return $ fromInteger year
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just Black
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+Функция \lstinline'selectFieldList' принимает список пар. Первый элемент
+пары~--- это текст, который отобразится пользователю в выпадающем списке, а
+вторым элементом является соответствующее значение Haskell. Конечно, код выше
+выглядит повторяющимся; мы можем получить тот же результат воспользовавшись
+экземплярами \lstinline'Enum' и \lstinline'Bounded', которые GHC автоматически
+предоставляет нам.
+
+\begin{lstlisting}[caption={Используя Enum и Bounded}]
+data Car = Car
+    { carModel :: Text
+    , carYear :: Int
+    , carColor :: Maybe Color
+    }
+  deriving Show
+
+data Color = Red | Blue | Gray | Black
+    deriving (Show, Eq, Enum, Bounded)
+
+carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+carAForm mcar = Car
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска" (carYear <$> mcar)
+    <*> aopt (selectFieldList colors) "Цвет" (carColor <$> mcar)
+  where
+    colors = map (pack . show &&& id) $ [minBound..maxBound]
+    errorMessage :: Text
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
+
+    carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
+
+    inPast y = do
+        thisYear <- liftIO getCurrentYear
+        return $ if y <= thisYear
+            then Right y
+            else Left ("Да у вас машина времени!" :: Text)
+
+getCurrentYear :: IO Int
+getCurrentYear = do
+    now <- getCurrentTime
+    let today = utctDay now
+    let (year, _, _) = toGregorian today
+    return $ fromInteger year
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just Black
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+Интервал \lstinline'[minBound..maxBound]' даёт нам список всех различных
+значений типа~\lstinline'Color'. Мы затем применяем~\lstinline'map'
+и~\lstinline'&&&' (так называемый, fan-out operator)\marginpar{требуется
+адекватный перевод. Или оставить как есть}, превращая его в список пар.
+
+Некоторые люди предпочитают выпадающим спискам переключатели.  К счастью, это
+изменение в одно слово. Пример в листинге~\ref{lst:radio-buttons}.
+
+\begin{lstlisting}[caption={Переключатели},label={lst:radio-buttons}]
+data Car = Car
+    { carModel :: Text
+    , carYear :: Int
+    , carColor :: Maybe Color
+    }
+  deriving Show
+
+data Color = Red | Blue | Gray | Black
+    deriving (Show, Eq, Enum, Bounded)
+
+carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+carAForm mcar = Car
+    <$> areq textField "Модель" (carModel <$> mcar)
+    <*> areq carYearField "Год выпуска" (carYear <$> mcar)
+    <*> aopt (radioFieldList colors) "Цвет" (carColor <$> mcar)
+  where
+    colors = map (pack . show &&& id) $ [minBound..maxBound]
+    errorMessage :: Text
+    errorMessage = "Ваша машина чересчур стара, купите новую!"
+
+    carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
+
+    inPast y = do
+        thisYear <- liftIO getCurrentYear
+        return $ if y <= thisYear
+            then Right y
+            else Left ("Да у вас машина времени!" :: Text)
+
+getCurrentYear :: IO Int
+getCurrentYear = do
+    now <- getCurrentTime
+    let today = utctDay now
+    let (year, _, _) = toGregorian today
+    return $ fromInteger year
+
+carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just Black
+
+getCarR :: Handler RepHtml
+getCarR = do
+    ((result, widget), enctype) <- runFormGet carForm
+    case result of
+        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
+        _ -> defaultLayout [whamlet|
+<form method=get action=@{CarR} enctype=#{enctype}>
+    <table>
+        ^{widget}
+    <input type=submit>
+|]
+\end{lstlisting}
+
+\section{Выполнение форм}
+В какой-то момент у нас возникнет необходимость воспользоваться нашими
+прекрасными формами и получить некоторые результаты.  Для этого в нашем
+распоряжении есть целый ряд различных функций, каждая из которых имеет своё
+назначение. Я пройдусь по всем, начав с самых распространённых.
+
+\begin{description}
+    \item[runFormPost] \hfill \\
+        Функция выполнит вашу форму с любыми предоставленными POST
+        параметрами. Если запрос не является POST--запросом, вернёт
+        \lstinline'FormMissing'. Функция автоматически вставляет признак
+        безопасности (security token) в виде скрытого поля для предупреждения
+        кросс-сайтовых~(\footnotehref{http://en.wikipedia.org/wiki/Cross-site\_request\_forgery}{CSRF})
+        атак.
+
+    \item[runFormGet] \hfill \\
+        Аналог \lstinline'runFormPost' для GET-параметров. Чтобы различать
+        обычную загрузку страницы через GET от отправки GET формы, включает в
+        форму дополнительное скрытое поле~\lstinline'_hasdata'.
+
+    \item[runFormPostNoNonce] \hfill \\
+        То же что и \lstinline'runFormPost', но не включает (или не требует)
+        признака безопасности CSRF.
+
+    \item[generateFormPost] \hfill \\
+        Вместо привязки к существующим POST параметрам, действует так, будто
+        их нет. Может быть полезна, когда вам нужно сгенерировать новую форму
+        после того, как предыдущая была отправлена, например, в мастере форм.
+
+    \item[generateFormGet] \hfill \\
+        То же что и \lstinline'generateFormPost', но для GET.
+\end{description}
+
+Тип возвращаемого значения первых трёх функций~---
+\lstinline'((FormResult a, Widget), Enctype)'.  \lstinline'Widget' уже будет
+включать любые ошибки валидации и ранее отправленные значения.
+
+\section{Интернационализация}
+В этой главе уже было несколько ссылок на интернационализацию. Эта тема
+подробнее освещена в своей собственной~\hyperref[chap:i18n]{главе}, но так как
+она имеет глубокое влияние на yesod-form, я хотел дать краткий обзор.  Идея в
+основании поддержки интернационализации в Yesod состоит в том, чтобы иметь
+типы данных для представления сообщений. Каждый сайт может иметь
+экземпляр~\lstinline'RenderMessage' для конкретного типа данных, который будет
+переводить сообщение в соответствии со списком языков, принимаемых клиентом.
+Как результат, есть несколько моментов, о которых вам следует знать:
+\begin{itemize}
+    \item  Для каждого сайта автоматически создаётся
+        экземпляр~\lstinline'RenderMessage' для типа~\lstinline'Text', так что
+        вы можете просто использовать простые строки, если не заботитесь о
+        поддержке интернационализации. Однако, вам изредка может потребоваться
+        использовать явные сигнатуры типов.
+
+    \item Все сообщения в yesod-form выражаются в терминах типа
+        данных~\lstinline'FormMessage'.  Поэтому, для использования yesod-form
+        вам нужен соответствующий экземпляр~\lstinline'RenderMessage'. Простая
+        реализация, которая использует английский вариант перевода по
+        умолчанию, будет выглядеть так:
+\begin{lstlisting}
+    instance RenderMessage MyApp FormMessage where
+    renderMessage _ _ = defaultFormMessage
+\end{lstlisting}
+        Такой экземпляр автоматически предоставляется сгенерированным каркасом
+        сайта.
+\end{itemize}
+
+\section{Монадические формы}
+Зачастую, простая вёрстка форм достаточна, и тут аппликативные формы
+превосходны. Иногда, однако, вы захотите получить более настраиваемый вид вашей
+формы.
+\begin{figure}[tbph]
+  \centering
+  \includegraphics[width=\textwidth]{08-forms-image-01.png}
+  \caption{Нестандартная вёрстка формы}
+\end{figure}
+
+В таких случаях следует использовать монадические формы. Они несколько более
+многословны, чем их аппликативные родственники, но эта многословность
+позволяет вам получить полный контроль над тем, как форма будет выглядеть.
+Чтобы получить такую же форму, как приведённая выше, мы могли бы написать
+что-то подобное этому.
+\lstinputlisting{../hs/08-monadic-forms.hs}
+
+Подобно аппликативной функции~\lstinline'areq' мы используем \lstinline'mreq'
+для монадических форм.  (И, конечно, есть \lstinline'mopt' для необязательных
+полей).  Но здесь есть существенное различие: \lstinline'mreq' возвращает нам
+пару значений.  Вместо скрытого значения типа
+\footnotehref{http://hackage.haskell.org/packages/archive/yesod-form/latest/doc/html/Yesod-Form-Types.html\#t:FieldView}{FieldView}
+и автоматической его вставки в виджет, мы получаем управление вставкой по
+своему усмотрению.
+
+Тип данных \lstinline'FieldView' содержит ряд записей с информацией о поле
+формы. Самая важная из них~--- \lstinline'fvInput', которая и есть фактическое
+поле формы. В этом примере мы также использовали~\lstinline'fvId', которая
+возвращает нам HTML атрибут~\texttt{id} тегa~\texttt{input}. В нашем примере
+мы её использовали, чтобы задать ширину поля.
+
+Вас, наверное, интересует, что это за значения <<Это не используется>> и <<И это
+тоже>>.  Функция~\lstinline'mreq' принимает вторым аргументом значение
+типа~\lstinline'FieldSettings'.  Так как для \lstinline'FieldSettings'
+существует экземпляр \lstinline'IsString', такие строки по сути раскрываются
+компилятором в:
+
+\begin{lstlisting}
+fromString "Это не используется" == FieldSettings
+    { fsLabel = "Это не используется"
+    , fsTooltip = Nothing
+    , fsId = Nothing
+    , fsName = Nothing
+    , fsClass = []
+    }
+\end{lstlisting}
+
+В случае аппликативных форм, значения~\lstinline'fsLabel'
+и~\lstinline'fsTooltip' использовались при построении HTML. В случае же
+монадических форм, Yesod не генерирует для нас никаких HTML-обёрток, и поэтому
+эти значения игнорируются. Однако, мы храним параметр
+типа~\lstinline'FieldSettings', чтобы позволить вам при желании переопределять
+атрибуты~\texttt{id} и~\texttt{name} ваших полей.
+
+Ещё один интересный момент~--- значение~\lstinline{extra}. Формы типа GET
+добавляют поле для обозначения отправки, а POST формы добавляют признак
+безопасности для предупреждения кросс-сайтовых атак.  Если вы не включите это
+дополнительное скрытое поле, то Yesod не примет вашу форму.
+
+Всё остальное довольно-таки тривиально. Мы создаём наше
+значение~\lstinline'personRes' из значений~\lstinline'nameRes'
+и~\lstinline'ageRes', а затем возвращаем кортеж, включающий полученное
+значение типа~\lstinline'Person' и виджет для формы. А в
+функции~\lstinline'getRootR' всё также, как для аппликативной формы. В
+действительности, вы могли бы заменить монадическую форму на
+аппликативную, и код всё равно работал бы.
+
+\section{Формы ввода данных}
+Аппликативные и монадические формы выполняют и генерацию HTML, и разбор
+данных.  Иногда вам нужно только последнее, например, когда где-то уже создана
+форма, или если вы хотите генерировать форму динамически, используя
+Javascript. В этих случаях вам пригодятся формы ввода данных.
+
+Они аналогичны аппликативным и монадическим с некоторыми различиями:
+\begin{itemize}
+    \item Вы используете \lstinline'runInputPost' и \lstinline'runInputGet'.
+    \item Вы используете \lstinline'ireq' и \lstinline'iopt'. Эти функции
+        теперь принимают только 2 аргумента: тип рассматриваемого поля и его
+        имя (т.е. значение HTML атрибута~\texttt{name}).
+    \item После выполнения формы, она возвращает значение. Она не возвращает
+        виджет или тип кодировки.
+    \item В случае ошибок проверки данных, возвращается страница с сообщением
+        об ошибке <<некорректные аргументы (invalid arguments)>>.
+\end{itemize}
+Вы можете переписать предыдущий пример с помощью форм ввода данных. Однако,
+стоит заметить, что эта версия менее дружественна пользователю. Если вы
+допустите ошибку при заполнении аппликативной или монадической формы, то вы
+вернётесь на ту же страницу с ранее введёнными данными, а сообщение об ошибке
+укажет, что надо исправить. При использовании форм ввода данных пользователь
+получит просто сообщение об ошибке.
+
+\lstinputlisting{../hs/08-input-forms.hs}
+
+\section{Пользовательские поля}
+Поля, которые встроены в Yesod, скорее всего покроют большую часть ваших
+потребностей для работы с формами. Но иногда вам может понадобиться что-то
+более специализированное.  К счастью, вы можете создавать новые поля в Yesod
+самостоятельно. Тип данных~\lstinline'Field' имеет две записи:
+\lstinline'fieldParse' принимает список значений, отправленных пользователем,
+и возвращает один из трёх результатов:
+\begin{itemize}
+    \item Сообщение об ошибке в случае, если проверка данных провалилась.
+    \item Разобранное значение.
+    \item \lstinline'Nothing', сообщая, что данные не были предоставлены.
+\end{itemize}
+
+Последний случай может несколько удивить: разве Yesod не может автоматически
+понять, что информации не было предоставлено, если входной список пуст? Не
+совсем. Чекбоксы, например, сообщают о сброшенном состоянии, посылая пустой
+список.
+
+Почему список? Не лучше ли \lstinline{Maybe}? Не всегда. В случае группы
+чекбоксов или списков с возможностью множественного выбора у вас будет
+множество виджетов с одним именем. Мы используем этот трюк в нашем примере
+ниже.
+
+Вторая запись~--- \lstinline'fieldView'~--- формирует виджет для показа
+пользователю. У этой функции четыре аргумента: атрибут~\texttt{id},
+атрибут~\texttt{name}, результат и значение типа~\lstinline'Bool' для
+обозначения, является ли поле обязательным.
+
+Что мы подразумеваем под результатом? В действительности, это значение
+типа~\lstinline'Either', возвращающее либо неразобранный ввод (когда разбор не
+удался), либо успешно разобранное значение. Великолепный пример этому~--- поле
+\lstinline'intField'.  Если вы введёте 42, то в результате будет
+\lstinline'Right 42'. Но если вы введёте слово <<черепаха>>, результатом будет
+\lstinline'Left "черепаха"'. Это позволит вам заполнить атрибут~\texttt{value}
+вашего тега~\texttt{input} для организации единообразного пользовательского
+интерфейса.
+
+В качестве маленького примера мы создадим новый тип поля~--- поле для
+подтверждения пароля. В нём будет два элемента для ввода текста (оба с одним и
+тем же значением атрибута~\texttt{name}), и оно будет возвращать сообщение об
+ошибке, если пароли не совпадают. Заметьте, что в отличие от большинства
+полей, новое поле \emph{не} предоставляет атрибуты~\texttt{value} для
+тегов~\texttt{input}, потому что вы \textbf{никогда} не захотите отправлять
+обратно введённый пользователем пароль в своём HTML.
+
+\begin{lstlisting}
+passwordConfirmField :: Field sub master Text
+passwordConfirmField = Field
+    { fieldParse = \rawVals ->
+        case rawVals of
+            [a, b]
+                | a == b -> return $ Right $ Just a
+                | otherwise -> return $ Left "Пароли не совпадают"
+            [] -> return $ Right Nothing
+            _ -> return $ Left "Вы должны ввести два значения"
+    , fieldView = \idAttr nameAttr _ eResult isReq -> [whamlet|
+<input id=#{idAttr} name=#{nameAttr} type=password>
+<div>Confirm:
+<input id=#{idAttr}-confirm name=#{nameAttr} type=password>
+|]
+    }
+
+getRootR :: Handler RepHtml
+getRootR = do
+    ((res, widget), enctype) <- runFormGet $ renderDivs
+        $ areq passwordConfirmField "Пароль" Nothing
+    defaultLayout [whamlet|
+<p>Result: #{show res}
+<form enctype=#{enctype}>
+    ^{widget}
+    <input type=submit value="Сменить пароль">
+|]
+main :: IO ()
+main = warpDebug 3000 Password
+\end{lstlisting}
+
+\section{Выводы}
+Формы в Yesod делятся на три вида. Аппликативные используются чаще всего, так
+как предоставляют красивый интерфейс и простой для использования API.
+Монадические формы дают больше возможностей, но их сложнее использовать. Формы
+ввода данных полезны, когда вам надо просто принять данные пользователя, не
+генерируя сложных виджетов.
+
+Из коробки Yesod предоставляет несколько различных типов полей для форм. Для
+их использования вам необходимо указать вид формы и является ли поле
+обязательным или нет. Для этого есть шесть вспомогательных функций:
+\lstinline'areq', \lstinline'aopt', \lstinline'mreq', \lstinline'mopt',
+\lstinline'ireq' и~\lstinline'iopt'.
+
+Формы обладают большой мощью. Они могут автоматически вставлять код на
+Javascript, чтобы помочь вам получить элементы управления попривлекательнее,
+как, например, диалог выбора даты из библиотеки jQuery UI. Формы также
+полностью готовы для включения интернационализации, так что вы можете
+поддерживать глобальное сообщество пользователей. А в случае более
+специфических потребностей, вы можете привязать функции валидации данных для
+конкретных полей или реализовать своё поле с чистого листа.
+

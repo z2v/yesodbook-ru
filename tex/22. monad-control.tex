@@ -1,0 +1,523 @@
+\chapter{monad-control}\label{chap:monad-control}
+Пакет
+\footnotehref{http://hackage.haskell.org/package/monad-control}{monad-control}
+используется в нескольких местах внутри Yesod, в первую очередь для обеспечения
+надлежащей обработки исключений в Persistent. Это универсальный пакет,
+расширяющий стандартную функциональность трансформаторов монад.
+
+\section{Обзор}
+Одной из мощных, но иногда сбивающих с толку, возможностей Haskell являются
+трансформаторы монад. Они позволяют брать различные части функциональности,
+такие как изменяемое состояние, обработка ошибок, или протоколирование, и легко
+объединять их вместе. Хоть я и поклялся, что никогда не буду писать учебник по
+монадам, я воспользуюсь слезоточивой аналогией: монады как луковицы. (Монады
+не как пирожные.) Под этим я имею ввиду вот что~--- \emph{слои}.
+
+У нас есть центральная монада, также известная как внутренняя или основная
+монады. И вокруг этого центра, мы добавляем слои, каждый из которых добавляет
+новые возможности, действие которых распространяется наружу/вверх. В качестве
+объясняющего примера, давайте рассмотрим монаду~\lstinline'Error', обёрнутую
+вокруг монады~\lstinline'IO':
+
+\begin{lstlisting}
+newtype ErrorT e m a = ErrorT { runErrorT :: m (Either e a) }
+type MyStack = ErrorT MyError IO
+\end{lstlisting}
+
+Обратите пристальное внимание: \lstinline'ErrorT'~--- это простой
+\lstinline'newtype' вокруг типа~\lstinline'Either', завёрнутого в монаду.
+Избавляясь от \lstinline'newtype', мы получим:
+
+\begin{lstlisting}
+type ErrorTUnwrapped e m a = m (Either e a)
+\end{lstlisting}
+
+В какой-то момент нам будет нужно выполнить некоторый ввод/вывод внутри
+нашего~\lstinline'MyStack'.  Если бы мы использовали развёрнутый подход, это
+было бы тривиально, так как у нас на пути не стоял бы
+конструктор~\lstinline'ErrorT'. Тем не менее, нам нужна обёртка~\lstinline'newtype'
+по целому ряду причин, связанных с типами, в которые я не хочу здесь
+вдаваться (в конце концов, это ведь не учебник по трансформаторам монад). Таким
+образом, решением является класс типов~\lstinline'MonadTrans':
+
+\begin{lstlisting}
+class MonadTrans t where
+    lift :: Monad m => m a -> t m a
+\end{lstlisting}
+
+Должен признать, что когда я увидел эту сигнатуру типа в первый раз, моей
+реакцией было замешательство и сомнение, что она хоть что-то значит. Но
+изучение экземпляра класса немного помогло:
+
+\begin{lstlisting}
+instance (Error e) => MonadTrans (ErrorT e) where
+    lift m = ErrorT $ do
+        a <- m
+        return (Right a)
+\end{lstlisting}%$
+
+Всё что мы здесь делаем~--- это оборачиваем содержимое~\lstinline'IO' в
+значение~\lstinline'Right', а затем применяем нашу обёртку~\lstinline'newtype'.
+Это позволяет нам взять действие, которое живёт в~\lstinline'IO', и
+<<протянуть>>~(lift) его во внешнюю/верхнюю монаду.
+
+А сейчас к делу. Для простых функций это работает очень хорошо. Например:
+
+\begin{lstlisting}
+sayHi :: IO ()
+sayHi = putStrLn "Привет"
+
+sayHiError :: ErrorT MyError IO ()
+sayHiError = lift $ putStrLn "Привет"
+\end{lstlisting}
+
+Но давайте возьмём что-то посложнее, к примеру функцию обратного вызова
+(callback):
+
+\begin{lstlisting}
+withMyFile :: (Handle -> IO a) -> IO a
+withMyFile = withFile "test.txt" WriteMode
+
+sayHi :: Handle -> IO ()
+sayHi handle = hPutStrLn handle "Привет!"
+
+useMyFile :: IO ()
+useMyFile = withMyFile sayHi
+\end{lstlisting}
+
+Пока всё хорошо, не так ли? Теперь предположим, что нам нужна версия
+\lstinline'sayHi', которая имеет доступ к монаде~\lstinline'Error':
+
+\begin{lstlisting}
+sayHiError :: Handle -> ErrorT MyError IO ()
+sayHiError handle = do
+    lift $ hPutStrLn handle "Привет, ошибка!"
+    throwError MyError
+\end{lstlisting}
+
+И мы бы хотели написать функцию, которая объединяет \lstinline'withMyFile'
+и~\lstinline'sayHiError'. К сожалению, GHC это не очень нравится:
+
+\begin{lstlisting}
+useMyFileErrorBad :: ErrorT MyError IO ()
+useMyFileErrorBad = withMyFile sayHiError
+
+    Couldn't match expected type `ErrorT MyError IO ()'
+                with actual type `IO ()'
+\end{lstlisting}
+
+Почему это происходит, и как мы можем это обойти?
+
+\section{Интуитивный подход}
+Давайте попробуем интуитивно понять, что здесь происходит. Трансформатор
+монады~\lstinline'ErrorT' добавляет дополнительную функциональность к
+монаде~\lstinline'IO'.  Мы описали способ, как <<присоединять>> эту
+дополнительную функциональность к обычным действиям ввода/вывода: мы добавляем
+конструктор~\lstinline'Right' и заворачиваем всё в~\lstinline'ErrorT'.
+Заворачивание в~\lstinline'Right'~--- наш способ сообщить, что всё прошло успешно,
+если не было никаких ошибок при выполнении действия.
+
+Интуитивно это имеет смысл: поскольку монада~\lstinline'IO' не имеет концепции
+возврата~\lstinline'MyError', когда что-то идёт не так, она всегда будет
+успешна в вызове~\lstinline'lift'.  (Примечание: Это не имеет \textbf{ничего}
+общего с исключениями времени исполнения, даже не думайте о них). То что у нас
+есть, это гарантированное однонаправленное преобразование вверх по стеку монад.
+
+Давайте возьмём другой пример: монада~\lstinline'Reader'. \lstinline'Reader'
+имеет доступ к некоторым дополнительным данным. То, что исполняется во
+внутренней монаде, ничего не знает об этой дополнительной информации. Так как вы
+реализуете~\lstinline'lift'? Вы просто проигнорируете эту информацию. А
+монада~\lstinline'Writer'? Ничего не пишите. Монада~\lstinline'State'?  Ничего
+не меняйте. Я вижу здесь закономерность.
+
+А теперь давайте попробуем пойти в обратном направлении: допустим у меня есть
+что-то в монаде~\lstinline'Reader', и я хотел бы выполнить это в основной
+монаде (например,~\lstinline'IO'). Ну... это не будет работать, не так ли? Ведь
+мне нужна эта дополнительная информация, я полагаюсь на неё, а она не доступна.
+В общем, нет способа пройти в обратном направлении, не предоставляя этого
+дополнительного значения.
+
+Или есть? Если вы помните, ранее мы специально обратили внимание на то,
+что~\lstinline'ErrorT' всего лишь обёртка вокруг внутренней монады. Другими
+словами, если у меня есть \lstinline'errorValue :: ErrorT MyError IO MyValue',
+я могу применить~\lstinline'runErrorT' и получить значение
+типа~\lstinline'IO (Either MyError MyValue)'. Выглядит похоже на
+двунаправленное преобразование, не так ли?
+
+Ну, не совсем. Изначально у нас была монада~\lstinline'ErrorT MyError IO', со
+значением типа~\lstinline'MyValue'. А сейчас у нас монада~\lstinline'IO' со
+значением типа~\lstinline'Either MyError MyValue'. Таким образом, этот процесс
+на самом деле изменил значение, в то время как протягивание (lifting process)
+оставляет его тем же.
+
+Но, тем не менее, немного причудливых плясок и мы можем
+развернуть~\lstinline'ErrorT', обработать данные и обернуть его снова.
+
+\begin{lstlisting}
+useMyFileError1 :: ErrorT MyError IO ()
+useMyFileError1 =
+    let unwrapped :: Handle -> IO (Either MyError ())
+        unwrapped handle = runErrorT $ sayHiError handle
+        applied :: IO (Either MyError ())
+        applied = withMyFile unwrapped
+        rewrapped :: ErrorT MyError IO ()
+        rewrapped = ErrorT applied
+     in rewrapped
+\end{lstlisting}
+
+Это ключевой момент всей статьи, так что смотрите внимательно. Сначала мы
+разворачиваем нашу монаду. Это означает, что для внешнего мира, это теперь
+старое доброе значение~\lstinline'IO'. Внутри мы сохранили всю информацию про
+наш трансформатор~\lstinline'ErrorT'. Теперь, когда у нас есть
+просто~\lstinline'IO', мы можем легко передать его~\lstinline'withMyFile'.
+\lstinline'withMyFile' принимает внутреннее состояние и возвращает его обратно
+без изменений. В конце концов, мы оборачиваем всё обратно в наш
+исходный~\lstinline'ErrorT'.
+
+В этом весь принцип \texttt{monad-control}: мы встраиваем дополнительные
+возможности нашего трансформатора монады внутрь значения. Как только они
+попадают в значение, система типов игнорирует его и сосредотачивается на
+внутренней монаде. Когда мы закончили работать с внутренней монадой, мы можем
+вытащить наше состояние обратно и восстановить наш исходный стек монад.
+
+\section{Типы}
+Я нарочно начал с трансформатора~\lstinline'ErrorT', так как он один из самых
+простых для этого механизма обращения. К сожалению, другие немного сложнее.
+Возьмём, к примеру, \lstinline'ReaderT'. Он определяется как
+\lstinline'newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a }'.
+Если мы к нему применим~\lstinline'runReaderT', мы получим функцию, которая
+возвращает монадическое значение. Так что нам понадобятся дополнительные
+механизмы, чтобы с этим справиться. И здесь мы попадаем в Волшебную страну.
+
+Есть несколько подходов к решению этих проблем. В прошлом я реализовал решение,
+используя семейство типов в пакете
+\footnotehref{http://hackage.haskell.org/package/neither}{neither}.
+Андерс Касеорг (Anders Kaseorg) реализовал намного более простое решение в пакете
+\footnotehref{http://hackage.haskell.org/package/monad-peel}{monad-peel}.
+А для эффективности, в
+\footnotehref{http://hackage.haskell.org/package/monad-control}{monad-control},
+Бас ван~Дийк (Bas van~Dijk) использует стиль передачи продолжения (Continuation Passing Style,
+сокращённо CPS) и экзистенциальные типы.
+
+\begin{remark}
+Код, взятый из \texttt{monad-control}, на самом деле относиться к версии 0.2. В
+версии 0.3 некоторые вещи немного поменялись, состояние сделали явным с
+ассоциированным типом, а \lstinline'MonadControlIO' обобщили до
+\lstinline'MonadBaseControl', но концепция всё ещё та же.
+\end{remark}
+
+Первым типом, который мы рассмотрим, будет:
+
+\begin{lstlisting}
+type Run t = forall n o b. (Monad n, Monad o, Monad (t o)) => t n b -> n (t o b)
+\end{lstlisting}
+
+Это определение невероятно компактно, давайте его разберём. Единственным
+<<входным>> параметром типа является~\lstinline't', трансформатор монады.
+\lstinline'Run'~--- это функция, которая будет работать для любой комбинации
+типов~\lstinline'n', \lstinline'o' и~\lstinline'b' (вот что
+означает~\lstinline'forall'). И тип~\lstinline'n', и тип~\lstinline'o' являются
+монадами, а~\lstinline'b'~--- это просто значение, которое содержится в них.
+
+Левая часть функции~\lstinline'Run'~--- \lstinline't n b'~--- это наш
+трансформатор монады, обёрнутый вокруг монады~\lstinline'n' и содержащий
+значение~\lstinline'b'. Например, это может быть
+\lstinline'MyTrans FirstMonad MyValue'.
+А возвращает она значение, в котором трансформатор <<засунут>>
+внутрь, с совершенно новой центральной монадой. Другими словами,
+\lstinline'FirstMonad (MyTrans NewMonad MyValue)'.
+
+По началу, это может выглядеть устрашающе, но, на самом деле, всё это нам уже
+знакомо: по сути, то же самое мы делали с~\lstinline'ErrorT'. Мы начали с
+\lstinline'ErrorT' снаружи, обёрнутым вокруг~\lstinline'IO', а закончили
+с~\lstinline'IO', самим содержащим~\lstinline'Either'. Знаете, что другой
+способ представить \lstinline'Either'~--- это
+\lstinline'ErrorT MyError Identity'? Так что, фактически, мы вытянули
+\lstinline'IO' наружу и поместили на её место \lstinline'Identity'. То же самое
+мы делаем в \lstinline'Run': вытягиваем монаду~\lstinline'FirstMonad' наружу,
+замещая её монадой~\lstinline'NewMonad'.
+
+\begin{remark}
+Сейчас хорошее время для глотка пива.
+\end{remark}
+
+Хорошо, это уже кое-что. Если бы у нас был доступ к одной из
+этих функций~\lstinline'Run', мы могли бы использовать её для
+снятия~\lstinline'ErrorT' с результата нашей функции~\lstinline'sayHiError', и
+передачи его в~\lstinline'withMyFile'. С помощью магии \lstinline'undefined' мы
+можем сыграть в эту игру:
+
+\begin{lstlisting}
+errorRun :: Run (ErrorT MyError)
+errorRun = undefined
+
+useMyFileError2 :: IO (ErrorT MyError Identity ())
+useMyFileError2 =
+    let afterRun :: Handle -> IO (ErrorT MyError Identity ())
+        afterRun handle = errorRun $ sayHiError handle
+        applied :: IO (ErrorT MyError Identity ())
+        applied = withMyFile afterRun
+     in applied
+\end{lstlisting}
+
+Это выглядит очень похоже на предыдущий пример. Фактически,
+\lstinline'errorRun' ведёт себя почти так же, как и~\lstinline'runErrorT'.
+Однако, у нас всё ещё есть две проблемы: мы не знаем, где взять
+значение~\lstinline'errorRun', и нам все ещё надо восстанавливать исходный
+\lstinline'ErrorT' после выполнения действия.
+
+\subsection{MonadTransControl}
+Очевидно, что в данном конкретном случае мы могли бы использовать наши знания
+про трансформатор~\lstinline'ErrorT', чтобы положить систему типов на лопатки и
+написать функцию~\lstinline'Run' вручную. Но что мы хотим \emph{на самом
+ деле}~--- это общее решение для многих трансформаторов. В таком случае, как
+вы знаете, нам нужен класс типов.
+
+Итак, давайте повторим, что нам нужно: доступ к функции~\lstinline'Run' и некий
+способ восстановления нашего исходного трансформатора. Так появился
+\lstinline'MonadTransControl' с единственным методом~\lstinline'liftControl':
+
+\begin{lstlisting}
+class MonadTrans t => MonadTransControl t where
+    liftControl :: Monad m => (Run t -> m a) -> t m a
+\end{lstlisting}
+
+Давайте посмотрим внимательнее. Метод~\lstinline'liftControl' принимает функцию
+(которую нам следует написать). Эта функция получает на вход
+функцию~\lstinline'Run' и должна возвращать значение в некоторой
+монаде~(\lstinline'm'). Затем \lstinline'liftControl' возьмёт результат этой
+функции и восстановит исходный трансформатор поверх него.
+
+\begin{lstlisting}
+useMyFileError3 :: Monad m => ErrorT MyError IO (ErrorT MyError m ())
+useMyFileError3 =
+    liftControl inside
+  where
+    inside :: Monad m => Run (ErrorT MyError) -> IO (ErrorT MyError m ())
+    inside run = withMyFile $ helper run
+    helper :: Monad m
+           => Run (ErrorT MyError) -> Handle -> IO (ErrorT MyError m ())
+    helper run handle = run (sayHiError handle :: ErrorT MyError IO ())
+\end{lstlisting}
+
+Близко, но не совсем то, что я имел в виду. Почему двойные монады? Хорошо,
+давайте начнём с конца: \lstinline'sayHiError handle' возвращает значение
+типа~\lstinline'ErrorT MyError IO ()'.  Это мы уже знаем, никаких сюрпризов.
+Что может быть немного удивительно (по крайней мере, было для меня)~--- это
+следующие два шага.
+
+Сначала мы применяем \lstinline'run' к этому значению. Как мы уже обсуждали
+ранее, в результате этого внутренняя монада~\lstinline'IO' извлекается наружу
+для замены некоторой произвольной монадой (представленной здесь
+как~\lstinline'm'). Так мы в конечном итоге приходим
+к~\lstinline'IO (ErrorT MyError m ())'.
+Хорошо... Собственно, мы получаем тот же результат после
+применения~\lstinline'withMyFile'. Ничего удивительного.
+
+У меня заняло много времени, чтобы правильно понять последний шаг. Помните, как
+мы говорили про восстановление исходного трансформатора? Ну, так мы это и
+делаем: плюхаем его прямо на всё остальное. Таким образом, наш конечный
+результат будет: предыдущий тип~--- \lstinline'IO (ErrorT MyError m ())'~--- с
+приклеенным в начале~\lstinline'ErrorT MyError'.
+
+Всё это кажется чрезвычайно бесполезным, не так ли? Ну, почти. Не стоит
+забывать, что <<\lstinline'm'>> может быть любой монадой, в том
+числе~\lstinline'IO'. Если рассматривать это таким образом, то мы получаем
+\lstinline'ErrorT MyError IO (ErrorT MyError IO ())'. Выглядит очень похоже
+на~\lstinline'm (m a)', а мы хотим просто~\lstinline'm a'. К счастью, сейчас
+нам повезло:
+
+\begin{lstlisting}
+useMyFileError4 :: ErrorT MyError IO ()
+useMyFileError4 = join useMyFileError3
+\end{lstlisting}
+
+И оказывается, что такое использование настолько распространено, что Бас
+сжалился над нами и определил вспомогательную функцию:
+
+\begin{lstlisting}
+control :: (Monad m, Monad (t m), MonadTransControl t)
+        => (Run t -> m (t m a)) -> t m a
+control = join . liftControl
+\end{lstlisting}
+
+Так что всё, что нам надо написать, это:
+
+\begin{lstlisting}
+useMyFileError5 :: ErrorT MyError IO ()
+useMyFileError5 =
+    control inside
+  where
+    inside :: Monad m => Run (ErrorT MyError) -> IO (ErrorT MyError m ())
+    inside run = withMyFile $ helper run
+    helper :: Monad m
+           => Run (ErrorT MyError) -> Handle -> IO (ErrorT MyError m ())
+    helper run handle = run (sayHiError handle :: ErrorT MyError IO ())
+\end{lstlisting}
+
+Или же немного короче:
+
+\begin{lstlisting}
+useMyFileError6 :: ErrorT MyError IO ()
+useMyFileError6 = control $ \run -> withMyFile $ run . sayHiError
+\end{lstlisting}
+
+\subsection{MonadControlIO}
+Класс \lstinline'MonadTrans' предоставляет метод~\lstinline'lift', который
+позволяет протягивать действие на один уровень по стеку монад. Также существует
+класс~\lstinline'MonadIO', предоставляющий метод~\lstinline'liftIO', который
+протягивает действие~\lstinline'IO' так далеко по стеку, как хочется. У нас
+такое же разделение в~\texttt{monad-control}. Но сперва, нам нужно функцию
+подобную~\lstinline'Run':
+
+\begin{lstlisting}
+type RunInBase m base = forall b. m b -> base (m b)
+\end{lstlisting}
+
+Вместо того что бы иметь дело с трансформатором, мы работаем с двумя монадами.
+Монада~\lstinline'base'~--- это основная монада, а~\lstinline'm'~--- это стек,
+построенный на ней. \lstinline'RunInBase'~--- это функция, которая принимает
+значение всего стека, вытягивает~\lstinline'base' и размещает её снаружи. В
+отличие от типа~\lstinline'Run', мы не замещали её произвольной монадой, а
+использовали исходную. Пример с конкретными типами:
+
+\begin{lstlisting}
+RunInBase (ErrorT MyError IO) IO = forall b. ErrorT MyError IO b -> IO (ErrorT MyError IO b)
+\end{lstlisting}
+
+Это очень похоже на то, что мы рассматривали до сих пор, с той лишь разницей,
+что тут мы хотим иметь дело с конкретной внутренней монадой. На самом деле,
+класс~\lstinline'MonadControlIO'~--- это просто расширение
+\lstinline'MonadControlTrans' с помощью~\lstinline'RunInBase'.
+
+\begin{lstlisting}
+class MonadIO m => MonadControlIO m where
+    liftControlIO :: (RunInBase m IO -> IO a) -> m a
+\end{lstlisting}
+
+Проще говоря, \lstinline'liftControlIO' принимает функцию, которая ожидает на
+вход функцию~\lstinline'RunInBase'. Эта \lstinline'RunInBase' может быть
+использована для разбора нашей монады до простой~\lstinline'IO', а затем
+\lstinline'liftControlIO' выстраивает всё назад. Так же, как и
+\lstinline'MonadControlTrans', он поставляется со вспомогательной функцией
+
+\begin{lstlisting}
+controlIO :: MonadControlIO m => (RunInBase m IO -> IO (m a)) -> m a
+controlIO = join . liftControlIO
+\end{lstlisting}
+
+Используя её, мы легко можем переписать наш предыдущий пример:
+
+\begin{lstlisting}
+useMyFileError7 :: ErrorT MyError IO ()
+useMyFileError7 = controlIO $ \run -> withMyFile $ run . sayHiError
+\end{lstlisting}
+
+И, как преимущество, она легко масштабируется на несколько трансформаторов:
+
+\begin{lstlisting}
+sayHiCrazy :: Handle -> ReaderT Int (StateT Double (ErrorT MyError IO)) ()
+sayHiCrazy handle = liftIO $ hPutStrLn handle "Madness!"
+
+useMyFileCrazy :: ReaderT Int (StateT Double (ErrorT MyError IO)) ()
+useMyFileCrazy = controlIO $ \run -> withMyFile $ run . sayHiCrazy
+\end{lstlisting}
+
+\section{Примеры из реальной жизни}
+Давайте, используя этот код, решим несколько задач из реальной жизни. Наверное,
+самый интересующий вариант использования~--- обработка исключений в стеке
+трансформатора. Предположим, для примера, что мы хотим автоматически исполнять
+некоторый код очистки при возникновении исключения. Если бы это был обычный код
+ввода/вывода, мы бы использовали:
+
+\begin{lstlisting}
+onException :: IO a -> IO b -> IO a
+\end{lstlisting}
+
+Но, находясь в монаде~\lstinline'ErrorT', мы не можем передать ни действие, ни
+код очистки. На помощь приходит \lstinline'controlIO':
+
+\begin{lstlisting}
+onExceptionError :: ErrorT MyError IO a
+                 -> ErrorT MyError IO b
+                 -> ErrorT MyError IO a
+onExceptionError action after = controlIO $ \run ->
+    run action `onException` run after
+\end{lstlisting}
+
+Теперь допустим, что нам надо выделить некоторый объём памяти для хранения
+значения типа~\lstinline'Double'. В монаде~\lstinline'IO' мы просто
+использовали бы функцию~\lstinline'alloca'. И опять наше решение очень простое:
+
+\begin{lstlisting}
+allocaError :: (Ptr Double -> ErrorT MyError IO b)
+            -> ErrorT MyError IO b
+allocaError f = controlIO $ \run -> alloca $ run . f
+\end{lstlisting}
+
+\section{Потерянное состояние}
+Давайте, отмотаем немного назад~--- к нашему определению
+функции~\lstinline'onExceptionError'. Она использует~\lstinline'OnException',
+которая имеет сигнатуру типа: \lstinline'IO a -> IO b -> IO a'. Позвольте мне
+спросить вас: что случилось с аргументом~\lstinline'b' на выходе? Он был
+полностью проигнорирован. Но это, кажется, создаёт нам небольшую проблему.
+Ведь, в конце концов, мы сохраняем информацию о состоянии нашего трансформатора
+в значении внутренней монады. И если мы его игнорируем, то мы, по существу,
+также игнорируем и монадические побочные эффекты!
+
+Да, так и есть. Такое случается при использовании~\texttt{monad-control}.
+Определённые функции теряют некоторые из монадических побочных эффектов. Лучше
+всего это описал Бас в комментариях к соответствующим функциям:
+\begin{quote}
+Обратите внимание, что любые монадические побочные эффекты в~\lstinline'm' кода
+"очистки" будут отброшены; он выполняется только ради его побочных эффектов
+в~\lstinline'IO'.
+\end{quote}
+На практике, \texttt{monad-control} обычно будет делать то, что вам надо, но
+имейте в виду, что некоторые побочные эффекты могут исчезнуть.
+
+\section{Случаи посложнее}
+До сих пор, чтобы заставить наши уловки работать, нам требовались функции,
+дающие полный доступ к своим значениями. Иногда это не представляется
+возможным.  Возьмём, к примеру:
+
+\begin{lstlisting}
+addMVarFinalizer :: MVar a -> IO () -> IO ()
+\end{lstlisting}
+
+В этом случае требуется, чтобы функция завершения не имела никакого значения.
+Интуитивно, первое, что нам следует отметить,~--- нет никакого способа
+захватить наши монадические побочные эффекты. Так как же мы сможем что-то вроде
+такого скомпилировать? Очень просто, нам необходимо явно описать отказ от всей
+сохраняющей состояние информации:
+
+\begin{lstlisting}
+addMVarFinalizerError :: MVar a -> ErrorT MyError IO () -> ErrorT MyError IO ()
+addMVarFinalizerError mvar f = controlIO $ \run ->
+    return $ liftIO $ addMVarFinalizer mvar (run f >> return ())
+\end{lstlisting}
+
+Другой случай из того же модуля:
+
+\begin{lstlisting}
+modifyMVar :: MVar a -> (a -> IO (a, b)) -> IO b
+\end{lstlisting}
+
+Теперь у нас есть ограничения на тип возвращаемого значения во втором
+аргументе: это должен быть кортеж из значения, переданного в функцию, и
+итогового возвращаемого значения. К сожалению, я не вижу способа написать
+небольшую обёртку вокруг~\lstinline'modifyMVar', чтобы заставить её работать
+с~\lstinline'ErrorT'.  Вместо этого, в данном случае, я скопировал
+определение~\lstinline'modifyMVar' и изменил его:
+
+\begin{lstlisting}
+modifyMVar :: MVar a
+           -> (a -> ErrorT MyError IO (a, b))
+           -> ErrorT MyError IO b
+modifyMVar m io =
+  Control.Exception.Control.mask $ \restore -> do
+    a      <- liftIO $ takeMVar m
+    (a',b) <- restore (io a) `onExceptionError` liftIO (putMVar m a)
+    liftIO $ putMVar m a'
+    return b
+\end{lstlisting}

@@ -1,0 +1,200 @@
+\chapter{Haskell}
+
+Для использования Yesod вам необходимо знать по крайней мере основы языка Haskell. Кроме того, в Yesod используются некоторые особенности Haskell, которые не описаны в большинстве руководств начального уровня. Хотя от читателя предполагается базовое владение Haskell, эта глава призвана заполнить возможные пробелы.
+
+Если вы уже хорошо владеете Haskell, можете пропустить эту главу. Также, если вы предпочитаете начать непосредственно с погружения в Yesod, то вы всегда сможете потом к этой главе вернуться.
+
+Если вам необходимо более полное введение в Haskell, я бы порекомендовал книги <<Real World Haskell>> или <<Learn You a Haskell>>.\marginpar{Возможно, стоит вставить ссылки на книги (в оригинале ссылок нет).}
+
+\section{Терминология}
+
+Даже у людей, хорошо знакомых с языком Haskell, порой может возникать путаница с терминологией. Сформулируем некоторые основные термины, которые мы будем использовать на протяжении всей книги.
+
+\subsection{Тип данных}
+
+Это один из основных строительных блоков языков со строгой типизацией, к которым относится и Haskell. Некоторые типы данных, такие как \lstinline'Int', можно считать элементарными, а остальные типы строятся на их основе для создания более сложных значений. Например, вы могли бы представить человека следующим типом:
+
+\begin{lstlisting}
+data Person = Person Text Int
+\end{lstlisting}
+
+Здесь \lstinline'Text' содержит имя человека, а \lstinline'Int'~--- его возраст. Благодаря простоте этого примера мы будем обращаться к нему на протяжении всей книги.
+
+Существует три способа, с помощью которых вы можете создать новый тип данных:
+
+\begin{itemize}
+  \item Определение \lstinline'type', такое как \lstinline'type GearCount = Int', просто создаёт синоним существующего типа. Система типов не станет препятствовать вам использовать \lstinline'Int' везде, где требуется \lstinline'GearCount'. Использование такого типа может сделать ваш код более самодокументируемым.
+  \item Определение \lstinline'newtype', например, \lstinline'newtype Make = Make Text'. В этом случае вы не можете случайно использовать \lstinline'Text' вместо \lstinline'Make', компилятор не даст вам этого сделать. Обёртка, создаваемая посредством \lstinline'newtype', всегда удаляется во время компиляции и не создаёт накладных расходов.
+  \item Определение \lstinline'data', как в приведённом выше примере с \lstinline'Person'. Вы можете также создавать алгебраические типы данных (АТД), такие как \lstinline'data Vehicle = Bycicle GearCount | Car Make Model'.
+\end{itemize}
+
+\subsection{Конструктор данных}
+
+В приведённых выше примерах \lstinline'Person', \lstinline'Make', Bicycle и Car~--- конструкторы данных.
+
+\subsection{Конструктор типа}
+
+В свою очередь \lstinline'Person', \lstinline'Make' и \lstinline'Vehicle'~--- это конструкторы типов.
+
+\subsection{Переменные типов}
+
+Рассмотрим тип данных \lstinline'data Maybe a = Just a | Nothing'. Здесь \lstinline'a'~--- переменная типа.
+
+\section{Инструментарий}
+
+Для разработки на Haskell вам понадобятся два основных инструмента. Glasgow Haskell Compiler (GHC)~--- стандартный компилятор Haskell, единственный официально поддерживаемый Yesod. Также вам понадобится Cabal~--- стандартное средство сборки для Haskell. Cabal используется не только для сборки локального кода, он также может автоматически скачивать и устанавливать зависимости из Hackage, репозитория пакетов Haskell.
+
+Тем, кто работает в среде Windows или Mac, настоятельно рекомендуется скачать \href{http://hackage.haskell.org/platform/}{Haskell Platform}\footnote{\href{http://hackage.haskell.org/platform/}{\texttt{http://hackage.haskell.org/platform/}}}. Многие дистрибутивы Linux содержат Haskell Platform в своих репозиториях. Например, в дистрибутивах, основанных на Debian, стоит начать с выполнения команды \texttt{apt-get install haskell-platform}. Если в вашем дистрибутиве Haskell Platform недоступна, вы можете установить её вручную, следуя инструкциям на официальном сайте.
+
+Ещё один важный инструмент, который вам нужно будет обновить~--- это \texttt{alex}. Haskell Platform включает версию 2, но используемой Yesod программе минификации JavaScript, \href{http://hackage.haskell.org/package/hjsmin}{hjsmin}\footnote{\href{http://hackage.haskell.org/package/hjsmin}{\texttt{http://hackage.haskell.org/package/hjsmin}}}, требуется версия 3. Не забудьте выполнить \texttt{cabal install alex} после установки Haskell Platform, иначе получите сообщения об ошибках в отношении пакета \href{http://hackage.haskell.org/package/language-javascript}{language-javascript}\footnote{\href{http://hackage.haskell.org/package/language-javascript}{\texttt{http://hackage.haskell.org/package/language-javascript}}}.
+
+\begin{remark}
+Некоторым нравится жить на острие прогресса и устанавливать последнюю версию GHC до того, как она станет доступна в Haskell Platform. Мы стараемся поддерживать совместимость Yesod со всеми современными версиями GHC, но официально мы поддерживаем только Haskell Platform. Если вы всё-таки решили пойти по пути ручной установки GHC, то имейте в виду:
+
+\begin{itemize}
+  \item Вам нужно будет установить некоторые дополнительные инструменты, в частности, \texttt{alex} и \texttt{happy}.
+  \item Убедитесь, что установлены все \href{http://www.vex.net/~trebla/haskell/haskell-platform.xhtml}{требуемые C-библиотеки}\footnote{\href{http://www.vex.net/~trebla/haskell/haskell-platform.xhtml}{\texttt{http://www.vex.net/\~{}trebla/haskell/haskell-platform.xhtml}}}. В дистрибутивах, основанных на Debian, это можно сделать, выполнив команду:\\
+ \texttt{apt-get install libedit-dev libbsd-dev lbgmp3-dev zlib1g-dev freeglut3-dev}.
+\end{itemize}
+\end{remark}
+
+Независимо от способа установки инструментов вам нужно добавить путь к каталогу \texttt{bin} Cabal в переменную окружения \texttt{PATH}. В Mac и Linux это будет \texttt{\$HOME/.cabal/bin}, а в Windows~--- \texttt{\%APPDATA\%\textbackslash{}cabal\textbackslash{}bin}.
+
+У программы \texttt{cabal} есть множество доступных опций, но для начала ознакомьтесь с двумя командами:
+
+\begin{itemize}
+  \item \texttt{cabal update} скачивает актуальный список пакетов с Hackage.
+  \item \texttt{cabal install yesod-platform} устанавливает Yesod и его зависимости.
+\end{itemize}
+
+\begin{remark}
+Многие члены сообщества предпочитают выполнять изолированную сборку пакетов Haskell, что предотвращает порчу существующих пакетов вследствие установки Yesod или порчу Yesod из-за установки каких-то пакетов в будущем. В этой книге я не буду углубляться в детали того, как это делается, но два наиболее часто используемых для этих целей инструмента~--- это \href{http://hackage.haskell.org/package/cabal-dev}{cabal-dev}\footnote{\href{http://hackage.haskell.org/package/cabal-dev}{\texttt{http://hackage.haskell.org/package/cabal-dev}}} и \href{http://hackage.haskell.org/package/virthualenv}{virthualenv}\footnote{\href{http://hackage.haskell.org/package/virthualenv}{\texttt{http://hackage.haskell.org/package/virthualenv}}}.
+\end{remark}
+
+\section{Указания компилятору}
+
+По умолчанию GHC работает в режиме, очень близком к Haskell98. Однако с ним также поставляется большое число языковых расширений, предоставляющих более мощные классы типов, изменения в синтаксисе и прочее. Есть несколько способов заставить GHC включить эти расширения. В большинстве фрагментов кода, приведённых в этой книге, вы увидите указания компилятору, которые выглядят следующим образом:
+
+\begin{lstlisting}
+{-# LANGUAGE MyLanguageExtension #-}
+\end{lstlisting}
+
+Эти указания должны всегда находиться в самом начале исходного файла. Помимо этого, есть ещё два распространённых способа:
+\begin{itemize}
+\item при вызове GHC передать ему аргумент \lstinline'-XMyLanguageExtension';
+\item добавить блок \texttt{extensions} в файл \texttt{cabal}.
+\end{itemize}
+
+Лично я никогда не использую подход с аргументами командной строки. Это личное предпочтение, но мне нравится, когда мои настройки явным образом указаны в файле. В общем случае также рекомендуется избегать помещения расширений в файл \texttt{cabal}. Впрочем, в сгенерированном Yesod шаблоне сайта \marginpar{Нужно добавить ссылку на главу <<Scaffolding and the Site Template>>} мы намеренно применяем этот подход, чтобы избежать необходимости задавать одни и те же указания компилятору в каждом исходном файле.
+
+В конечном счёте мы будем использовать в этой книге немало языковых расширений (начальный каркас сайта использует 11). Мы не будем рассматривать назначение каждого из них. За этим, пожалуйста, обращайтесь к \href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{документации по GHC}\footnote{\href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{\texttt{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}}}.
+
+\section{Перегруженные строки}
+
+Какой тип имеет литерал \lstinline'"hello"'? Обычно это \lstinline'String', определённый как \lstinline'type String = [Char]'. К сожалению, у этого подхода есть ряд ограничений:
+\begin{itemize}
+\item Это очень неэффективный способ хранения текстовых данных. Мы должны выделить память под каждую cons-ячейку, плюс каждый символ занимает целое машинное слово.
+\item Иногда у нас есть данные, напоминающие строку, но не являющиеся текстом, такие как \lstinline'ByteString' и \lstinline'HTML'.
+\end{itemize}
+
+Для преодоления этих ограничений в GHC есть языковое расширение, называемое \lstinline'OverloadedStrings'. Когда оно включено, строковые литералы будут иметь не мономорфный тип \lstinline'String', а тип \lstinline'IsString a => a', где \lstinline'IsString' определён следующим образом:
+
+\begin{lstlisting}
+class IsString a where
+    fromString :: String -> a
+\end{lstlisting}
+
+Существуют экземпляры \lstinline'IsString' для ряда типов Haskell, таких как \lstinline'Text' (намного более эффективный тип для упакованного хранения строк), \lstinline'ByteString' и \lstinline'HTML'. Практически каждый пример в этой книге предполагает, что это языковое расширение включено.
+
+К сожалению, у этого расширения есть один недостаток: иногда оно может сбить с толку проверку типов GHC. Представьте, что у нас есть следующий код:
+
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings, TypeSynonymInstances, FlexibleInstances #-}
+
+import Data.Text (Text)
+
+class DoSomething a where
+    something :: a -> IO ()
+
+instance DoSomething String where
+    something _ = putStrLn "String"
+
+instance DoSomething Text where
+    something _ = putStrLn "Text"
+
+myFunc :: IO ()
+myFunc = something "hello"
+\end{lstlisting}
+
+Что выведет эта программа: <<String>> или <<Text>>? Неясно. Поэтому вам придётся предоставить явную аннотацию типа, чтобы указать, должен ли литерал \lstinline'"hello"' трактоваться как \lstinline'String' или как \lstinline'Text'.
+
+\section{Семейства типов}
+
+Основная идея семейства типов~--- устанавливать некоторую ассоциацию между двумя различными типами. Предположим, мы хотим написать функцию, которая безопасным образом получает первый элемент списка. Но мы не хотим, чтобы она работала только на списках; нам бы хотелось, чтобы она трактовала \lstinline'ByteString' как список, состоящий из элементов типа \lstinline'Word8'. Чтобы этого добиться, нам нужно ввести некоторый ассоциированный тип, чтобы указать, каково содержимое определённого типа.
+
+\lstinputlisting{../hs/02-type-families.hs}
+
+Новый синтаксис выражается в возможности разместить тип внутри класса и экземпляра. Вместо этого мы также можем использовать \lstinline'data', что создаст новый тип данных вместо ссылки на уже существующий.
+
+\begin{remark}
+Есть и другие способы использования ассоциированных типов вне контекста класса типов. Однако в Yesod все наши ассоциированные типы являются, фактически, частью класса типов. Более подробную информацию о семействах типов можно найти на соответствующей \href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{странице Haskell Wiki}\footnote{\href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{\texttt{http://www.haskell.org/haskellwiki/GHC/Type\_families}}}.
+\end{remark}
+
+\section{Template Haskell}
+
+Template Haskell (TH)~--- это способ \emph{генерации кода}. Мы используем его в ряде мест в Yesod для уменьшения объёма вспомогательного кода и для того, чтобы быть уверенными в корректности сгенерированного кода. Код на Template Haskell~--- это, в сущности, код на Haskell, который генерирует абстрактное синтаксическое дерево (АСД) кода на Haskell.
+
+\begin{remark}
+На самом деле, возможности TH этим не ограничиваются, так как он позволяет фактически выполнять интроспекцию кода. Однако эти возможности мы в Yesod не используем.
+\end{remark}
+
+Написание кода на TH может быть непростым делом, и, к сожалению, безопасность типов при этом помогает мало. Несложно написать на TH программу, генерирующую код, который не скомпилируется. Это является проблемой только для разработчиков Yesod, но не для его пользователей. В ходе разработки мы используем большой набор модульных тестов, чтобы убедиться в корректности сгенерированного кода. Как пользователю, всё, что вам нужно делать~--- вызывать уже существующие функции. Например, чтобы включить внешний шаблон Hamlet, вы можете написать:
+
+\begin{lstlisting}
+$(hamletFile "myfile.hamlet")
+\end{lstlisting}
+%$
+
+(Hamlet обсуждается в главе о Shakespeare.) \marginpar{Вставить ссылку на главу <<Shakespearean Templates>>}Символ доллара, за которым следует открывающая скобка, сообщает GHC, что то, что следует далее, является функцией Template Haskell. Код внутри скобок затем запускается компилятором и генерирует АСД программы на Haskell, которое затем компилируется. И да, \href{http://www.yesodweb.com/blog/2010/09/yo-dawg-template-haskell}{метапрограммирование можно использовать даже здесь}\footnote{\href{http://www.yesodweb.com/blog/2010/09/yo-dawg-template-haskell}{\texttt{http://www.yesodweb.com/blog/2010/09/yo-dawg-template-haskell}}}.
+
+Приятная особенность~--- код на TH может выполнять произвольные действия ввода-вывода, и, следовательно, мы можем разместить входные данные во внешних файлах, которые будут разбираться во время компиляции. Одним из примеров использования этой возможости является получение шаблонов HTML, CSS и JavaScript, проверяемых во время компиляции.
+
+Если код на Template Haskell используется для генерации объявлений и располагается на верхнем уровне наших файлов, то мы можем избавиться от знаков доллара и скобок. Иными словами,
+
+\begin{lstlisting}
+{-# LANGUAGE TemplateHaskell #-}
+
+-- Обычное определение функции, ничего особенного
+myFunction = ...
+
+-- Включить код на TH
+$(myThCode)
+
+-- Или, то же самое
+myThCode
+\end{lstlisting}
+%$
+
+Может быть полезно посмотреть, какой код генерирует для вас Template Haskell. Для этого вам нужно использовать опцию GHC \texttt{-ddump-splices}.
+
+\begin{remark}
+Есть ещё много других особенностей Template Haskell, которые здесь не рассматриваются. Более подробную информацию можете посмотреть на \href{http://www.haskell.org/haskellwiki/Template\_Haskell}{странице Haskell Wiki}\footnote{\href{http://www.haskell.org/haskellwiki/Template\_Haskell}{\texttt{http://www.haskell.org/haskellwiki/Template\_Haskell}}}.
+\end{remark}
+
+\subsection{QuasiQuotes}
+
+QuasiQuotes (QQ)~--- это небольшое расширение Template Haskell, которое позволяет нам включать произвольные данные в файлы с исходным кодом на Haskell. Например, выше упоминалась функция Template Haskell \lstinline'hamletFile', которая считывает содержимое шаблона из внешнего файла. У нас также есть обработчик квазицитирования, называемый hamlet, который считывает содержимое, хранящееся непосредственно в исходном коде:
+
+\begin{lstlisting}
+{-# LANGUAGE QuasiQuotes #-}
+
+[hamlet|<p>Это квазицитированный Hamlet.|]
+\end{lstlisting}
+
+Синтаксис выделяется квадратными скобками и символами вертикальной черты. Имя обработчика квазицитирования размещается между открывающей скобкой и первой вертикальной чертой, а содержимое приводится между двумя символами вертикальной черты.
+
+На протяжении книги мы во многих случаях будем предпочитать внешним файлам QQ-подход, поскольку такой код проще скопировать из книги. Однако в реальных приложениях внешние файлы являются предпочтительными во всех случаях, кроме совсем коротких данных, так как это даёт нам хорошее разделение кода на Haskell и кода с иным синтаксисом.
+
+\section{Выводы}
+
+Вам не нужно быть экспертом в Haskell, чтобы использовать Yesod, достаточно базового знакомства. Надеюсь, эта глава дала вам достаточно информации, чтобы чувствовать себя более комфортно при изучении оставшейся части книги.

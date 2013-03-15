@@ -1,0 +1,131 @@
+\documentclass[openany]{book}
+
+\usepackage{fontspec}
+\defaultfontfeatures{Scale=MatchLowercase, Mapping=tex-text}  % For archaic input (e.g. convert -- to en-dash)
+
+
+\usepackage{polyglossia}
+\setdefaultlanguage{russian}
+
+\setmainfont{Times New Roman}
+\setmonofont{Courier New}
+\setsansfont{Arial}
+
+\newfontfamily\cyrillicfont{Times New Roman}
+\newfontfamily\cyrillicfontsf{Arial}
+\newfontfamily\cyrillicfonttt{Courier New}
+
+\usepackage{indentfirst}
+
+\usepackage{listings}
+\begingroup
+    \catcode0=12 %
+    \makeatletter
+    \g@addto@macro\lst@DefEC{%
+        \lst@CCECUse\lst@ProcessLetter
+        АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя%
+        ^^00% end marker
+    }%
+\endgroup
+
+
+% fancy headers
+\usepackage{fancyhdr}
+\fancyhead{}
+\fancyfoot{}
+\fancyhead[LO]{\rm\small\raggedright\nouppercase\rightmark}
+\fancyhead[RE]{\rm\small\raggedleft\nouppercase\leftmark}
+\fancyhead[RO,LE]{\rm\small\thepage}
+\pagestyle{fancy}
+
+\usepackage{graphicx}
+% graphics path
+\graphicspath{{../img/}}
+
+% XeLaTeX tricks
+\usepackage{xltxtra}
+
+\usepackage{caption}
+\usepackage{subcaption}
+
+\usepackage[dvipsnames]{xcolor}
+
+\interfootnotelinepenalty=500
+
+% for JSON
+\lstdefinelanguage{JavaScript}{
+  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={class, export, boolean, throw, implements, import, this},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstdefinelanguage{CSS}{
+  keywords={},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={@import, @media, @page, @font-face, @charset, @namespace},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+% set listings default parameters
+\lstset{language=Haskell,
+    extendedchars=true,
+    breaklines=true,
+    breakatwhitespace=true,
+    prebreak=↩,
+    frame=shadowbox,
+    rulesepcolor=\color{gray},
+    frameround=tttt,
+    captionpos=b,
+    keepspaces=true,
+    inputencoding=utf8,
+    basicstyle=\ttfamily% using monospaced font for listings
+}
+\renewcommand*{\lstlistingname}{Листинг}
+\lstnewenvironment{code}{}{}
+
+% avoiding math minus symbol in listings
+\makeatletter
+\lst@CCPutMacro\lst@ProcessOther {"2D}{\lst@ttfamily{-{}}{-{}}}
+\@empty\z@\@empty
+\makeatother
+
+% for hyperlinks
+\usepackage{hyperref}
+
+% helper for remarks
+\usepackage{fancybox}
+\usepackage{setspace}
+\newenvironment{remark}%
+{\begin{Sbox}\begin{minipage}[!h]{.9\linewidth}}%
+{\end{minipage}\end{Sbox}\fbox{\TheSbox}}
+
+% use long spaces to remove overfull a la Word
+\sloppy
+
+% helper for making hyperrefs with footnote
+\newcommand{\footnotehref}[2]{\href{#1}{#2}\footnote{\href{#1}{\texttt{#1}}}}
+
+\begin{document}
+
+\input "S1. Basics.tex"
+\input "S2. Advanced.tex"
+\input "S3. Examples.tex"
+\input "S4. Appendices.tex"
+
+\end{document}
