@@ -105,7 +105,7 @@ mkMessage "Blog" "../messages-blog" "en"
 
 Содержимое нашего файла <<en>>:
 
-\lstinputlisting[language=bash]{../hs/messages-blog/en.msg}
+\lstinputlisting[language=bash]{../hs/18/messages-blog/en.msg}
 
 А теперь настроим таблицу маршрутизации. У нас будет четыре записи: домашняя
 страница, страница со списком записей (\lstinline!BlogR!), страница отдельной

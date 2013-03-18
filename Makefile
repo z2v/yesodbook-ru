@@ -15,9 +15,9 @@ TEXSRCS := $(subst $(space),\$(space),$(TEXSRCS))
 TEXSRCS := $(subst .tex\,.tex,$(TEXSRCS))
 
 # Здесь имена без пробелов - сойдёт и так
-HSSRCS := $(wildcard hs/*.hs)
+HSSRCS := $(wildcard hs/[0-9][0-9]/*.hs)
 IMAGES := $(wildcard img/*.png)
-BLOGLHS := 18-blog.lhs
+BLOGLHS := 18/blog.lhs
 
 #-
 # Итоговый файл
@@ -66,11 +66,17 @@ dirs:
 	@mkdir -p $(OBJDIR)
 
 examples: blog | dirs
-	@cp -pu $(HSSRCS) $(OBJDIR)
-	$(foreach f, $(subst hs/,$(OBJDIR)/,$(HSSRCS)), ghc $(f) -o $(subst $(OBJDIR),$(BINDIR),$(f:.hs=)) > $(f:.hs=.log);)
+	@$(foreach f, $(subst hs/,,$(HSSRCS)), \
+		echo $f && \
+		mkdir -p $(OBJDIR)/$(dir $f) && \
+		mkdir -p $(BINDIR)/$(dir $f) && \
+		cp -p hs/$f $(OBJDIR)/$(dir $f) && \
+		ghc --make -o $(BINDIR)/$(f:.hs=) $(OBJDIR)/$f > $(OBJDIR)/$(f:.hs=.log);)
 
 blog: hs/$(BLOGLHS) | dirs
-	@cp -pu hs/$(BLOGLHS) $(OBJDIR)
-	@cp -rpu hs/messages-blog $(BUILDDIR)
-	cd $(OBJDIR) && \
-	ghc $(BLOGLHS) -o ../bin/$(BLOGLHS:.lhs=) > $(BLOGLHS:.lhs=.log)
+	@echo $(BLOGLHS)
+	@mkdir -p $(OBJDIR)/$(dir $(BLOGLHS))
+	@mkdir -p $(BINDIR)/$(dir $(BLOGLHS))
+	@cp -p hs/$(BLOGLHS) $(OBJDIR)/$(dir $(BLOGLHS))
+	@cp -rp hs/18/messages-blog $(BUILDDIR)
+	@cd $(OBJDIR) && ghc --make -o $(realpath $(BINDIR))/$(BLOGLHS:.lhs=) $(BLOGLHS) > $(BLOGLHS:.lhs=.log)
