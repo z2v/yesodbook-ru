@@ -83,13 +83,9 @@ lift . throwError :: errValue -> ReaderT Error
 \begin{itemize}
     \item  Для упрощения сообщений об ошибках они не являются фактическими
         трансформаторами. Вместо этого, они объявлены как \lstinline'newtype' с
-        жёстко заданной внутренней монадой.
-
-        \begin{remark}
-            Помните, что именно поэтому Yesod предоставляет специальную функцию
-            \lstinline'lift', которая работает для \lstinline'Handler'
-            и~\lstinline'Widget'.
-        \end{remark}
+        жёстко заданной внутренней монадой.  Именно поэтому Yesod предоставляет
+        специальную функцию \lstinline'lift', которая работает для
+        \lstinline'Handler' и~\lstinline'Widget'.
     \item  На самом деле у них есть дополнительные параметры для типов подсайта
         и основного сайта. В результате, библиотеки Yesod предоставляют
         \lstinline'GHandler sub master a' и \lstinline'GWidget sub master a', а
