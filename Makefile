@@ -15,7 +15,30 @@ TEXSRCS := $(subst $(space),\$(space),$(TEXSRCS))
 TEXSRCS := $(subst .tex\,.tex,$(TEXSRCS))
 
 # Здесь имена без пробелов - сойдёт и так
-HSSRCS := $(wildcard hs/[0-9][0-9]/*.hs)
+HSSRCS = $(addprefix hs/, \
+	02/type-families.hs \
+	03/hello-world.hs \
+	03/routes.hs \
+	04/i18n.hs \
+	04/quasiquoter.hs \
+	04/query-string.hs \
+	04/shakespeare-text.hs \
+	04/url-interpolation.hs \
+	04/var-interpolation.hs \
+	06/slashes.hs \
+	08/input-forms.hs \
+	08/monadic-forms.hs \
+	08/synopsis.hs \
+	09/messages.hs \
+	09/session-example.hs \
+	09/ultimate-destination.hs \
+	13/navbar.hs \
+	13/request-information.hs \
+	17/hellosub.hs \
+	20/client.hs \
+	20/server.hs \
+	21/source.hs \
+)
 IMAGES := $(wildcard img/*.png)
 BLOGLHS := 18/blog.lhs
 
