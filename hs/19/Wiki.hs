@@ -12,10 +12,7 @@ import Data.Text (Text)
 import qualified Data.Text.Lazy as TL
 import qualified Data.IORef as I
 import qualified Data.Map as Map
-
--- Этот пакет пока отсутствует на Hackage.
--- Вы можете скачать его исходный код с https://github.com/snoyberg/markdown
-import Text.Markdown (markdown, def)
+import Text.Markdown (markdown, def) -- предоставляется пакетом markdown
 
 -- | Наш тип-основание включает и подсайт чата, и изменяемую ссылку на словарь
 -- содержимого wiki. Обратите внимание, что ключом в этом словаре является список

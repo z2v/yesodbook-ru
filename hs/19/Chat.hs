@@ -15,6 +15,7 @@ import Network.Wai.EventSource (ServerEvent (..), eventSourceAppChan)
 import Language.Haskell.TH.Syntax (Type (VarT), Pred (ClassP), mkName)
 import Blaze.ByteString.Builder.Char.Utf8 (fromText)
 import Data.Monoid (mappend)
+import Data.Aeson (toJSON)
 
 -- | Тип-основание нашего подсайта. Мы поддерживаем канал событий,
 -- который будет совместно использоваться всеми подключениями.
@@ -121,7 +122,7 @@ chatWidget toMaster = do
             -- И теперь вот такой JavaScript
             toWidgetBody [julius|
 // Настроим принимающую сторону
-var output = document.getElementById("#{output}");
+var output = document.getElementById("#{toJSON output}");
 var src = new EventSource("@{toMaster ReceiveR}");
 src.onmessage = function(msg) {
     // Эта функция будет вызвана для каждого нового сообщения
@@ -136,7 +137,7 @@ src.onmessage = function(msg) {
 
 // Настроим отправляющую сторону: отправлять сообщение через Ajax всякий раз,
 // когда пользователь нажимает Enter.
-var input = document.getElementById("#{input}");
+var input = document.getElementById("#{toJSON input}");
 input.onkeyup = function(event) {
     var keycode = (event.keyCode ? event.keyCode : event.which);
     if (keycode == '13') {
