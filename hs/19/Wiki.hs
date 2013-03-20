@@ -28,7 +28,6 @@ data Wiki = Wiki
 -- Настраиваем наши маршруты, как обычно.
 mkYesod "Wiki" [parseRoutes|
 / RootR GET                 -- домашняя страница
-FIXME
 /wiki/*Texts WikiR GET POST -- обратите внимание на многокомпонентный путь,
                             -- необходимый для иерархии wiki
 /chat ChatR Chat getChat    -- подсайт чата

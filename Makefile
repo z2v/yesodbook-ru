@@ -103,3 +103,10 @@ blog: hs/$(BLOGLHS) | dirs
 	@cp -p hs/$(BLOGLHS) $(OBJDIR)/$(dir $(BLOGLHS))
 	@cp -rp hs/18/messages-blog $(BUILDDIR)
 	@cd $(OBJDIR) && ghc --make -o $(realpath $(BINDIR))/$(BLOGLHS:.lhs=) $(BLOGLHS) > $(BLOGLHS:.lhs=.log)
+
+wiki: hs/19/*.hs | dirs
+	@echo 19/wiki
+	@mkdir -p $(OBJDIR)/19
+	@mkdir -p $(BINDIR)/19
+	@cp -p hs/19/*.hs $(OBJDIR)/19
+	@cd $(OBJDIR)/19 && ghc --make -o $(realpath $(BINDIR))/19/wiki *.hs > wiki.log
