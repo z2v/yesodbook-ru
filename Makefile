@@ -41,6 +41,7 @@ HSSRCS = $(addprefix hs/, \
 )
 IMAGES := $(wildcard img/*.png)
 BLOGLHS := 18/blog.lhs
+WIKISRC = $(addprefix hs/19/,Chat.hs Wiki.hs)
 
 #-
 # Итоговый файл
@@ -70,7 +71,7 @@ TEXOPTS += -output-directory=$(abspath $(TEXDIR))
 
 all: $(YESODBOOK)
 
-$(YESODBOOK): tex/$(MASTERTEX) $(TEXSRCS) $(HSSRCS) $(IMAGES) hs/$(BLOGLHS)
+$(YESODBOOK): tex/$(MASTERTEX) $(TEXSRCS) $(HSSRCS) $(IMAGES) hs/$(BLOGLHS) $(WIKISRC)
 	rm -f $(YESODBOOK)
 	mkdir -p $(TEXDIR)
 	cd tex && \
@@ -106,9 +107,9 @@ blog: hs/$(BLOGLHS) | dirs
 	@cp -rp hs/18/messages-blog $(BUILDDIR)
 	@cd $(OBJDIR) && ghc --make -o $(realpath $(BINDIR))/$(BLOGLHS:.lhs=) $(BLOGLHS) > $(BLOGLHS:.lhs=.log)
 
-wiki: hs/19/*.hs | dirs
+wiki: $(WIKISRC) | dirs
 	@echo 19/wiki
 	@mkdir -p $(OBJDIR)/19
 	@mkdir -p $(BINDIR)/19
-	@cp -p hs/19/*.hs $(OBJDIR)/19
-	@cd $(OBJDIR)/19 && ghc --make -o $(realpath $(BINDIR))/19/wiki *.hs > wiki.log
+	@cp -p $(WIKISRC) $(OBJDIR)/19
+	@cd $(OBJDIR) && ghc --make -o $(realpath $(BINDIR))/19/wiki $(subst hs/,,$(WIKISRC)) > 19/wiki.log
