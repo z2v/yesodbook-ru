@@ -88,7 +88,9 @@ dirs:
 	@mkdir -p $(BINDIR)
 	@mkdir -p $(OBJDIR)
 
-examples: blog | dirs
+examples: simple-examples blog wiki
+
+simple-examples: $(HSSRCS) | dirs
 	@$(foreach f, $(subst hs/,,$(HSSRCS)), \
 		echo $f && \
 		mkdir -p $(OBJDIR)/$(dir $f) && \
