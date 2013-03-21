@@ -859,7 +859,7 @@ Javascript. В этих случаях вам пригодятся формы в
 \begin{lstlisting}
 passwordConfirmField :: Field sub master Text
 passwordConfirmField = Field
-    { fieldParse = \rawVals ->
+    { fieldParse = \rawVals _ ->
         case rawVals of
             [a, b]
                 | a == b -> return $ Right $ Just a
@@ -871,6 +871,7 @@ passwordConfirmField = Field
 <div>Confirm:
 <input id=#{idAttr}-confirm name=#{nameAttr} type=password>
 |]
+    , fieldEnctype = UrlEncoded
     }
 
 getRootR :: Handler RepHtml
@@ -883,8 +884,6 @@ getRootR = do
     ^{widget}
     <input type=submit value="Сменить пароль">
 |]
-main :: IO ()
-main = warpDebug 3000 Password
 \end{lstlisting}
 
 \section{Выводы}
