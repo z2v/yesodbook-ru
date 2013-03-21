@@ -32,6 +32,7 @@ HSSRCS = $(addprefix hs/, \
 	09/messages.hs \
 	09/session-example.hs \
 	09/ultimate-destination.hs \
+	12/RepHtmlJson.hs \
 	13/navbar.hs \
 	13/request-information.hs \
 	17/hellosub.hs \
