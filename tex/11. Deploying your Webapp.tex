@@ -1,44 +1,18 @@
-%Deploying your Webapp
 \chapter{Развёртывание вашего веб-приложения}\label{chap:deploying}
-%
-%I can't speak for others, but I personally prefer programming to system administration. But the fact is that, eventually, you need to serve your app somehow, and odds are that you'll need to be the one to set it up.
-%
-
 Не могу говорить за всех, но лично я предпочитаю программирование системному администрированию. Но, на самом деле, рано или поздно вам придётся как-нибудь разворачивать ваше приложение, и скорее всего вам придётся быть тем самым человеком, который будет всё это настраивать.
 
-%There are some promising initiatives in the Haskell web community towards making deployment easier. In the future, we may even have a service that allows you to deploy your app with a single command.
-%
 В Haskell сообществе существуют многообещающие инициативы, нацеленные на то, чтобы облегчить процесс развёртывания. В будущем, возможно, у нас даже будет сервис, который позволит развернуть ваше веб-приложение при помощи одной команды.
 
-%But we're not there yet. And even if we were, such a solution will never work for everyone. This chapter covers the different options you have for deployment, and gives some general recommendations on what you should choose in different situations.
-%
 Однако пока что это не так, и, даже если бы это было так, подобное решение никогда бы не подошло абсолютно всем. Данная глава описывает различные существующие варианты развёртывания и даёт некоторые общие рекомендации касательно того, какой из них следует выбрать в том или ином случае.
 
-%Compiling
 \section{Компиляция}
-%
-%First things first: how do you build your production application? If you're using the scaffolded site, it's as simple as cabal build. I also recommend cleaning beforehand to make sure there is no cached information, so a simple combination to build your executable is:
-%
 Начнём с начала: как вы собираете своё приложение? Если вы используете сгенерированный сайт-каркас~--- это просто вызов команды \lstinline{cabal build}. Я бы также рекомендовал очистку рабочих каталогов перед сборкой, чтобы гарантировать отсутствие закешированной информации. Таким образом, простейшая последовательность команд для сборки вашего приложения будет выглядеть так:
 
 \begin{lstlisting}
 cabal clean && cabal configure && cabal build
 \end{lstlisting}
 
-%
-%Warp
 \section{Warp}
-%
-%As we have mentioned before, Yesod is built on the Web Application Interface (WAI), allowing it to run on any WAI backend. At the time of writing, the following backends are available:
-%
-%* Warp
-%* FastCGI
-%* SCGI
-%* CGI
-%* Webkit
-%* Development server
-%
-
 Как было отмечено ранее, Yesod построен на \emph{Интерфейсе веб-приложения (Web Application Interface, WAI)}, что позволяет ему запускаться на любом WAI-совместимом бэкенд сервере. На момент написания этого текста доступны следующие варианты:
 \begin{itemize}
     \item Warp
@@ -49,30 +23,15 @@ cabal clean && cabal configure && cabal build
     \item Сервер разработки (development server)
 \end{itemize}
 
-%The last two are not intended for production deployments. Of the remaining four, all can be used for production deployment in theory. In practice, a CGI backend will likely be horribly inefficient, since a new process must be spawned for each connection. And SCGI is not nearly as well supported by frontend web servers as Warp (via reverse proxying) or FastCGI.
-%
 Последние два не предназначены для боевого %production
 использования. Из оставшихся четырёх, теоретически, для этих целей может быть использован любой. На практике же CGI будет ужасно неэффективен, так как для каждого соединения будет создаваться новый процесс. SCGI, в свою очередь, не настолько хорошо поддерживается фронтенд веб-серверами как Warp (в режиме обратного прокси) или FastCGI.
 
-%So between the two remaining choices, Warp gets a very strong recommendation because:
-%
-%* It is significantly faster.
-%* Like FastCGI, it can run behind a frontend server like Nginx, using reverse HTTP proxy.
-%* In addition, it is a fully capable server of its own accord, and can therefore be used without any frontend server.
 Таким образом, из двух оставшихся вариантов Warp является рекомендуемым, потому что:
 \begin{itemize}
   \item Он значительно быстрее;
   \item Как и FastCGI может быть запущен за фронтенд сервером, таким как Nginx в режиме обратного прокси;
   \item Кроме того, он является полностью функциональным сервером, и потому может быть использован сам по себе, без какого-либо фронтенда.
 \end{itemize}
-%
-%So that leaves one last question: should Warp run on its own, or via reverse proxy behind a frontend server? For most use cases, I recommend the latter, because:
-%
-%* As fast as Warp is, it is still optimized as an application server, not a static file server.
-%* Using Nginx, you can set up virtual hosting to serve your static contents from a separate domain. (It's possible to do this with Warp, but a bit more involved).
-%* You can use Nginx as either a load balancer or a SSL proxy. (Though with warp-tls it's entirely possible to run an https site on Warp alone.)
-%So my final recommendation is: set up Nginx to reverse proxy to Warp.
-%
 
 Итого, открытым остался лишь один вопрос: следует ли использовать Warp самостоятельно или через обратный прокси за другим фронтенд сервером? В большинстве случаев я рекомендую последнее, потому что:
 \begin{itemize}
@@ -83,23 +42,11 @@ cabal clean && cabal configure && cabal build
 
 Таким образом, моя итоговая рекомендация следующая: используйте Nginx как обратный прокси для Warp.
 
-%A number of people in the Yesod community disagree with me here, and believe that the increased performance and decreased complexity of skipping the Nginx step make standalone Warp a better choice. Feel free to follow either approach, they are both perfectly valid.
 Некоторые участники сообщества Yesod не согласны со мной в этом вопросе и полагают, что увеличенная производительность и уменьшенная сложность решения с одним только Warp делают его лучшим выбором. Так что, поступайте как считаете правильным, оба подхода абсолютно корректны.
 
-%
-%Configuration
 \section{Конфигурация}
-%
-%In general, Nginx will listen on port 80 and your Yesod/Warp app will listen on some unprivileged port (lets say 4321). You will then need to provide a nginx.conf file, such as:
-%
 В общем случае, Nginx будет ожидать соединений на 80 порту, а ваше Yesod/Warp приложение будет слушать какой-нибудь другой непривилегированный порт (скажем, 4321). В таком случае ваш файл nginx.conf будет выглядеть примерно так:
 
-% Оригинальные комментарии в конфиг файле
-%
-% daemon off; # Don't run nginx in the background, good for monitoring apps
-% listen 80; # Incoming port for Nginx
-% proxy_pass http://127.0.0.1:4321; # Reverse proxy to your Yesod app
-%
 \begin{lstlisting}
 daemon off; # НЕ запускайте nginx в фоновом режиме. Это очень удобно для мониторинга приложений
 events {
@@ -116,9 +63,6 @@ http {
     }
 }
 \end{lstlisting}
-%
-%You can add as many server blocks as you like. A common addition is to ensure users always access your pages with the www prefix on the domain name, ensuring the RESTful principle of canonical URLs. (You could just as easily do the opposite and always strip the www, just make sure that your choice is reflected in both the nginx config and the approot of your site.) In this case, we would add the block:
-
 Вы можете добавлять сколько угодно блоков \lstinline{server}. Общая практика~--- добавлять блок, который гарантирует, что ваши пользователи всегда будут получать страницы с префиксом \lstinline{www} в имени домена, соблюдая таким образом RESTful принцип канонических URLов. (Вы можете с тем же успехом делать обратное и всегда удалять префикс \lstinline{www}. Главное, не забудьте отразить это и в файле конфигурации nginx и в approot вашего сайта).
 
 \begin{lstlisting}
@@ -128,17 +72,9 @@ server {
     rewrite ^/(.*) http://www.myserver.com/$1 permanent;
 }
 \end{lstlisting}%$
-%
-%A highly recommended optimization is to serve static files from a separate domain name, therefore bypassing the cookie transfer overhead. Assuming that our static files are stored in the static folder within our site folder, and the site folder is located at /home/michael/sites/mysite, this would look like:
-%
 
 Крайне рекомендуется в качестве оптимизации раздавать статические файлы с отдельного домена, избегая таким образом ненужной передачи cookie. Предполагая, что наши статические файлы хранятся в подкаталоге \lstinline{static} каталога нашего сайта, который имеет путь /home/michael/sites/mysite, это выглядело бы следующим образом:
 
-% Оригинальный комментарий
-%    # Since yesod-static appends a content hash in the query string,
-%    # we are free to set expiration dates far in the future without
-%    # concerns of stale content.
-%
 \begin{lstlisting}
 server {
     listen 80;
@@ -150,17 +86,8 @@ server {
     expires max;
 }
 \end{lstlisting}
-%
-%In order for this to work, your site must properly rewrite static URLs to this alternate domain name. The scaffolded site is set up to make this fairly simple via the Settings.staticRoot function and the definition of urlRenderOverride. However, if you just want to get the benefit of nginx's faster static file serving without dealing with separate domain names, you can instead modify your original server block like so:
 
 Для того, чтобы это заработало, ваш сайт должен корректно изменять статические URLы так, чтобы они указывали на этот альтернативный домен. Сайт-каркас настроен таким образом, чтобы упростить эту задачу используя функцию \lstinline{Settings.staticRoot} и определение \lstinline{urlRenderOverride}. Однако если вам надо всего лишь использовать преимущества Nginx при раздаче статических файлов без использования отдельных доменных имён, вы можете просто модифицировать исходный блок server следующим образом:
-%
-% Оригинальные комментарии из конфига
-%
-% listen 80; # Incoming port for Nginx
-% proxy_pass http://127.0.0.1:4321; # Reverse proxy to your Yesod app
-% root /home/michael/sites/mysite; # Notice that we do *not* include /static
-
 \begin{lstlisting}
 server {
     listen 80; # Порт для входящих соединений Nginx
@@ -176,14 +103,8 @@ server {
 \end{lstlisting}
 %
 
-%Server Process
 \section{Серверный процесс}
-
-%
-%Many people are familiar with an Apache/mod_php or Lighttpd/FastCGI kind of setup, where the web server automatically spawns the web application. With nginx, either for reverse proxying or FastCGI, this is not the case: you are responsible to run your own process. I strongly recommend a monitoring utility which will automatically restart your application in case it crashes. There are many great options out there, such as angel or daemontools.
-%
 Многие знакомы с конфигурациями типа Apache/mod\_php или Lighttpd/FastCGI, в которых веб-сервер автоматически запускает веб-приложение. При использовании nginx, как в режиме обратного прокси, так и в режиме FastCGI, это не так: вы сами ответственны за запуск вашего процесса. Я настоятельно рекомендую использовать какой-либо инструмент мониторинга, который будет автоматически перезапускать ваше приложение в случае падений. Существует множество отличных вариантов для этого, таких как angel или daemontools.
-%To give a concrete example, here is an Upstart config file. The file must be placed in /etc/init/mysite.conf:
 
 В качестве конкретного примера ниже приведён файл конфигурации Upstart. Он должен располагаться в /etc/init/mysite.conf:
 
@@ -195,19 +116,12 @@ respawn
 chdir /home/michael/sites/mysite
 exec /home/michael/sites/mysite/dist/build/mysite/mysite
 \end{lstlisting}
-%
-%Once this is in place, bringing up your application is as simple as sudo start mysite.
 
 Как только этот файл на месте, запуск вашего приложения потребует всего лишь одной команды \lstinline{sudo start mysite}.
-%
-%FastCGI
+
 \section{FastCGI}
-%
-%Some people may prefer using FastCGI for deployment. In this case, you'll need to add an extra tool to the mix. FastCGI works by receiving new connection from a file descriptor. The C library assumes that this file descriptor will be 0 (standard input), so you need to use the spawn-fcgi program to bind your application's standard input to the correct socket.
-%
 Некоторые предпочитают использовать FastCGI для развёртывания своих приложений. В этом случае вам потребуется ещё один инструмент. FastCGI работает, принимая новые соединения из файлового дескриптора. Стандартная библиотека C предполагает, что этот файловый дескриптор будет равен 0 (стандартный поток ввода), а значит, надо использовать специальную программу spawn-fcgi, которая свяжет стандартный поток ввода вашего приложения с правильным сокетом.
 
-%It can be very convenient to use Unix named sockets for this instead of binding to a port, especially when hosting multiple applications on a single host. A possible script to load up your app could be:
 Может оказаться очень удобным использовать для этих целей именованные сокеты Unix вместо привязки к порту, особенно если вы собираетесь запускать несколько приложений на одном физическом сервере. Возможный сценарий для запуска вашего приложения может выглядеть следующим образом:
 
 \begin{lstlisting}
@@ -219,11 +133,9 @@ spawn-fcgi \
     -u michael \
     -- /home/michael/sites/mysite/dist/build/mysite-fastcgi/mysite-fastcgi
 \end{lstlisting}
-%
-%You will also need to configure your frontend server to speak to your app over FastCGI. This is relatively painless in Nginx:
 
 Вам также потребуется сконфигурировать ваш фронтенд сервер для общения с вашим приложением через FastCGI. В случае с Nginx это относительно просто:
-%
+
 \begin{lstlisting}
 server {
     listen 80;
@@ -233,8 +145,6 @@ server {
     }
 }
 \end{lstlisting}
-%
-%That should look pretty familiar from above. The only last trick is that, with Nginx, you need to manually specify all of the FastCGI variables. It is recommended to store these in a separate file (say, fastcgi.conf) and then add include fastcgi.conf; to the end of your http block. The contents of the file, to work with WAI, should be:
 
 Этот пример должен выглядеть знакомым, учитывая описанные ранее варианты. Последний трюк состоит в том, что с Nginx вам необходимо вручную задать все переменные FastCGI. Рекомендуется хранить эти переменные в отдельном файле (скажем, fastcgi.conf), и добавлять \lstinline{include fastcgi.conf;} в конец блока \lstinline{http}. Содержимое этого файла, настроенного для работы через WAI, должно быть следующим:
 
@@ -253,42 +163,22 @@ fastcgi_param  SERVER_PORT        $server_port;
 fastcgi_param  SERVER_NAME        $server_name;
 \end{lstlisting}%$
 
-%Desktop
 \section{Настольное приложение}
-%
-%Another nifty backend is wai-handler-webkit. This backend combines Warp and QtWebkit to create an executable that a user simply double-clicks. This can be a convenient way to provide an offline version of your application.
-
 Другой замечательный способ запускать ваше приложение~--- \footnotehref{http://hackage.haskell.org/package/wai-handler-webkit}{wai-handler-webkit}. Он объединяет Warp и QtWebkit для создания исполняемого файла, который может быть запущен при помощи простого двойного щелчка мышью. Это может быть удобным способом сделать оффлайн версию вашего приложения.
-%
-%One of the very nice conveniences of Yesod for this is that your templates are all compiled into the executable, and thus do not need to be distributed with your application. Static files do, however.
 
 Одно из удобств Yesod в данном случае состоит в том, что все ваши шаблоны страниц компилируются в исполняемый файл, избавляя вас от необходимости распространять их отдельно. В случае со статическими файлами это, однако, не так.
-%
-%There's actually support for embedding your static files directly in the executable as well, see the yesod-static docs for more details.
 
 На самом деле, поддержка включения статических файлов прямо в приложение существует, обращайтесь к документации к \footnotehref{http://hackage.haskell.org/package/yesod-static}{yesod-static} за подробностями.
-%
-%A similar approach, without requiring the QtWebkit library, is wai-handler-launch, which launches a Warp server and then opens up the user's default web browser. There's a little trickery involved here: in order to know that the user is still using the site, wai-handler-launch inserts a "ping" Javascript snippet to every HTML page it serves. It wai-handler-launch doesn't receive a ping for two minutes, it shuts down.
 
 Аналогичный подход \footnotehref{http://hackage.haskell.org/package/wai-hanlder-launch}{wai-handler-launch}, который не требует библиотеки QtWebkit, запускает Warp сервер и затем открывает пользовательский браузер по умолчанию. Следует отметить небольшой трюк: для того, чтобы понять, что пользователь всё ещё пользуется сайтом, wai-handler-launch вставляет небольшой отрывок Javascript сценария на каждую HTML страницу, которую раздаёт. Этот сценарий периодически посылает ``пинг''(запрос, не несущий полезной нагрузки и требующий ответа) на сервер. Если wai-handler-launch не получает ответа на такой запрос в течение двух минут, то он останавливается.
-%
-%CGI on Apache
 
 \section{CGI и Apache}
-%
-%CGI and FastCGI work almost identically on Apache, so it should be fairly straight-forward to port this configuration. You essentially need to accomplish two goals:
-%
-%1. Get the server to serve your file as (Fast)CGI.
-%2. Rewrite all requests to your site to go through the (Fast)CGI executable.
-
 CGI и FastCGI работают с Apache почти одинаково, так что подправить конфигурацию должно быть довольно просто. Вам всего лишь надо добиться выполнения двух пунктов:
 \begin{enumerate}
   \item Заставить веб-сервер раздавать ваши файлы как (Fast)CGI;
   \item Сделать так, чтобы все запросы к вашему сайту шли через (Fast)CGI исполняемый файл.
 \end{enumerate}
 
-%Here is a configuration file for serving a blog application, with an executable named "bloggy.cgi", living in a subfolder named "blog" of the document root. This example was taken from an application living in the path /f5/snoyman/public/blog.
-%
 Вот пример файла конфигурации для приложения-блога, исполняемый файл которого называется ``bloggy.cgi'', расположенного в подкаталоге ``blog''. Этот пример бы взят из приложения, находящегося в каталоге /f5/snoyman/public/blog.
 
 \begin{lstlisting}
@@ -302,23 +192,13 @@ RewriteCond $1 !^bloggy.cgi
 RewriteCond $1 !^static/
 RewriteRule ^(.*) bloggy.cgi/$1 [L]
 \end{lstlisting}
-%
-%The first RewriteRule is to deal with subfolders. In particular, it redirects a request for /blog to /blog/. The first RewriteCond prevents directly requesting the executable, the second allows Apache to serve the static files, and the last line does the actual rewriting.
 
 Первая запись RewriteRule отвечает за правильную обработку подкаталогов. В частности, она перенаправляет запросы к /blog на /blog/. Первая запись RewriteCond предотвращает запрос самого исполняемого файла, вторая~--- разрешает Apache раздавать статические файлы. Последняя строка, собственно, и осуществляет перенаправление запросов.
-%
 
-%FastCGI on lighttpd
 \section{FastCGI и lighttpd}
-%
-%For this example, I've left off some of the basic FastCGI settings like mime-types. I also have a more complex file in production that prepends "www." when absent and serves static files from a separate domain. However, this should serve to show the basics.
-%
-
 Для этого примера я опустил некоторые из основных настроек FastCGI, такие как mime-типы. В реальном приложении у меня используется более сложный файл, который добавляет префикс ``www.'' в начало URL, если он отсутствует, а также раздаёт статические файлы с отдельного домена. Однако следующего примера должно быть достаточно, чтобы понять основы.
 
-%Here, "/home/michael/fastcgi" is the fastcgi application. The idea is to rewrite all requests to start with "/app", and then serve everything beginning with "/app" via the FastCGI executable.
 Здесь ``/home/michael/fastcgi''~--- это fastcgi приложение. Идея состоит в том, чтобы перенаправлять все запросы на ``/app'', после чего раздавать всё, начинающееся с ``/app'' через исполняемый файл FastCGI.
-%
 
 \begin{lstlisting}
 server.port = 3000
@@ -341,13 +221,8 @@ fastcgi.server = (
 )
 \end{lstlisting}%$
 
-%CGI on lighttpd
 \section{CGI и lighttpd}
-%
-%This is basically the same as the FastCGI version, but tells lighttpd to run a file ending in ".cgi" as a CGI executable. In this case, the file lives at "/home/michael/myapp.cgi".
-
 Ниже представлен конфигурационный файл, почти идентичный версии для FastCGI, однако он говорит lighttpd запускать файл, заканчивающийся на ``.cgi'' как CGI исполняемый файл. В данном случае этот файл располагается в ``/home/michael/myapp.cgi''.
-%
 \begin{lstlisting}
 server.port = 3000
 server.document-root = "/home/michael"
