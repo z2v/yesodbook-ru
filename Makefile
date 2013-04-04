@@ -90,6 +90,8 @@ dirs:
 	@mkdir -p $(BINDIR)
 	@mkdir -p $(OBJDIR)
 
+# Успешная сборка примеров требует наличие следующих пакетов:
+# yesod-platform persistent-sqlite sphinx wai-eventsource markdown
 examples: simple-examples blog wiki
 
 simple-examples: $(HSSRCS) | dirs
