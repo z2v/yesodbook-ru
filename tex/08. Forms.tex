@@ -474,7 +474,8 @@ carAForm mcar = Car
     \item[runFormGet] \hfill \\
         Аналог \lstinline'runFormPost' для GET-параметров. Чтобы отличить
         обычную загрузку страницы через GET от отправки GET формы, включает в
-        форму дополнительное скрытое поле~\lstinline'_hasdata'.
+        форму дополнительное скрытое поле~\lstinline'_hasdata'. И, в отличие
+        от~\lstinline'runFormPost', не содержит защиты от межсайтовых атак.
 
     \item[runFormPostNoNonce] \hfill \\
         То же что и \lstinline'runFormPost', но не включает (или не требует)
