@@ -39,6 +39,8 @@ HSSRCS = $(addprefix hs/, \
 	20/client.hs \
 	20/server.hs \
 	21/source.hs \
+	24/hello-world.hs \
+	24/hello-world-gzip.hs \
 )
 IMAGES := $(wildcard img/*.png)
 BLOGLHS := 18/blog.lhs
