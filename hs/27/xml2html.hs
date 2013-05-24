@@ -4,12 +4,13 @@ import Text.Blaze.Html.Renderer.String (renderHtml)
 import Text.XML
 import Text.Hamlet.XML
 import Text.XML.Xml2Html ()
+import Data.Map (empty)
 
 main :: IO ()
 main = putStr $ renderHtml $ toHtml $ Document (Prologue [] Nothing []) root []
 
 root :: Element
-root = Element "html" [] [xml|
+root = Element "html" empty [xml|
 <head>
     <title>Test
     <script>if (5 < 6 || 8 > 9) alert("Hello World!");

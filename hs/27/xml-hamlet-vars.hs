@@ -4,6 +4,7 @@ import Text.XML
 import Text.Hamlet.XML
 import Prelude hiding (writeFile)
 import Data.Text (Text, pack)
+import Data.Map (empty)
 
 data Person = Person
     { personName :: Text
@@ -22,7 +23,7 @@ main :: IO ()
 main =
     writeFile def "people.xml" $ Document (Prologue [] Nothing []) root []
   where
-    root = Element "html" [] [xml|
+    root = Element "html" empty [xml|
 <head>
     <title>Some People
 <body>

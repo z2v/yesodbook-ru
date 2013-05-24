@@ -3,6 +3,7 @@
 import Prelude hiding (readFile, writeFile)
 import Text.XML
 import Text.Hamlet.XML
+import qualified Data.Map as M
 
 main :: IO ()
 main = do
@@ -20,10 +21,10 @@ main = do
 
 -- Мы преобразуме <document> в документ XHTML
 transform :: Element -> Element
-transform (Element _name attrs children) = Element "html" [] [xml|
+transform (Element _name attrs children) = Element "html" M.empty [xml|
 <head>
     <title>
-        $maybe title <- lookup "title" attrs
+        $maybe title <- M.lookup "title" attrs
             \#{title}
         $nothing
             Untitled Document
@@ -47,10 +48,11 @@ goElem (Element "em" attrs children) =
 goElem (Element "strong" attrs children) =
     Element "b" attrs $ concatMap goNode children
 goElem (Element "image" attrs _children) =
-    Element "img" (map fixAttr attrs) [] -- у тэга img не может быть дочерних элементов
+    Element "img" (fixAttr attrs) [] -- у тэга img не может быть дочерних элементов
   where
-    fixAttr ("href", value) = ("src", value)
-    fixAttr x = x
+    fixAttr mattrs
+        | "href" `M.member` mattrs  = M.delete "href" $ M.insert "src" (mattrs M.! "href") mattrs
+        | otherwise                 = mattrs
 goElem (Element name attrs children) =
     -- не знаем что делать, поэтом просто передаём как есть...
     Element name attrs $ concatMap goNode children

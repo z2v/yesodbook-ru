@@ -1,22 +1,23 @@
 {-# LANGUAGE OverloadedStrings #-}
 import Text.XML
 import Prelude hiding (writeFile)
+import Data.Map (empty)
 
 main :: IO ()
 main =
     writeFile def "test3.xml" $ Document (Prologue [] Nothing []) root []
   where
-    root = Element "html" []
-        [ NodeElement $ Element "head" []
-            [ NodeElement $ Element "title" []
+    root = Element "html" empty
+        [ NodeElement $ Element "head" empty
+            [ NodeElement $ Element "title" empty
                 [ NodeContent "My "
-                , NodeElement $ Element "b" []
+                , NodeElement $ Element "b" empty
                     [ NodeContent "Title"
                     ]
                 ]
             ]
-        , NodeElement $ Element "body" []
-            [ NodeElement $ Element "p" []
+        , NodeElement $ Element "body" empty
+            [ NodeElement $ Element "p" empty
                 [ NodeContent "foo bar baz"
                 ]
             ]
