@@ -19,7 +19,7 @@ main = do
         { rsPretty = True
         } "output.html" $ Document prologue root' epilogue
 
--- Мы преобразуме <document> в документ XHTML
+-- Мы преобразуем <document> в документ XHTML
 transform :: Element -> Element
 transform (Element _name attrs children) = Element "html" M.empty [xml|
 <head>
@@ -54,5 +54,5 @@ goElem (Element "image" attrs _children) =
         | "href" `M.member` mattrs  = M.delete "href" $ M.insert "src" (mattrs M.! "href") mattrs
         | otherwise                 = mattrs
 goElem (Element name attrs children) =
-    -- не знаем что делать, поэтом просто передаём как есть...
+    -- не знаем что делать, поэтому просто передаём как есть...
     Element name attrs $ concatMap goNode children
