@@ -6,7 +6,7 @@ import Data.Text (Text)
 import Data.Time
 import Control.Monad.Logger (runStderrLoggingT)
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Link
     title Text
     url Text
