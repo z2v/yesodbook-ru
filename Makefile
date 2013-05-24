@@ -41,6 +41,14 @@ HSSRCS = $(addprefix hs/, \
 	21/source.hs \
 	24/hello-world.hs \
 	24/hello-world-gzip.hs \
+	27/synopsis.hs \
+	27/cursor.hs \
+	27/cursor-operator.hs \
+	27/cursor-h1.hs \
+	27/xml.hs \
+	27/xml-hamlet.hs \
+	27/xml-hamlet-vars.hs \
+	27/xml2html.hs \
 )
 IMAGES := $(wildcard img/*.png)
 BLOGLHS := 18/blog.lhs
@@ -94,6 +102,7 @@ dirs:
 
 # Успешная сборка примеров требует наличия следующих пакетов:
 # yesod-platform persistent-sqlite sphinx wai-eventsource markdown
+# xml2html xml-hamlet
 examples: simple-examples blog wiki
 
 simple-examples: $(HSSRCS) | dirs
