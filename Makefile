@@ -101,7 +101,7 @@ dirs:
 	@mkdir -p $(OBJDIR)
 
 # Успешная сборка примеров требует наличия следующих пакетов:
-# yesod-platform persistent-sqlite sphinx wai-eventsource markdown
+# yesod-platform<1.2 persistent-sqlite sphinx wai-eventsource markdown
 # xml2html xml-hamlet
 examples: simple-examples blog wiki
 
