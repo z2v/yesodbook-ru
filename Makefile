@@ -101,8 +101,19 @@ dirs:
 	@mkdir -p $(OBJDIR)
 
 # Успешная сборка примеров требует наличия следующих пакетов:
-# yesod-platform<1.2 persistent-sqlite sphinx wai-eventsource markdown
-# xml2html xml-hamlet
+HACKAGES = \
+	'yesod-platform<1.2' \
+	persistent-sqlite \
+	sphinx \
+	wai-eventsource \
+	markdown \
+	xml2html \
+	xml-hamlet
+
+.PHONY: install-packages
+install-packages:
+	cabal install $(HACKAGES)
+
 examples: simple-examples blog wiki
 
 simple-examples: $(HSSRCS) | dirs
