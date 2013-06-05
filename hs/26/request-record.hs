@@ -13,8 +13,8 @@ main = do
                 Nothing -> putStrLn "Извините, некорректный URL"
                 Just req -> withManager $ \manager -> do
                     let reqHead = req { method = "HEAD" }
-                    Response status _ headers _ <- http reqHead manager
+                    res <- http reqHead manager
                     liftIO $ do
-                        print status
-                        mapM_ print headers
+                        print $ responseStatus res
+                        mapM_ print $ responseHeaders res
         _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"

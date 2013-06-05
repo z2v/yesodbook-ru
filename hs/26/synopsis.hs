@@ -31,15 +31,15 @@ main = do
         res <- http req manager
 
         -- И, наконец, записываем результат в файл
-        responseBody res $$ sinkFile "foo.txt"
+        responseBody res $$+- sinkFile "foo.txt"
 
         -- Сделаем это POST запросом, не следуем за перенаправлениями
         -- и принимаем любой код статуса ответа
         let req2 = req
                 { method = "POST"
                 , redirectCount = 0
-                , checkStatus = \_ _ -> Nothing
+                , checkStatus = \_ _ _ -> Nothing
                 }
         res2 <- http req2 manager
-        responseBody res2 $$ sinkFile "post-foo.txt"
+        responseBody res2 $$+- sinkFile "post-foo.txt"
 

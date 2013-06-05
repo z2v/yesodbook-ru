@@ -11,6 +11,6 @@ main = do
             case parseUrl urlString of
                 Nothing -> putStrLn "Извините, некорректный URL"
                 Just req -> withManager $ \manager -> do
-                    Response _ _ _ lbs <- httpLbs req manager
-                    liftIO $ L.putStr lbs
+                    res <- httpLbs req manager
+                    liftIO $ L.putStr $ responseBody res
         _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"
