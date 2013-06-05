@@ -42,8 +42,8 @@ HSSRCS = $(addprefix hs/, \
 	24/hello-world.hs \
 	24/hello-world-gzip.hs \
 	26/synopsis.hs \
-	26/request.hs \
-	26/request-record.hs \
+	26/response-body.hs \
+	26/response-head.hs \
 	27/synopsis.hs \
 	27/cursor.hs \
 	27/cursor-operator.hs \
