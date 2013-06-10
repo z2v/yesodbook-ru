@@ -13,6 +13,7 @@ import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import Text.Hamlet (shamlet)
 import Data.Maybe (isJust)
 import Control.Monad (join)
+import Control.Monad.Logger (runStderrLoggingT)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 User
@@ -141,5 +142,5 @@ $nothing
 
 main :: IO ()
 main = withSqliteConn "email.db3" $ \conn -> do
-    runSqlConn (runMigration migrateAll) conn
+    runStderrLoggingT $ runSqlConn (runMigration migrateAll) conn
     warpDebug 3000 $ MyEmailApp conn
