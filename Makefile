@@ -35,6 +35,9 @@ HSSRCS = $(addprefix hs/, \
 	12/RepHtmlJson.hs \
 	13/navbar.hs \
 	13/request-information.hs \
+	14/authentication.hs \
+	14/email-authentication.hs \
+	14/authorization.hs \
 	17/hellosub.hs \
 	20/client.hs \
 	20/server.hs \
