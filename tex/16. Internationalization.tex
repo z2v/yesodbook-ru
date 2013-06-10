@@ -13,86 +13,11 @@
 
 \section{Краткое содержание} % Synopsis
 
-\begin{lstlisting}
--- @messages/en.msg
-Hello: Hello
-EnterItemCount: I would like to buy: 
-Purchase: Purchase
-ItemCount count@Int: You have purchased #{showInt count} #{plural count "item" "items" "items"}.
-SwitchLanguage: Switch language to: 
-Switch: Switch
-\end{lstlisting}
+\lstinputlisting[caption={messages/en.msg}]{../hs/16/messages/en.msg}
 
-\begin{lstlisting}
--- @messages/ru.msg
-Hello: Привет
-EnterItemCount: Я хотел бы купить: 
-Purchase: Покупка
-ItemCount count: Вы приобрели #{showInt count} #{plural count "единицу" "единицы" "единиц"} товара.
-SwitchLanguage: Переключить язык на:
-Switch: Переключить
-\end{lstlisting}
+\lstinputlisting[caption={messages/ru.msg}]{../hs/16/messages/ru.msg}
 
-\begin{lstlisting}
--- @i18n-synopsis.hs
-{-# LANGUAGE OverloadedStrings, QuasiQuotes, TemplateHaskell, TypeFamilies,
-    MultiParamTypeClasses #-}
-import Yesod
-
-data I18N = I18N
-
-mkMessage "I18N" "messages" "en"
-
-plural :: Int -> String -> String -> String -> String
-plural 1 x _ _ = x
-plural n _ y z = if n < 5 then y else z
-
-showInt :: Int -> String
-showInt = show
-
-instance Yesod I18N
-
-instance RenderMessage I18N FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
-mkYesod "I18N" [parseRoutes|
-/ RootR GET
-/buy BuyR GET
-/lang LangR POST
-|]
-
-getRootR :: Handler RepHtml
-getRootR = defaultLayout [whamlet|
-<h1>_{MsgHello}
-<form action=@{BuyR}>
-    _{MsgEnterItemCount}
-    <input type=text name=count>
-    <input type=submit value=_{MsgPurchase}>
-<form action=@{LangR} method=post>
-    _{MsgSwitchLanguage}
-    <select name=lang>
-        <option value=en>English
-        <option value=ru>Russian
-    <input type=submit value=_{MsgSwitch}>
-|]
-
-getBuyR :: Handler RepHtml
-getBuyR = do
-    count <- runInputGet $ ireq intField "count"
-    defaultLayout [whamlet|
-<p>_{MsgItemCount count}
-|]
-
-postLangR :: Handler ()
-postLangR = do
-    lang <- runInputPost $ ireq textField "lang"
-    setLanguage lang
-    redirect RootR
-
-main :: IO ()
-main = warpDebug 3000 I18N
-\end{lstlisting}
-
+\lstinputlisting[caption={i18n-synopsis.hs}]{../hs/16/i18n-synopsis.hs}
 \section{Обзор} % Overview
 
 Большинство существующих решений, таких как gettext или пакеты сообщений Java, работают на принципе подстановки строк. Для подстановки переменных в строки обычно используются функции, похожие на printf. Вместо этого в Yesod, как вы могли догадаться, делается ставка на типы. Это даёт нам все обычные преимущества, такие как обнаружение ошибок на этапе компиляции.

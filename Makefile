@@ -117,7 +117,7 @@ HACKAGES = \
 install-packages:
 	cabal install $(HACKAGES)
 
-examples: simple-examples blog wiki
+examples: simple-examples blog wiki i18n
 
 simple-examples: $(HSSRCS) | dirs
 	@$(foreach f, $(subst hs/,,$(HSSRCS)), \
@@ -141,3 +141,12 @@ wiki: $(WIKISRC) | dirs
 	@mkdir -p $(BINDIR)/19
 	@cp -p $(WIKISRC) $(OBJDIR)/19
 	@cd $(OBJDIR) && ghc --make -o $(realpath $(BINDIR))/19/wiki $(subst hs/,,$(WIKISRC)) > 19/wiki.log
+
+I18NSRC = hs/16/i18n-synopsis.hs
+i18n: $(I18NSRC)
+	@echo 16/i18n
+	@mkdir -p $(OBJDIR)/16
+	@mkdir -p $(BINDIR)/16
+	@cp -p $(I18NSRC) $(OBJDIR)/16
+	@cp -rp hs/16/messages $(OBJDIR)/16
+	@cd $(OBJDIR)/16 && ghc --make -o $(realpath $(BINDIR))/16/i18n-synopsis i18n-synopsis.hs > i18n-synopsis.log 
