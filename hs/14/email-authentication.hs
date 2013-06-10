@@ -15,7 +15,7 @@ import Data.Maybe (isJust)
 import Control.Monad (join)
 import Control.Monad.Logger (runStderrLoggingT)
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 User
     email Text
     password Text Maybe -- Пароль может быть ещё не задан
@@ -110,7 +110,7 @@ Thank you
         mu <- get uid
         case mu of
             Nothing -> return Nothing
-            Just u -> do
+            Just _ -> do
                 update uid [UserVerified =. True]
                 return $ Just uid
     getPassword = runDB . fmap (join . fmap userPassword) . get
