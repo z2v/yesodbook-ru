@@ -346,7 +346,7 @@ renderMyRoute Time _ = ...
 применится к результату вычисления, что значит, что все экземпляры класса
 \lstinline!ToHtml! могут быть сынтерполированы. Возьмите, к примеру, следующий код.
 
-\lstinputlisting{../hs/04/var-interpolation.hs}
+\includecode{04/var-interpolation.hs}
 
 Что же с нашими расхваленными типобезопасными URL? Они почти что идентичны
 интерполяции переменных по всем показателям, за исключением того, что они
@@ -354,7 +354,7 @@ renderMyRoute Time _ = ...
 знака вставки \verb'^', которое позволяет вам вставить другой шаблон того же типа.
 Код ниже демонстрирует обе описанные концепции.
 
-\lstinputlisting{../hs/04/url-interpolation.hs}
+\includecode{04/url-interpolation.hs}
 
 Кроме того, есть вариант интерполяции URL, который даёт вам возможность
 встраивать параметры строки запроса. Это может быть полезно, например, для
@@ -626,7 +626,7 @@ a:link, a:visited { color: #{textcolor} }
 и корректный синтаксис. Вы можете посмотреть простейшие примеры каждого подхода
 на следующих примерах
 
-\lstinputlisting[caption=Квазицитрование]{../hs/04/quasiquoter.hs}
+\includecode[caption=Квазицитрование]{04/quasiquoter.hs}
 
 % Выносить в отдельный файл не стал, так как пример состоит из двух файлов
 \begin{lstlisting}[caption=Внешние файлы]
@@ -740,7 +740,7 @@ type HtmlUrlI18n msg url = Translate msg -> Render url -> Html
 \lstinline!renderSpanish! или \lstinline!renderKlingon! в этот шаблон. И он
 сгенерирует хорошо переведенный контент (качество которого, конечно, зависит от
 ваших переводчиков). Программа целиком будет выглядеть так:
-\lstinputlisting{../hs/04/i18n.hs}
+\includecode{04/i18n.hs}
 
 \section{Другие Шекспировские возможности}
 
@@ -749,7 +749,7 @@ type HtmlUrlI18n msg url = Translate msg -> Render url -> Html
 создания интерполированных строк, который очень нравится тем, кто привык к
 скриптовым языкам вроде Ruby или Python. Конечно, утилиты этого пакета можно
 использовать не только для \texttt{Yesod}.
-\lstinputlisting{../hs/04/shakespeare-text.hs}
+\includecode{04/shakespeare-text.hs}
 
 Несколько быстрых подсказок по этому простому примеру:
 \begin{itemize}

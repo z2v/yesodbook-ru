@@ -16,7 +16,7 @@
 </document>
 \end{lstlisting}
 
-\lstinputlisting[caption={Код на Haskell}]{../hs/27/synopsis.hs}
+\includecode[caption={Код на Haskell}]{27/synopsis.hs}
 
  % XHTML для lstlisting неизвестен
 \begin{lstlisting}[language=HTML, caption={Выходные данные в формате XHTML}]
@@ -228,7 +228,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Благодаря тому, что списки являются монадами, не составляет труда объединить все вышесказанное воедино. Например, следующая программа предназначена для поиска заголовка XHTML-документа:
 
-\lstinputlisting{../hs/27/cursor.hs}
+\includecode{27/cursor.hs}
 
 В переводе на русский это значит:
 \begin{itemize}
@@ -255,7 +255,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Мы получим в результате <<My Title>>. Это все, конечно, здорово и замечательно, но вообще-то тут намного больше кода, чем в случае использования XPath. Для борьбы с этой многословностью Aristid Breitkreuz добавил в модуль Cursor набор операторов для обработки большинства случаев. С их помощью мы можем переписать наш пример следующим образом:
 
-\lstinputlisting{../hs/27/cursor-operator.hs}
+\includecode{27/cursor-operator.hs}
 
 Оператор \lstinline!$/! говорит применить ось справа к потомкам (children) курсора слева. Оператор \lstinline!&/! практически идентичен, только используется он для комбинирования двух осей. Общее правило в модуле \lstinline!Text.XML.Cursor! таково: операторы, начинающиеся со знака \$, напрямую применяют ось, а начинающиеся со знака \& объединяют две оси. Оператор \lstinline!&//! используется для применения оси ко всем наследникам (descendants).
 
@@ -281,7 +281,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Мы хотим получить содержимое всех тэгов \lstinline!h1!, которые предшествуют тэгу \lstinline!h2! с атрибутом \lstinline!class!, имеющим значение <<bar>>. Для выполнения этого запутанного поиска мы можем написать:
 
-\lstinputlisting{../hs/27/cursor-h1.hs}
+\includecode{27/cursor-h1.hs}
 
 Давайте попробуем разобраться, что здесь происходит. Сначала мы получаем все элементы h2 в документе. (Оператор \lstinline!$//! получает всех наследников корневого элемента.) Из них мы оставляем только те, что имеют атрибут \lstinline!class! со значением <<bar>>. Оператор \lstinline!>=>! на самом деле является стандартным оператором из модуля \footnotehref{http://hackage.haskell.org/packages/archive/base/latest/doc/html/Control-Monad.html}{\lstinline!Control.Monad!}; вот еще одно преимущество того, что списки являются монадами. Функция \lstinline!precedingSibling! находит все узлы, что идут перед заданным \emph{и} имеют с ним общего родителя. (Имеется также ось \lstinline!preceding!, которая принимает все предыдущие элементы в дереве.) Затем мы просто берем все элементы \lstinline!h1! и получаем их содержимое.
 
@@ -295,7 +295,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Благодаря простоте системы типов языка Haskell, создание XML-документов с помощью API модуля \lstinline!Text.XML! является крайне простым, хотя и несколько многословным. Следующий код:
 
-\lstinputlisting{../hs/27/xml.hs}
+\includecode{27/xml.hs}
 
 ... генерирует:
 
@@ -306,7 +306,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Это во много раз проще, чем использовать императивный API с изменяемыми состояниями (как, кхм, в Java), но все же далеко от идеала, и к тому же делает неясными наши настоящие намерения. Для исправления ситуации у нас есть пакет \footnotehref{http://hackage.haskell.org/package/xml-hamlet}{xml-hamlet}, который использует квазицитирование для того, чтобы позволить вводить XML, используя естественный синтаксис. Например, предыдущий пример может быть переписан так:
 
-\lstinputlisting{../hs/27/xml-hamlet.hs}
+\includecode{27/xml-hamlet.hs}
 
 Тут нужно обратить внимание на следующее:
 
@@ -324,7 +324,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Как и в нормальном Hamlet, вы можете использовать интерполяцию переменных и управляющие структуры. Рассмотрим это на чуть более сложном примере:
 
-\lstinputlisting{../hs/27/xml-hamlet-vars.hs}
+\includecode{27/xml-hamlet-vars.hs}
 
 Еще пара моментов:
 
@@ -349,7 +349,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
   
 К счастью, пакет \lstinline!xml-conduit! предоставляет экземпляры класса \lstinline!ToHtml! для типов \lstinline!Node!, \lstinline!Document! и \lstinline!Element!, которые уважают эти расхождения. Итак, просто используя функцию \lstinline!toHtml!, мы можем получить корректный результат. Следующая программа:
 
-\lstinputlisting{../hs/27/xml2html.hs}
+\includecode{27/xml2html.hs}
 
 ... выводит (пробелы добавлены вручную):
 

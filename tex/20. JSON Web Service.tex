@@ -7,7 +7,7 @@
 
 WAI использует пакет \footnotehref{http://hackage.haskell.org/package/conduit}{conduit} для того, чтобы обрабатывать тела потоковых запросов, и эффективно формирует ответы при помощи \footnotehref{http://hackage.haskell.org/package/blaze-builder}{blaze-builder}. \footnotehref{http://hackage.haskell.org/package/aeson}{aeson} использует \footnotehref{http://hackage.haskell.org/package/attoparser}{attoparsec} для разбора текста; используя \footnotehref{http://hackage.haskell.org/package/attoparsec-conduit}{attoparsec-conduit} мы получаем простое взаимодействие с WAI. В итоге код выглядит следующим образом:
 
-\lstinputlisting{../hs/20/server.hs}
+\includecode{20/server.hs}
 
 \section {Клиент}
 
@@ -19,4 +19,4 @@ WAI использует пакет \footnotehref{http://hackage.haskell.org/pac
   \item Есть несколько различных функций для инициализации запроса. Мы используем \lstinline!http!, которая позваляет нам получать прямой доступ к потоку данных. Есть и другие, более высокоуровневые функции (такие как \lstinline!httpLbs!), которые позволяют игнорировать вопросы с источниками и дают возможность получить напрямую тело целиком.
 \end{itemize}
 
-\lstinputlisting{../hs/20/client.hs}
+\includecode{20/client.hs}

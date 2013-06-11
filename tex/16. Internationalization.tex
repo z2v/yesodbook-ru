@@ -13,11 +13,11 @@
 
 \section{Краткое содержание} % Synopsis
 
-\lstinputlisting[caption={messages/en.msg}]{../hs/16/messages/en.msg}
+\includecode[caption={messages/en.msg},language=]{16/messages/en.msg}
 
-\lstinputlisting[caption={messages/ru.msg}]{../hs/16/messages/ru.msg}
+\includecode[caption={messages/ru.msg},language=]{16/messages/ru.msg}
 
-\lstinputlisting[caption={i18n-synopsis.hs}]{../hs/16/i18n-synopsis.hs}
+\includecode{16/i18n-synopsis.hs}
 \section{Обзор} % Overview
 
 Большинство существующих решений, таких как gettext или пакеты сообщений Java, работают на принципе подстановки строк. Для подстановки переменных в строки обычно используются функции, похожие на printf. Вместо этого в Yesod, как вы могли догадаться, делается ставка на типы. Это даёт нам все обычные преимущества, такие как обнаружение ошибок на этапе компиляции.
