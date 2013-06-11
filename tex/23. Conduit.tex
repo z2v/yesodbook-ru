@@ -593,7 +593,6 @@ data Source m a = Source
 данных и новое значение типа \lstinline=Source= (источник остается открытым), или
 ничего (источник закрывается). Давайте посмотрим на простейшие примеры.
 \begin{lstlisting}
--- START
 import Prelude hiding (repeat)
 import Data.Conduit
 
@@ -610,9 +609,6 @@ repeat a = Source
     { sourcePull = return $ Open (repeat a) a
     , sourceClose = return ()
     }
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 Эти источники довольно тривиальны, так как они всегда возвращают одно и то же. К тому
 же их функции закрытия ничего не делают. Вам может показаться, что это ошибка: не должны ли 
@@ -649,7 +645,6 @@ main = return ()
 примере.
 
 \begin{lstlisting}
--- START
 import Data.Conduit
 import Control.Monad.Trans.Resource
 
@@ -664,9 +659,6 @@ sourceList list = Source
             x:xs -> return $ Open (sourceList xs) x
         , sourceClose = return ()
         }
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 
 Всякий раз, когда мы забираем данные из источника, он проверяет список. Если тот пуст,
@@ -684,7 +676,6 @@ main = return ()
 новое значение. Перепишем \lstinline=sourceList= с eё помощью:
 
 \begin{lstlisting}
--- START
 import Data.Conduit
 import Control.Monad.Trans.Resource
 
@@ -696,9 +687,6 @@ sourceList state0 = sourceState
   where
     pull [] = return StateClosed
     pull (x:xs) = return $ StateOpen xs x
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 
 Обратите внимание на использование конструкторов \lstinline=StateClosed= и \lstinline=StateOpen=.
@@ -714,7 +702,6 @@ main = return ()
 альтернативу, которая будет возвращать поток символов.
 
 \begin{lstlisting}
--- START
 import Data.Conduit
 import Control.Monad.Trans.Resource
 import System.IO
@@ -729,9 +716,6 @@ sourceFile fp = sourceIO
         if eof
             then return IOClosed
             else fmap IOOpen $ hGetChar h)
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 
 Как и \verb=sourceState= она использует конструкторы \verb*|Open| и \verb*|Closed|.
@@ -876,7 +860,6 @@ myReturn a = SinkData (\input -> return (Done (Just input) a)) (return a)
 \subsection{Стоки: без вспомогательных функций}
 Попробуем реализовать несколько стоков <<в лоб>>, без использования вспомогательных функций.
 \begin{lstlisting}
--- START
 import Data.Conduit
 import System.IO
 import Control.Monad.Trans.Resource
@@ -924,9 +907,6 @@ count =
         count' = count + 1
 
     close count = return count
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 Здесь нет ничего сложного. Разве что, обратите внимание на типичный шаблон использования:
 описываем свои функции \lstinline'push' и \lstinline'close' в клозе \lstinline'where', а
@@ -939,7 +919,6 @@ main = return ()
 Давайте перепишем \lstinline'sinkFile', используя преимущества вспомогательных функций 
 \lstinline'sinkIO' и \lstinline'sinkState'.
 \begin{lstlisting}
--- START
 import Data.Conduit
 import System.IO
 import Control.Monad.IO.Class (liftIO)
@@ -968,9 +947,6 @@ count = sinkState
         return $ StateProcessing $ state + 1)
     -- Функция close получает финальное состояние и возвращает рузультат.
     (\state -> return state)
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 Ничего особенного, лишь слегка меньше кода, который к тому же менее подвержен ошибкам. Использование этих двух
 вспомогательных  функций крайне рекомендуется, так как оно гарантирует правильное
@@ -988,7 +964,6 @@ main = return ()
 
 Давайте посмотрим на простые вещи, которые можно получить используюя встроенные стоки.
 \begin{lstlisting}
--- START
 import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Control.Monad.IO.Class (liftIO)
@@ -1017,21 +992,12 @@ printSum = do
     go accum int = do
         liftIO $ putStrLn $ "New input: " ++ show int
         return $ accum + int
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 
 \subsection{Соединение}
 Наконец, мы хотим как-то использовать наши стоки. Несмотря на то, что мы умеем вручную вызывать
 \verb*|sinkPush| и \verb*|sinkClose|, это утомительно. Например:
 \begin{lstlisting}
-import Data.Conduit
-import Control.Monad.IO.Class (liftIO)
-
-printSum :: Sink Int m Int
-printSum = undefined
--- START
 main :: IO ()
 main = runResourceT $ do
     res <-
@@ -1051,13 +1017,6 @@ main = runResourceT $ do
 но и менее подвержено ошибкам, кроме того такой подход обеспечивает большую гибкость в том, откуда приходят ваши данные.
 Перепишем пример выше:
 \begin{lstlisting}
-import Data.Conduit
-import qualified Data.Conduit.List as CL
-import Control.Monad.IO.Class (liftIO)
-
-printSum :: Sink Int m Int
-printSum = undefined
--- START
 main :: IO ()
 main = runResourceT $ do
     res <- CL.sourceList [1..10] $$ printSum
@@ -1123,7 +1082,6 @@ data Conduit input m output = Conduit
 
 Начнём с определения простейших кондуитов без состояния.
 \begin{lstlisting}
--- START
 import Prelude hiding (map, concatMap)
 import Data.Conduit
 
@@ -1147,16 +1105,12 @@ concatMap f = Conduit
     { conduitPush = \input -> return $ Producing (concatMap f) $ f input
     , conduitClose = return []
     }
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 
 \subsection{Кондуиты с состоянием}
 Конечно же, не все кодуиты могут быть объявлены без состояния.  Реализация 
 кондуитов с состоянием в лоб не очень сложна.
 \begin{lstlisting}
--- START
 import Prelude hiding (reverse)
 import qualified Data.List
 import Data.Conduit
@@ -1181,14 +1135,10 @@ sort =
     mkConduit state = Conduit (push state) (close state)
     push state input = return $ Producing (mkConduit $ input : state) []
     close state = return $ Data.List.sort state
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting} 
 Но мы можем сделать лучше. Как и в случаях с \lstinline'sourceState' и 
 \lstinline'sinkState', мы с помощью \lstinline'conduitState' кое-что упростим.
 \begin{lstlisting}
-  -- START
 import Prelude hiding (reverse)
 import qualified Data.List
 import Data.Conduit
@@ -1206,9 +1156,6 @@ sort =
   where
     push state input = return $ StateProducing (input : state) []
     close state = return $ Data.List.sort state
--- STOP
-main :: IO ()
-main = return ()
 \end{lstlisting}
 
 \subsection{Использование кондуитов}
@@ -1373,8 +1320,6 @@ three
 [1..50] он должен вернуть [15,40,65,90,115,140,165,190,215,240]. Мы определенно 
 можем это сделать с помощью низкоуровневого интерфейса кондуитов.
 \begin{lstlisting}
- import Data.Conduit
- -- START
  sum5Raw :: Resource m => Conduit Int m Int
  sum5Raw =
      conduitState (0, 0) push close
@@ -1388,9 +1333,6 @@ three
      close (total, count)
          | count == 0 = return []
          | otherwise  = return [total]
- -- STOP
- main :: IO ()
- main = return ()
 \end{lstlisting}
 Но это неудобно, так как мы уже имеем всё, что нужно, чтобы реализовать то же самое 
 на более высоком уровне. У нас есть сток свёртки, чтобы складывать числа, и изолирующий 
@@ -1407,15 +1349,10 @@ three
  
 Теперь мы можем переписать \lstinline'sum5Raw' на значительно более высоком уровне.
 \begin{lstlisting}
- import Data.Conduit
- import qualified Data.Conduit.List as CL
- -- START
  sum5 :: Resource m => Conduit Int m Int
  sum5 = sequenceSink () $ \() -> do
      nextSum <- CL.isolate 5 =$ CL.fold (+) 0
      return $ Emit () [nextSum]
- -- STOP
- main = return ()
 \end{lstlisting}
 Здесь все ()~--- это  неиспользуемое состояние, которое передаётся между функциями,
 его можно игнорировать.
@@ -1428,9 +1365,6 @@ three
 мы вернули, в состоянии, а затем воспользуемся конструктором 
 \lstinline'StartConduit', чтобы передать управление кондуиту, умножающему на 2.
 \begin{lstlisting}
- import Data.Conduit
- import qualified Data.Conduit.List as CL
- -- START
  sum5Pass :: Resource m => Conduit Int m Int
  sum5Pass = sequenceSink 0 $ \count -> do
      if count == 8
@@ -1438,8 +1372,6 @@ three
          else do
              nextSum <- CL.isolate 5 =$ CL.fold (+) 0
              return $ Emit (count + 1) [nextSum]
- -- STOP
- main = return ()
 \end{lstlisting}
 Очевидно, что примеры выше несколько искусственны, но я надеюсь, что они
 помогли прояснить мощь и простоту этого подхода. 
@@ -1543,7 +1475,6 @@ parseRequestLine socket = do
 проблемы вручную, но это будет утомительно. Гораздо проще переписать всё 
 в териминах кондуитов.
 \begin{lstlisting}
--- START
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import Data.Conduit
@@ -1564,15 +1495,12 @@ parseRequestLine = do
     path <- getWord
     version <- getWord
     return $ RequestLine method path version
--- STOP
-main = return ()
 \end{lstlisting}
 Это значит, что нашему коду будут предоставлены данные как только они поступят,
 а дополнительные данные будут автоматически буферизованы в источнике, 
 готовые к последующему использованию. Теперь мы можем легко собрать нашу программу 
 из составных частей, пользуясь мощью подхода на кондуитах:
 \begin{lstlisting}
--- START
 import Data.ByteString (ByteString)
 import Data.Conduit
 import Data.Conduit.Network (sourceSocket)
@@ -1602,8 +1530,6 @@ handleConn app socket = do
         return $ Request requestLine headers
     res <- liftIO $ app req
     liftIO $ sendResponse socket res
--- STOP
-main = return ()
 \end{lstlisting}
 \subsection{Где же тело запроса?}
 Всё выглядит замечательно до тех пор, пока мы не осознаём, что не можем прочитать тело запроса.
@@ -1716,7 +1642,6 @@ bsrc $$ sinkFile output2
 \subsection{Возвращаясь к веб-серверу}
 Как же именно будет выглядеть теперь наш веб-сервер?
 \begin{lstlisting}
--- START
 import Data.ByteString (ByteString)
 import Data.Conduit
 import Data.Conduit.Network (sourceSocket)
@@ -1746,8 +1671,6 @@ handleConn app socket = runResourceT $ do
     let req = Request requestLine headers bsrc
     res <- app req
     liftIO $ sendResponse socket res
--- STOP
-main = return ()
 \end{lstlisting}
 
 Мы произвели несколько небольших изменений. Во-первых, наше приложение теперь завёрнуто в 
