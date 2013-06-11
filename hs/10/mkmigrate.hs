@@ -16,5 +16,5 @@ Car
     deriving Show
 |]
 
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
        runMigration migrateAll

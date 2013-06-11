@@ -3,6 +3,8 @@
 
 import Yesod
 import Database.Persist.Sqlite
+import Control.Monad.Trans.Resource (runResourceT)
+import Control.Monad.Logger (runNoLoggingT)
 
 -- Определяем наши сущности, как обычно
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
@@ -47,7 +49,7 @@ openConnectionCount :: Int
 openConnectionCount = 10
 
 main :: IO ()
-main = withSqlitePool "test.db3" openConnectionCount $ \pool -> do
+main = runNoLoggingT $ runResourceT $ withSqlitePool "test.db3" openConnectionCount $ \pool -> do
     runSqlPool (runMigration migrateAll) pool
     runSqlPool (insert $ Person "Michael" "Snoyman" 26) pool
-    warpDebug 3000 $ PersistTest pool
+    liftIO $ warpDebug 3000 $ PersistTest pool

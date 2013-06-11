@@ -18,7 +18,7 @@ BlogPost
 |]
 
 main :: IO ()
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     runMigration migrateAll
 
     johnId <- insert $ Person "John Doe" $ Just 35

@@ -15,7 +15,7 @@ Person
     deriving Show
 |]
 
-main = runResourceT $ withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     runMigration migrateAll
     insert $ Person "Michael" "Snoyman" 26
     michael <- getBy $ UniqueName "Michael" "Snoyman"

@@ -14,7 +14,7 @@ Person
     deriving Show
 |]
 
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     time <- liftIO getCurrentTime
     runMigration migrateAll
     insert $ Person "Michael" (Just 26) time

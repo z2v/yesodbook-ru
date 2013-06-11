@@ -16,7 +16,7 @@ Car
     deriving Show
 |]
 
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     runMigration migrateAll
     bruce <- insert $ Person "Bruce Wayne"
     insert $ Car bruce "Bat Mobile"

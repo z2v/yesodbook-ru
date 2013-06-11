@@ -12,7 +12,7 @@ Person
     deriving Show
 |]
 
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     runMigration $ migrate entityDefs (undefined :: Person) -- добавлена эта строчка, и только!
     michaelId <- insert $ Person "Michael" 26
     michael <- get michaelId

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, TemplateHaskell, QuasiQuotes, TypeFamilies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, GADTs, FlexibleContexts #-}
 
-import Database.Persist.Sqlite (withSqliteConn)
+import Database.Persist.Sqlite (runSqlite)
 import Database.Persist.TH (mkPersist, persist, share, mkMigrate, sqlSettings)
 import Database.Persist.GenericSql (runSqlConn, runMigration, SqlPersist)
 import Database.Persist.GenericSql.Raw (withStmt)
@@ -18,7 +18,7 @@ Person
 |]
 
 main :: IO ()
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     runMigration migrateAll
     insert $ Person "Michael Snoyman"
     insert $ Person "Miriam Snoyman"

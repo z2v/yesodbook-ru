@@ -14,7 +14,7 @@ Person
     employment Employment
 |]
 
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     runMigration migrateAll
 
     insert $ Person "Bruce Wayne" Retired

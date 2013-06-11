@@ -16,7 +16,7 @@ PersonStore
     UniquePersonStore personId storeId
 |]
 
-main = withSqliteConn ":memory:" $ runSqlConn $ do
+main = runSqlite ":memory:" $ do
     runMigration migrateAll
 
     bruce <- insert $ Person "Bruce Wayne"
