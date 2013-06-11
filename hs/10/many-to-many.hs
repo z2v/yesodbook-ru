@@ -5,7 +5,7 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Data.Time
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     name String
 Store

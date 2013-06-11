@@ -6,7 +6,7 @@ import Database.Persist.Sqlite
 import Database.Persist.TH
 import Control.Monad.IO.Class (liftIO)
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     name String
     age Int Maybe

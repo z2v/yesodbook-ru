@@ -4,7 +4,7 @@ import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     name String
     age Int

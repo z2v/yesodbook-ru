@@ -5,7 +5,7 @@ import Database.Persist.TH
 import Database.Persist.Sqlite
 import Control.Monad.IO.Class (liftIO)
 
-share [mkPersist sqlSettings, mkSave "entityDefs"] [persist|
+share [mkPersist sqlSettings, mkSave "entityDefs"] [persistUpperCase|
 Person
     name String
     age Int

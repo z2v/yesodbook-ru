@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, GADTs, FlexibleContexts #-}
 
 import Database.Persist.Sqlite (runSqlite)
-import Database.Persist.TH (mkPersist, persist, share, mkMigrate, sqlSettings)
+import Database.Persist.TH (mkPersist, persistUpperCase, share, mkMigrate, sqlSettings)
 import Database.Persist.GenericSql (runSqlConn, runMigration, SqlPersist)
 import Database.Persist.GenericSql.Raw (withStmt)
 import Data.Text (Text)
@@ -12,7 +12,7 @@ import Control.Monad.IO.Class (liftIO)
 import qualified Data.Conduit as C
 import qualified Data.Conduit.List as CL
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     name Text
 |]

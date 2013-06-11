@@ -8,7 +8,7 @@ data Employment = Employed | Unemployed | Retired
     deriving (Show, Read, Eq)
 derivePersistField "Employment"
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     name String
     employment Employment

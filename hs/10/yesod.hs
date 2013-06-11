@@ -7,7 +7,7 @@ import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.Logger (runNoLoggingT)
 
 -- Определяем наши сущности, как обычно
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     firstName String
     lastName String

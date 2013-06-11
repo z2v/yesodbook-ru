@@ -6,7 +6,7 @@ import Database.Persist.TH
 import Control.Monad.IO.Class (liftIO)
 import Data.Time
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     name String
     deriving Show
