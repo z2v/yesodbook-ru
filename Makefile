@@ -32,6 +32,18 @@ HSSRCS = $(addprefix hs/, \
 	09/messages.hs \
 	09/session-example.hs \
 	09/ultimate-destination.hs \
+	10/attribute-default.hs \
+	10/attributes.hs \
+	10/attribute-whitespace.hs \
+	10/custom-fields.hs \
+	10/many-to-many.hs \
+	10/migration.hs \
+	10/mkmigrate.hs \
+	10/raw-sql.hs \
+	10/relations.hs \
+	10/synopsis.hs \
+	10/uniqueness.hs \
+	10/yesod.hs \
 	12/RepHtmlJson.hs \
 	13/navbar.hs \
 	13/request-information.hs \

@@ -14,45 +14,7 @@ Persistent следует принципам безопасности типов
 
 \section{Краткое содержание} % Synopsis
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, OverloadedStrings #-}
-{-# LANGUAGE GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Control.Monad.IO.Class (liftIO)
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-    age Int Maybe
-    deriving Show
-BlogPost
-    title String
-    authorId PersonId
-    deriving Show
-|]
-
-main :: IO ()
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-
-    johnId <- insert $ Person "John Doe" $ Just 35
-    janeId <- insert $ Person "Jane Doe" Nothing
-
-    insert $ BlogPost "My fr1st p0st" johnId
-    insert $ BlogPost "One more for good measure" johnId
-
-    oneJohnPost <- selectList [BlogPostAuthorId ==. johnId] [LimitTo 1]
-    liftIO $ print (oneJohnPost :: [Entity BlogPost])
-
-    john <- get johnId
-    liftIO $ print (john :: Maybe Person)
-
-    delete janeId
-    deleteWhere [BlogPostAuthorId ==. johnId]
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/synopsis.hs}
 
 \section{Решение пограничной проблемы} % Solving the boundary issue
 
@@ -140,7 +102,6 @@ Person
     age Int
     deriving Show
 |]
-main = return ()
 \end{lstlisting}
 
 Здесь мы используем комбинацию из Template Haskell и квазицитирования (как при определении маршрутов): persist является обработчиком квазицитирования, который преобразует чувствительный к пробелам синтаксис в список определений сущностей. (Также вы можете вынести определение сущностей в отдельный файл и воспользоваться persistFile.) mkPersist принимает список этих сущностей и определяет:
@@ -214,8 +175,6 @@ instance PersistEntity Person where
     persistUniqueToValues = undefined
     persistUniqueKeys = undefined
     persistIdField = undefined
-main :: IO ()
-main = return ()
 \end{lstlisting}%$
 
 Как и следовало ожидать, определение типа данных Person очень близко к определению, данному в оригинальной версии кода, где использовался Template Haskell. Мы также имеем обощенный алгебраический тип данный (ОАТД), предоставляющий отдельный конструктор для каждого поля. Этот ОАТД кодирует как тип сущности, так и тип поля. Мы используем его конструкторы через модуль Persistent, например, чтобы убедиться, что когда мы применяем фильтр, типы фильтруемого значения и поля совпадают.
@@ -264,54 +223,13 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 При работе с реляционными СУБД, изменение схемы базы данных обычно является большой проблемой. Вместо того, чтобы возлагать эту проблему на плечи пользователя, Persistent делает шаг вперед и протягивает руку помощи. Только нужно его об этом попросить. Вот как примерно это выглядит:
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.TH
-import Database.Persist.Sqlite
-import Control.Monad.IO.Class (liftIO)
-
-share [mkPersist sqlSettings, mkSave "entityDefs"] [persist|
-Person
-    name String
-    age Int
-    deriving Show
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration $ migrate entityDefs (undefined :: Person) -- добавлена эта строчка, и только!
-    michaelId <- insert $ Person "Michael" 26
-    michael <- get michaelId
-    liftIO $ print michael
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/migration.hs}
 
 Благодаря этому небольшому изменению, Persistent будет автоматически создавать для вас таблицу Person. Разбиение между функциями runMigration и migrate позволяет производить миграции множества таблиц одновременно.
 
 Это хорошо работает, когда речь идет о нескольких сущностях, но становится несколько утомительным при работе с десятками. Вместо того, чтобы повторяться, Persistent предлагает функцию mkMigrate:
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-    age Int
-    deriving Show
-Car
-    color String
-    make String
-    model String
-    deriving Show
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-       runMigration migrateAll
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/mkmigrate.hs}
 
 mkMigrate~--- это функция Template Haskell, которая создает новую функцию, что будет вызывать migrate для всех сущностей, объявленных в блоке persist. Функция share является небольшим хелпером, который передает информацию из блока persist каждой из функций Template Haskell, а затем объединяет результаты их выполнения.
 
@@ -347,30 +265,7 @@ User
 
 В то время, как имя каждого поля должно начинаться с маленькой буквы, ограничение уникальности должно начинаться с большой буквы.
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Data.Time
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Resource (runResourceT)
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    firstName String
-    lastName String
-    age Int
-    UniqueName firstName lastName
-    deriving Show
-|]
-
-main = runResourceT $ withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-    insert $ Person "Michael" "Snoyman" 26
-    michael <- getBy $ UniqueName "Michael" "Snoyman"
-    liftIO $ print michael
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/uniqueness.hs}
 
 Чтобы сообщить об уникальности комбинации нескольких полей, добавим одну дополнительную строку в наше определение. Persistent знает, что таким образом определяется уникальный конструктор, потому что строка начинается с заглавной буквы. Каждое последующее слово должно быть именем поля в сущности.
 
@@ -504,11 +399,6 @@ resultsForPage pageNumber = do
         , LimitTo resultsPerPage
         , OffsetBy $ (pageNumber - 1) * resultsPerPage
         ]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigrationSilent migrateAll
-    personId <- insert $ Person "Michael" "Snoyman" 26
-    resultsForPage 1 >>= liftIO . print
 \end{lstlisting}%$
 
 \section{Другие действия с данными} % Manipulation
@@ -571,20 +461,12 @@ let michael = Person "Michael" 26
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
     update personId [PersonAge =. 27]
-    resultsForPage 1 >>= liftIO . print
 \end{lstlisting}%$
 
 Функция update принимает два аргумента: ID и список Update'ов. Простейший способ обновления поля заключается в присвоении ему нового значения, однако этот способ не лучший. Что, если вы хотите увеличить чей-то возраст на единицу, но текущий возраст вам не известен? В Persistent предусмотрено и это:
 
 \begin{lstlisting}
 haveBirthday personId = update personId [PersonAge +=. 1]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigrationSilent migrateAll
-    personId <- insert $ Person "Michael" "Snoyman" 26
-    update personId [PersonAge =. 27]
-    haveBirthday personId
-    resultsForPage 1 >>= liftIO . print
 \end{lstlisting}%$
 
 Как и следовало ожидать, в нашем распоряжении есть все базовые математические операторы: \lstinline'+=.', \lstinline'-=.', \lstinline'*=.' и \lstinline'/=.'. Они не только удобны для обновления единичной записи, но и необходимы для соблюдения гарантий ACID. Представьте, что бы мы делали без этих операторов. Нам приходилось бы извлекать из базы Person, увеличивать возраст, а затем обновлять значение в базе данных на новое. Как только у вас появляется два процесса или потока, одновременно работающих с базой данных, вы попадаете в мир боли (подсказка: состоняие гонки).
@@ -638,54 +520,13 @@ deleteWhere & Удалить по множеству фильтров \\ \hline
 
 Допустим, вы хотите, чтобы сущность Person имела необязательный возраст, а также время добавления его или ее в систему. Для сущностей, уже находящихся в базе данных, в качестве этого времени мы хотим использовать текущее время.
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Data.Time
-import Control.Monad.IO.Class
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-    age Int Maybe
-    created UTCTime default=CURRENT_TIME
-    deriving Show
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    time <- liftIO getCurrentTime
-    runMigration migrateAll
-    insert $ Person "Michael" (Just 26) time
-    insert $ Person "Greg" Nothing time
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/attributes.hs}
 
 Maybe является встроенным атрибутом из одного слова. Он делает поле необязательным. Это означает, что в Haskell данное поле будет обернуто в Maybe, а в SQL оно может иметь значение NULL.
 
 Атрибут default зависит от используемого бэкенда и может использовать любой синтаксис, лишь бы он был понятен СУБД. В приведенном примере используется встроенная функция СУБД CURRENT\_TIME. Допустим, теперь мы хотим добавить в сущность Person поле с любимым языком программирования:
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Data.Time
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-    age Int Maybe
-    created UTCTime default=CURRENT_TIME
-    language String default='Haskell'
-    deriving Show
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/attribute-default.hs}
 
 \begin{remark}
 Атрибут default абсолютно никак не затрагивает код на Haskell, то есть, вам по-прежнему придется заполнять все значения. Атрибут влияет только на схему базы данных и автоматические миграции.
@@ -693,27 +534,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 Мы должны окружить строку в одинарные кавычки, чтобы СУБД могла правильно интерпретировать ее. Также Persistent позволяет использовать двойные кавычки для строк, содержащих пробелы. Например, если мы хотим сделать страной по умолчанию Российскую Федерацию, то должны написать:
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Data.Time
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-    age Int Maybe
-    created UTCTime default=CURRENT_TIME
-    language String default='Haskell'
-    country String "default='Российская Федерация'"
-    deriving Show
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/attribute-whitespace.hs}
 
 Последний трюк, который вы можете проделать с атрибутами~--- это указать имена таблиц и столбцов, используемые в SQL. Это может пригодиться при взаимодействии с существующими базами данных.
 
@@ -726,95 +547,17 @@ Person sql=the-person-table
     UniqueName firstName lastName
     deriving Show
 |]
-
-resultsForPage pageNumber = do
-    let resultsPerPage = 10
-    selectList
-        [ PersonAge >=. 18
-        ]
-        [ Desc PersonAge
-        , Asc PersonLastName
-        , Asc PersonFirstName
-        , LimitTo resultsPerPage
-        , OffsetBy $ (pageNumber - 1) * resultsPerPage
-        ]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-    personId <- insert $ Person "Michael" "Snoyman" 26
-    resultsForPage 1 >>= liftIO . print
 \end{lstlisting}%$
 
 \section{Отношения} % Relations
 
 Persistent поддерживает ссылки между типами данных, таким образом, что они остаются согласованными в поддерживаемых NoSQL базах данных. Ссылка создается путем добавления ID в связанную сущность. Вот как выглядит пример для человека с большим количеством машин:
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Control.Monad.IO.Class (liftIO)
-import Data.Time
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-    deriving Show
-Car
-    ownerId PersonId Eq
-    name String
-    deriving Show
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-    bruce <- insert $ Person "Bruce Wayne"
-    insert $ Car bruce "Bat Mobile"
-    insert $ Car bruce "Porsche"
-    -- это может занять много времени
-    cars <- selectList [CarOwnerId ==. bruce] []
-    liftIO $ print cars
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/relations.hs}
 
 С помощью этой техники вы можете определять отношения один-ко-многим. Чтобы определить отношение многие-ко-многим, нам понадобится связующая сущность, которая имеет отношения один-ко-многим с каждой из оригинальных таблиц. В данном случае будет хорошей идеей воспользоваться ограничением уникальности. Допустим, мы хотим смоделировать ситуацию, в которой мы отслеживаем, какие люди в каких магазинах делают покупки:
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Data.Time
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-Store
-    name String
-PersonStore
-    personId PersonId
-    storeId StoreId
-    UniquePersonStore personId storeId
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-
-    bruce <- insert $ Person "Bruce Wayne"
-    michael <- insert $ Person "Michael"
-
-    target <- insert $ Store "Target"
-    gucci <- insert $ Store "Gucci"
-    sevenEleven <- insert $ Store "7-11"
-
-    insert $ PersonStore bruce gucci
-    insert $ PersonStore bruce sevenEleven
-
-    insert $ PersonStore michael target
-    insert $ PersonStore michael sevenEleven
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/many-to-many.hs}
 
 \begin{remark}
 Поскольку суффикс Id в имени типа используется в Persistent для обозначения связи по внешнему ключу, в настоящий момент не представляется возможным использовать неключевые типы, чье имя заканчивается на Id. Простое решение этой проблемы заключается в определении синонима типа с другим суффиксом, например:
@@ -906,30 +649,7 @@ type PostId = Key SqlPersist Post
 
 У вас может возникнуть желание использовать в вашем хранилище поля произвольного типа. Наиболее типичный случай~--- это перечисление, например состояние найма сотрудников. Для этого Persistent предоставляет специальную функцию Template Haskell:
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-
-data Employment = Employed | Unemployed | Retired
-    deriving (Show, Read, Eq)
-derivePersistField "Employment"
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name String
-    employment Employment
-|]
-
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-
-    insert $ Person "Bruce Wayne" Retired
-    insert $ Person "Peter Parker" Unemployed
-    insert $ Person "Michael" Employed
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/custom-fields.hs}
 
 derivePersistField позволяет хранить данные в базе, используя строковые поля, а также реализует сериализацию с помощью экземпляров классов Read и Show вашего типа данных. Это может быть не так эффективно, как использование целых чисел, зато удобнее вот в каком плане. Даже если в будущем вы добавите новые конструкторы, данные в базе останутся валидными.
 
@@ -943,42 +663,7 @@ derivePersistField позволяет хранить данные в базе, �
 На самом деле, вы можете воспользоваться оператором LIKE с помощью нормального синтаксиса, поскольку в Persistent 0.6 была добавлена возможность, позволяющая использовать операторы, специфичные для бэкенда. Но это все равно хороший пример, так что давайте рассмотрим его.
 \end{remark}
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, TemplateHaskell, QuasiQuotes, TypeFamilies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving, GADTs, FlexibleContexts #-}
-
-import Database.Persist.Sqlite (withSqliteConn)
-import Database.Persist.TH (mkPersist, persist, share, mkMigrate, sqlSettings)
-import Database.Persist.GenericSql (runSqlConn, runMigration, SqlPersist)
-import Database.Persist.GenericSql.Raw (withStmt)
-import Data.Text (Text)
-import Database.Persist
-import Database.Persist.Store (PersistValue)
-import Control.Monad.IO.Class (liftIO)
-import qualified Data.Conduit as C
-import qualified Data.Conduit.List as CL
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    name Text
-|]
-
-main :: IO ()
-main = withSqliteConn ":memory:" $ runSqlConn $ do
-    runMigration migrateAll
-    insert $ Person "Michael Snoyman"
-    insert $ Person "Miriam Snoyman"
-    insert $ Person "Eliezer Snoyman"
-    insert $ Person "Gavriella Snoyman"
-    insert $ Person "Greg Weber"
-    insert $ Person "Rick Richardson"
-
-    -- Persistent не предоставляет ключевого слова LIKE, но нам хотелось бы
-    -- получить всю семью Snoyman'ов...
-    let sql = "SELECT name FROM Person WHERE name LIKE '%Snoyman'"
-    C.runResourceT $ withStmt sql []
-                C.$$ CL.mapM_ $ liftIO . print
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/raw-sql.hs}
 
 Также существует высокоуровневая поддержка сериализации. Подробности вы можете найти в Haddock-документации по API.
 
@@ -988,61 +673,7 @@ main = withSqliteConn ":memory:" $ runSqlConn $ do
 
 Пакет yesod-persistent представляет собой <<клей>> между Persistent и Yesod. Он предоставляет класс типов YesodPersist, который стандартизует доступ к базе данных с помощью runDB. Вот как это выглядит в действии.
 
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, FlexibleContexts #-}
-{-# LANGUAGE TemplateHaskell, OverloadedStrings, GADTs, MultiParamTypeClasses #-}
-
-import Yesod
-import Database.Persist.Sqlite
-
--- Определяем наши сущности, как обычно
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-Person
-    firstName String
-    lastName String
-    age Int Gt Desc
-    deriving Show
-|]
-
--- Мы являемся держателями пула соединений. Когда программа инициализируется, мы
--- создаем начальный пул, и каждый раз, когда нам нужно произвести действие,
--- мы выделяем соединение из пула
-data PersistTest = PersistTest ConnectionPool
-
--- Мы создаем один-единственный маршрут для доступа к человеку. Это довольно распространенная
--- практика, когда в маршрутах используется Id.
-mkYesod "PersistTest" [parseRoutes|
-/person/#PersonId PersonR GET
-|]
-
--- Тут ничего особенного
-instance Yesod PersistTest
-
--- Теперь нам нужно определить экземпляр класса Yesod Persist, который будет следить
--- за тем, какой бэкенд мы используем и как следует выполнять действия
-instance YesodPersist PersistTest where
-    type YesodPersistBackend PersistTest = SqlPersist
-
-    runDB action = do
-        PersistTest pool <- getYesod
-        runSqlPool action pool
-
--- Мы просто возвращаем строковое представление челавека
--- или ошибку 404, если такой Person не существует
-getPersonR :: PersonId -> Handler RepPlain
-getPersonR personId = do
-    person <- runDB $ get404 personId
-    return $ RepPlain $ toContent $ show person
-
-openConnectionCount :: Int
-openConnectionCount = 10
-
-main :: IO ()
-main = withSqlitePool "test.db3" openConnectionCount $ \pool -> do
-    runSqlPool (runMigration migrateAll) pool
-    runSqlPool (insert $ Person "Michael" "Snoyman" 26) pool
-    warpDebug 3000 $ PersistTest pool
-\end{lstlisting}%$
+\lstinputlisting{../hs/10/yesod.hs}
 
 Тут есть два важных момента. Для выполнения действий над базой данных в обработчике используется runDB. Внутри runDB вы можете использовать все те функции, о которых шла речь выше, например, insert и selectList. 
 
