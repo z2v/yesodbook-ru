@@ -547,7 +547,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
 Person sql=the-person-table
     firstName String sql=first_name
     lastName String sql=fldLastName
-    age Int Gt Desc "sql=The Age of the Person"
+    age Int "sql=The Age of the Person"
     UniqueName firstName lastName
     deriving Show
 |]

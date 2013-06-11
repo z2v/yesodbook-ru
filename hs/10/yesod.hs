@@ -11,7 +11,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
 Person
     firstName String
     lastName String
-    age Int Gt Desc
+    age Int
     deriving Show
 |]
 
