@@ -11,52 +11,7 @@ HTTP. Но это лишь часть картины: кто-то должен �
 всех, кто хочет выполнять HTTP запросы.
 
 \section{Конспект}
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Network.HTTP.Conduit -- основной модуль
-
--- Потоковый интерфейс использует кондуиты
-import Data.Conduit
-import Data.Conduit.Binary (sinkFile)
-
-import qualified Data.ByteString.Lazy as L
-import Control.Monad.IO.Class (liftIO)
-
-main :: IO ()
-main = do
-    -- Простейший запрос: просто загружаем информацию с указанного URL
-    -- как ленивую ByteString.
-    simpleHttp "http://www.example.com/foo.txt" >>= L.writeFile "foo.txt"
-
-    -- Теперь используем потоковый интерфейс. Нам необходимо запускать
-    -- всё внутри ResourceT, чтобы быть уверенными, что все наши
-    -- соединения корректно закрываются в случае возникновения исключений
-    runResourceT $ do
-        -- Нам нужен Manager, который отслеживает открытые соединения.
-        -- simpleHttp создаёт нового менеджера соединений при каждом
-        -- запуске (т.е. соединения никогда не используются повторно)
-        manager <- liftIO $ newManager def
-
-        -- Более эффективная версия запроса с simpleHttp выше.
-        -- Сначала разбираем URL в запрос
-        req <- liftIO $ parseUrl "http://www.example.com/foo.txt"
-
-        -- Теперь получаем ответ
-        res <- http req manager
-
-        -- И, наконец, записываем результат в файл
-        responseBody res $$ sinkFile "foo.txt"
-
-        -- Сделаем это POST запросом, не следуем за перенаправлениями
-        -- и принимаем любой код статуса ответа
-        let req2 = req
-                { method = "POST"
-                , redirectCount = 0
-                , checkStatus = \_ _ -> Nothing
-                }
-        res2 <- http req2 manager
-        responseBody res2 $$ sinkFile "post-foo.txt"
-\end{lstlisting} %$
+\includecode{26/synopsis.hs}
 
 \section{Основные положения}
 Самый простой способ выполнения запроса в http--conduit~--- использовать
@@ -89,24 +44,8 @@ main = do
 используется чаще всего и приводит к исключению во время выполнения,
 если функции передан некорректный URL. Однако, вы можете использовать
 другую монаду, если, например, хотите проверять пользовательский ввод.
-\begin{lstlisting}
-import Network.HTTP.Conduit
-import System.Environment (getArgs)
-import qualified Data.ByteString.Lazy as L
-import Control.Monad.IO.Class (liftIO)
+\includecode{26/response-body.hs}
 
-main :: IO ()
-main = do
-    args <- getArgs
-    case args of
-        [urlString] ->
-            case parseUrl urlString of
-                Nothing -> putStrLn "Извините, некорректный URL"
-                Just req -> withManager $ \manager -> do
-                    Response _ _ _ lbs <- httpLbs req manager
-                    liftIO $ L.putStr lbs
-        _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"
-\end{lstlisting}
 Тип~\lstinline!Request! абстрактный, так что http--conduit может
 добавлять новые настройки в будущем, не нарушая API
 (см. приложение~\nameref{chap:settings_types} для более подробной
@@ -114,28 +53,7 @@ main = do
 record-нотацию\footnote{Запись вида \lstinline'req \{ method = "HEAD" \}'}. К примеру, модификация
 нашей программы, которая отправляет HEAD запросы и печатает заголовки
 ответа, могла бы выглядеть так:
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Network.HTTP.Conduit
-import System.Environment (getArgs)
-import qualified Data.ByteString.Lazy as L
-import Control.Monad.IO.Class (liftIO)
-
-main :: IO ()
-main = do
-    args <- getArgs
-    case args of
-        [urlString] ->
-            case parseUrl urlString of
-                Nothing -> putStrLn "Извините, некорректный URL"
-                Just req -> withManager $ \manager -> do
-                    let reqHead = req { method = "HEAD" }
-                    Response status _ headers _ <- http reqHead manager
-                    liftIO $ do
-                        print status
-                        mapM_ print headers
-        _ -> putStrLn "Извините, передавайте, пожалуйста, только один URL"
-\end{lstlisting} %$
+\includecode{26/response-head.hs}
 
 API предоставляет целый ряд различных настроек. Вот те, на которые стоит
 обратить внимание:

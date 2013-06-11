@@ -1,4 +1,4 @@
-\chapter{Создание дочернего сайта}
+\chapter{Создание дочернего сайта}\label{chap:subsite}
 
 Сколько сайтов требуют систему аутентификации? Или функции управления данными (CRUD)? Или блог? Или вики?
 
@@ -9,49 +9,7 @@
 \section{Привет, мир!}
 
 Создание дочерних сайтов достаточно мудрёный процесс, вовлекающий ряд различных типов. Давайте начнем с простого приложения <<Привет, мир!>>:
-
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes, TypeFamilies, MultiParamTypeClasses #-}
-{-# LANGUAGE TemplateHaskell, FlexibleInstances, OverloadedStrings #-}
-import Yesod
-
--- У дочерних сайтов, также как и у главных, есть основной тип данных.
-data HelloSub = HelloSub
-
--- Тут аналог знакомого нам mkYesod, с одним дополнительным параметром.
--- Мы обсудим это позже.
-mkYesodSub "HelloSub" [] [parseRoutes|
-/ SubRootR GET
-|]
-
--- Опишем сигнатуру типа для обработчика.
-getSubRootR :: Yesod master => GHandler HelloSub master RepHtml
-getSubRootR = defaultLayout [whamlet|Welcome to the subsite!|]
-
--- Давайте создадим главный сайт который будет его вызывать.
-data Master = Master
-    { getHelloSub :: HelloSub
-    }
-
-mkYesod "Master" [parseRoutes|
-/ RootR GET
-/subsite SubsiteR HelloSub getHelloSub
-|]
-
-instance Yesod Master
-
--- Опять опишем сигнатуру типа.
-getRootR :: GHandler sub Master RepHtml -- так же могли бы заметь sub на Master
-getRootR = defaultLayout [whamlet|
-<h1>Добро пожаловать на главную страницу
-<p>
-    Обратите внимание, что вы также можете посетить #
-    <a href=@{SubsiteR SubRootR}>дочерний сайт
-    \ .
-|]
-
-main = warpDebug 3000 $ Master HelloSub
-\end{lstlisting}
+\includecode{17/hellosub.hs}
 
 Этот очень простой пример на самом деле демонстрирует большинство сложностей, связанных с созданием дочернего сайта. Как и в обычном приложении Yesod, в дочернем сайте всё сосредоточено вокруг основного типа данных, в нашем случае HelloSub. Затем мы используем mkYesodSub, во многом так же, как мы используем mkYesod, чтобы создать тип данных маршрута и функции деспетчеризации/рендеринга. (Мы еще вернемся к дополнительному параметру через секунду).
 

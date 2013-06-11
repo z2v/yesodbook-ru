@@ -9,81 +9,17 @@
 В дополнение к \lstinline!xml-conduit!, в игру вступает еще несколько связанных пакетов, например, \footnotehref{http://hackage.haskell.org/package/xml-hamlet}{xml-hamlet} и \footnotehref{http://hackage.haskell.org/package/xml2html}{xml2html}. Мы рассмотрим, как и когда стоит использовать эти пакеты.
 
 \section{Краткое содержание} % Synopsis
-
-Входной XML файл:
-
-\begin{lstlisting}[language=XML]
+\begin{lstlisting}[language=XML, caption={Входной XML файл}]
 <document title="My Title">
     <para>This is a paragraph. It has <em>emphasized</em> and <strong>strong</strong> words.</para>
     <image href="myimage.png"/>
 </document>
 \end{lstlisting}
 
-Код на Haskell:
-
-\begin{lstlisting}
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE OverloadedStrings #-}
-import Prelude hiding (readFile, writeFile)
-import Text.XML
-import Text.Hamlet.XML
-
-main :: IO ()
-main = do
-    -- readFile выбросит исключение времени исполнения для любой ошибки разбора
-    -- def использует настройки по умолчанию
-    Document prologue root epilogue <- readFile def "input.xml"
-
-    -- root - это корневой элемент документа, давайте модифицируем его
-    let root' = transform root
-
-    -- А теперь запишем в файл. Давайте выведем результат с отступами
-    writeFile def
-        { rsPretty = True
-        } "output.html" $ Document prologue root' epilogue
-
--- Мы преобразуме <document> в документ XHTML
-transform :: Element -> Element
-transform (Element _name attrs children) = Element "html" [] [xml|
-<head>
-    <title>
-        $maybe title <- lookup "title" attrs
-            \#{title}
-        $nothing
-            Untitled Document
-<body>
-    $forall child <- children
-        ^{goNode child}
-|]
-
-goNode :: Node -> [Node]
-goNode (NodeElement e) = [NodeElement $ goElem e]
-goNode (NodeContent t) = [NodeContent t]
-goNode (NodeComment _) = [] -- скроем комментарии
-goNode (NodeInstruction _) = [] -- и инструкции обработки тоже
-
--- преобразуем каждый исходный элемент в эквивалент на XHTML
-goElem :: Element -> Element
-goElem (Element "para" attrs children) =
-    Element "p" attrs $ concatMap goNode children
-goElem (Element "em" attrs children) =
-    Element "i" attrs $ concatMap goNode children
-goElem (Element "strong" attrs children) =
-    Element "b" attrs $ concatMap goNode children
-goElem (Element "image" attrs _children) =
-    Element "img" (map fixAttr attrs) [] -- у тэга img не может быть дочерних элементов
-  where
-    fixAttr ("href", value) = ("src", value)
-    fixAttr x = x
-goElem (Element name attrs children) =
-    -- не знаем что делать, поэтом просто передаём как есть...
-    Element name attrs $ concatMap goNode children
-\end{lstlisting}%$
-
-Выходные данные в формате XHTML:
+\includecode[caption={Код на Haskell}]{27/synopsis.hs}
 
  % XHTML для lstlisting неизвестен
-\begin{lstlisting}[language=XML]
+\begin{lstlisting}[language=HTML, caption={Выходные данные в формате XHTML}]
 <?xml version="1.0" encoding="UTF-8"?>
 <html>
     <head>
@@ -149,7 +85,7 @@ data Name = Name
 
 \section{Четыре типа узлов} % The Four Types of Nodes
 
-XML-документы представляют собой дерево вложенных узлов. В действительности существует четыре различных типа узлов --- элементы, содержимое (то есть текст), комментарии, а также инструкции по обработке (processing instructions).
+XML-документы представляют собой дерево вложенных узлов. В действительности существует четыре различных типа узлов~--- элементы, содержимое (то есть текст), комментарии, а также инструкции по обработке (processing instructions).
 
 \begin{remark}
 Вероятно, вы не знакомы с последними, поскольку они используются довольно редко. Инструкции по обработке обозначаются следующим образом:
@@ -176,7 +112,7 @@ data Instruction = Instruction
     }
 \end{lstlisting}
 
-Комментариям не соответствует специальный тип, потому что они представляют собой обычный текст. Зато содержимое куда интереснее --- оно может состоять из простого текста и неразрешенных сущностей (например, \lstinline!&copyright-statement;!). Пакет \footnotehref{http://hackage.haskell.org/package/xml-types}{xml-types} оставляет эти сущности неразрешенными во всех типах данных, чтобы полностью соответствовать спецификации. Однако на практике может быть очень трудно работать с такими типами данных. И в большинстве случаев неразрешенная сущность в конечном итоге приведет к возникновению ошибки.
+Комментариям не соответствует специальный тип, потому что они представляют собой обычный текст. Зато содержимое куда интереснее~--- оно может состоять из простого текста и неразрешенных сущностей (например, \lstinline!&copyright-statement;!). Пакет \footnotehref{http://hackage.haskell.org/package/xml-types}{xml-types} оставляет эти сущности неразрешенными во всех типах данных, чтобы полностью соответствовать спецификации. Однако на практике может быть очень трудно работать с такими типами данных. И в большинстве случаев неразрешенная сущность в конечном итоге приведет к возникновению ошибки.
 
 По этой причине модуль \footnotehref{http://hackage.haskell.org/packages/archive/xml-conduit/latest/doc/html/Text-XML.html}{Text.XML} определяет собственный набор типов данных для узлов, элементов и документов, в которых удаляются все неразрешенные сущности. Если вам нужно работать с неразрешенными сущностями, используйте модуль \footnotehref{http://hackage.haskell.org/packages/archive/xml-conduit/latest/doc/html/Text-XML-Unresolved.html}{Text.XML.Unresolved}. Начиная с этого момента мы сосредоточимся на типах данных модуля \lstinline!Text.XML!, однако они почти идентичны версиям из пакета \lstinline!xml-types!.
 
@@ -190,7 +126,7 @@ data Element = Element
     }
 \end{lstlisting}
 
-Возникает закономерный вопрос --- а как должен выглядеть тип данных \lstinline!Node!? Вот где Haskell по-настоящему показывает себя с лучшей стороны: его типы-суммы идеально представляют модель данных XML. % This is where Haskell really shines: its sum types model the XML data model perfectly.
+Возникает закономерный вопрос~--- а как должен выглядеть тип данных \lstinline!Node!? Вот где Haskell по-настоящему показывает себя с лучшей стороны: его типы-суммы идеально представляют модель данных XML. % This is where Haskell really shines: its sum types model the XML data model perfectly.
 
 \begin{lstlisting}
 data Node
@@ -282,7 +218,7 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Допустим, вы хотите получить заголовок (title) из XHTML-документа. Вы можете сделать это с помощью интерфейса модуля \lstinline!Text.XML!, который мы только что изучили, используя стандартное сопоставление с образцом потомков элементов. Но работа над программой с использованием этого подхода очень быстро станет утомительной. Вероятно, золотым стандартом для такого типа поиска является XPath, который позволяет вам обращаться к элементам, используя пути типа \lstinline!/html/head/title!. Именно XPath вдохновил дизайн комбинаторов из модуля \footnotehref{http://hackage.haskell.org/packages/archive/xml-conduit/latest/doc/html/Text-XML-Cursor.html}{Text.XML.Cursor}.
 
-Кусрор представляет собой узел, который помнит свое положение в дереве; он может перемещаться вверх, в сторону или вниз. (Это реализовано с помощью приема \footnotehref{http://www.haskell.org/haskellwiki/Tying\_the\_Knot}{"завязывание узлов"}.) Есть две функции, позволяющие преобразовывать типы модуля \lstinline!Text.XML! в курсоры --- \lstinline!fromDocument! и \lstinline!fromNode!.
+Кусрор представляет собой узел, который помнит свое положение в дереве; он может перемещаться вверх, в сторону или вниз. (Это реализовано с помощью приема \footnotehref{http://www.haskell.org/haskellwiki/Tying\_the\_Knot}{"завязывание узлов"}.) Есть две функции, позволяющие преобразовывать типы модуля \lstinline!Text.XML! в курсоры~--- \lstinline!fromDocument! и \lstinline!fromNode!.
 
 Также имеется концепция оси (axis), реализованная как \lstinline!type Axis = Cursor -> [Cursor]!. Проще всего понять эту концепцию на примере. Функция child возвращает список из нуля или более курсоров, которые являются потомками текущего курсора. Функция parent возвращает одиночный родительский курсор входного курсора или пустой список для корневого элемента. И так далее.
 
@@ -292,24 +228,9 @@ writeFile :: RenderSettings -> FilePath -> Document -> IO ()
 
 Благодаря тому, что списки являются монадами, не составляет труда объединить все вышесказанное воедино. Например, следующая программа предназначена для поиска заголовка XHTML-документа:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Prelude hiding (readFile)
-import Text.XML
-import Text.XML.Cursor
-import qualified Data.Text as T
-
-main :: IO ()
-main = do
-    doc <- readFile def "test.xml"
-    let cursor = fromDocument doc
-    print $ T.concat $
-            child cursor >>= element "head" >>= child
-                         >>= element "title" >>= descendant >>= content
-\end{lstlisting}
+\includecode{27/cursor.hs}
 
 В переводе на русский это значит:
-
 \begin{itemize}
 \item Найти все дочерние узлы корневого элемента.
 \item Отфильтровать элементы, оставив лишь элементы с именем <<head>>.
@@ -334,20 +255,7 @@ main = do
 
 Мы получим в результате <<My Title>>. Это все, конечно, здорово и замечательно, но вообще-то тут намного больше кода, чем в случае использования XPath. Для борьбы с этой многословностью Aristid Breitkreuz добавил в модуль Cursor набор операторов для обработки большинства случаев. С их помощью мы можем переписать наш пример следующим образом:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Prelude hiding (readFile)
-import Text.XML
-import Text.XML.Cursor
-import qualified Data.Text as T
-
-main :: IO ()
-main = do
-    doc <- readFile def "test.xml"
-    let cursor = fromDocument doc
-    print $ T.concat $
-        cursor $/ element "head" &/ element "title" &// content
-\end{lstlisting}%$
+\includecode{27/cursor-operator.hs}
 
 Оператор \lstinline!$/! говорит применить ось справа к потомкам (children) курсора слева. Оператор \lstinline!&/! практически идентичен, только используется он для комбинирования двух осей. Общее правило в модуле \lstinline!Text.XML.Cursor! таково: операторы, начинающиеся со знака \$, напрямую применяют ось, а начинающиеся со знака \& объединяют две оси. Оператор \lstinline!&//! используется для применения оси ко всем наследникам (descendants).
 
@@ -373,24 +281,7 @@ main = do
 
 Мы хотим получить содержимое всех тэгов \lstinline!h1!, которые предшествуют тэгу \lstinline!h2! с атрибутом \lstinline!class!, имеющим значение <<bar>>. Для выполнения этого запутанного поиска мы можем написать:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Prelude hiding (readFile)
-import Text.XML
-import Text.XML.Cursor
-import qualified Data.Text as T
-
-main :: IO ()
-main = do
-    doc <- readFile def "test2.xml"
-    let cursor = fromDocument doc
-    print $ T.concat $
-        cursor $// element "h2"
-               >=> attributeIs "class" "bar"
-               >=> precedingSibling
-               >=> element "h1"
-               &// content
-\end{lstlisting}%$
+\includecode{27/cursor-h1.hs}
 
 Давайте попробуем разобраться, что здесь происходит. Сначала мы получаем все элементы h2 в документе. (Оператор \lstinline!$//! получает всех наследников корневого элемента.) Из них мы оставляем только те, что имеют атрибут \lstinline!class! со значением <<bar>>. Оператор \lstinline!>=>! на самом деле является стандартным оператором из модуля \footnotehref{http://hackage.haskell.org/packages/archive/base/latest/doc/html/Control-Monad.html}{\lstinline!Control.Monad!}; вот еще одно преимущество того, что списки являются монадами. Функция \lstinline!precedingSibling! находит все узлы, что идут перед заданным \emph{и} имеют с ним общего родителя. (Имеется также ось \lstinline!preceding!, которая принимает все предыдущие элементы в дереве.) Затем мы просто берем все элементы \lstinline!h1! и получаем их содержимое.
 
@@ -404,31 +295,7 @@ main = do
 
 Благодаря простоте системы типов языка Haskell, создание XML-документов с помощью API модуля \lstinline!Text.XML! является крайне простым, хотя и несколько многословным. Следующий код:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import Text.XML
-import Prelude hiding (writeFile)
-
-main :: IO ()
-main =
-    writeFile def "test3.xml" $ Document (Prologue [] Nothing []) root []
-  where
-    root = Element "html" []
-        [ NodeElement $ Element "head" []
-            [ NodeElement $ Element "title" []
-                [ NodeContent "My "
-                , NodeElement $ Element "b" []
-                    [ NodeContent "Title"
-                    ]
-                ]
-            ]
-        , NodeElement $ Element "body" []
-            [ NodeElement $ Element "p" []
-                [ NodeContent "foo bar baz"
-                ]
-            ]
-        ]
-\end{lstlisting}
+\includecode{27/xml.hs}
 
 ... генерирует:
 
@@ -439,26 +306,7 @@ main =
 
 Это во много раз проще, чем использовать императивный API с изменяемыми состояниями (как, кхм, в Java), но все же далеко от идеала, и к тому же делает неясными наши настоящие намерения. Для исправления ситуации у нас есть пакет \footnotehref{http://hackage.haskell.org/package/xml-hamlet}{xml-hamlet}, который использует квазицитирование для того, чтобы позволить вводить XML, используя естественный синтаксис. Например, предыдущий пример может быть переписан так:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
-import Text.XML
-import Text.Hamlet.XML
-import Prelude hiding (writeFile)
-
-main :: IO ()
-main =
-    writeFile def "test3.xml" $ Document (Prologue [] Nothing []) root []
-  where
-    root = Element "html" [] [xml|
-<head>
-    <title>
-        My #
-        <b>Title
-<body>
-    <p>foo bar baz
-|]
-\end{lstlisting}%$
+\includecode{27/xml-hamlet.hs}
 
 Тут нужно обратить внимание на следующее:
 
@@ -476,50 +324,7 @@ main =
 
 Как и в нормальном Hamlet, вы можете использовать интерполяцию переменных и управляющие структуры. Рассмотрим это на чуть более сложном примере:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
-import Text.XML
-import Text.Hamlet.XML
-import Prelude hiding (writeFile)
-import Data.Text (Text, pack)
-
-data Person = Person
-    { personName :: Text
-    , personAge :: Int
-    }
-
-people :: [Person]
-people =
-    [ Person "Michael" 26
-    , Person "Miriam" 25
-    , Person "Eliezer" 3
-    , Person "Gavriella" 1
-    ]
-
-main :: IO ()
-main =
-    writeFile def "people.xml" $ Document (Prologue [] Nothing []) root []
-  where
-    root = Element "html" [] [xml|
-<head>
-    <title>Some People
-<body>
-    <h1>Some People
-    $if null people
-        <p>There are no people.
-    $else
-        <dl>
-            $forall person <- people
-                ^{personNodes person}
-|]
-
-personNodes :: Person -> [Node]
-personNodes person = [xml|
-<dt>#{personName person}
-<dd>#{pack $ show $ personAge person}
-|]
-\end{lstlisting}%$
+\includecode{27/xml-hamlet-vars.hs}
 
 Еще пара моментов:
 
@@ -544,27 +349,7 @@ personNodes person = [xml|
   
 К счастью, пакет \lstinline!xml-conduit! предоставляет экземпляры класса \lstinline!ToHtml! для типов \lstinline!Node!, \lstinline!Document! и \lstinline!Element!, которые уважают эти расхождения. Итак, просто используя функцию \lstinline!toHtml!, мы можем получить корректный результат. Следующая программа:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
-import Text.Blaze.Html (toHtml)
-import Text.Blaze.Html.Renderer.String (renderHtml)
-import Text.XML
-import Text.Hamlet.XML
-import Text.XML.Xml2Html ()
-
-main :: IO ()
-main = putStr $ renderHtml $ toHtml $ Document (Prologue [] Nothing []) root []
-
-root :: Element
-root = Element "html" [] [xml|
-<head>
-    <title>Test
-    <script>if (5 < 6 || 8 > 9) alert("Hello World!");
-    <style>body > h1 { color: red }
-<body>
-    <h1>Hello World!
-|]
-\end{lstlisting}%$
+\includecode{27/xml2html.hs}
 
 ... выводит (пробелы добавлены вручную):
 

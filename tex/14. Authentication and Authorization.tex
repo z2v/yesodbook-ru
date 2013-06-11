@@ -11,7 +11,7 @@ Yesod обеспечивает встроенную поддержку для н
 \section{Обзор}
 
 
-Пакет \footnotehref{http://hackage.haskell.org/package/yesod-auth}{yesod-auth} обеспечивает унифицированный интерефейс для различных плагинов аутентификации. Единственное, что требуется от этих плагинов, так это чтобы они идентифицировали пользователя по какой-то уникальной строке. В OpenID, к примеру, это может быть фактическое значение OpenID. В BrowserID --- это адрес электронной почты. Для HashDB (которая использует базу данных хэшированных паролей) --- это имя пользователя.
+Пакет \footnotehref{http://hackage.haskell.org/package/yesod-auth}{yesod-auth} обеспечивает унифицированный интерефейс для различных плагинов аутентификации. Единственное, что требуется от этих плагинов, так это чтобы они идентифицировали пользователя по какой-то уникальной строке. В OpenID, к примеру, это может быть фактическое значение OpenID. В BrowserID~--- это адрес электронной почты. Для HashDB (которая использует базу данных хэшированных паролей)~--- это имя пользователя.
 
 Каждый плагин аутентификации обеспечивает свою собственную систему для входа на сайт, будь это передача токенов с внешнего сайта, или же форма входа по адресу почты/паролю. После успешного входа, плагин устанавливает значение в пользовательской сессии, определяющее его \lstinline'AuthId'. Значением этого \lstinline'AuthId' обычно является Persistent ID из таблицы, используемой для отслеживания пользователей. 
 
@@ -19,71 +19,13 @@ Yesod обеспечивает встроенную поддержку для н
 
 Поскольку хранение \lstinline'AuthId' построено на сессиях, то применимы все их правила. В частности, данные сохраняются в зашифрованом, подписаном HMAC куки, который автоматически устаревает после определенного, задаваемого в конфигурации, периода неактивности. Кроме того, поскольку не существует серверной составляющей сессий, то при выходе из системы просто удаляются данные из куки этой сессии, и, если пользователь повторно использует старое значение куки, то сессия будет считаться действительной.
 
-С другой стороны, авторизация контролируется несколькими методами внутри класса типов \lstinline'Yesod'. Эти методы запускаются для каждого запроса, что бы определить --- разрешить или запретить доступ, или же потребовать от пользователя войти на сайт. По умолчанию, эти методы разрешают доступ для каждого запроса. В качестве альтернативы, вы можете реализовать авторизацию способом специально для конкретного случая, вызывая \lstinline'requireAuth' и подобные ей функции в функциях обработчиках индивидуально, хотя это отрицательно отразится на преимуществах декларативной системы авторизации.
+С другой стороны, авторизация контролируется несколькими методами внутри класса типов \lstinline'Yesod'. Эти методы запускаются для каждого запроса, что бы определить~--- разрешить или запретить доступ, или же потребовать от пользователя войти на сайт. По умолчанию, эти методы разрешают доступ для каждого запроса. В качестве альтернативы, вы можете реализовать авторизацию способом специально для конкретного случая, вызывая \lstinline'requireAuth' и подобные ей функции в функциях обработчиках индивидуально, хотя это отрицательно отразится на преимуществах декларативной системы авторизации.
 
 \section{Аутентифицируй меня}
 
 Давайте сразу рассмотрим пример с аутентификацией.
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, TemplateHaskell, TypeFamilies,
-             MultiParamTypeClasses, QuasiQuotes #-}
-import Yesod
-import Yesod.Auth
-import Yesod.Auth.BrowserId
-import Yesod.Auth.GoogleEmail
-import Data.Text (Text)
-import Network.HTTP.Conduit (Manager, newManager, def)
-
-data MyAuthSite = MyAuthSite
-    { httpManager :: Manager
-    }
-
-mkYesod "MyAuthSite" [parseRoutes|
-/ RootR GET
-/auth AuthR Auth getAuth
-|]
-
-instance Yesod MyAuthSite where
-    -- Внимание! Что бы работал вход с BrowserID, вы должны здесь
-    -- корректно установить адрес вашего хоста.
-    approot = ApprootStatic "http://localhost:3000"
-
-instance YesodAuth MyAuthSite where
-    type AuthId MyAuthSite = Text
-    getAuthId = return . Just . credsIdent
-
-    loginDest _ = RootR
-    logoutDest _ = RootR
-
-    authPlugins _ =
-        [ authBrowserId
-        , authGoogleEmail
-        ]
-
-    authHttpManager = httpManager
-
-instance RenderMessage MyAuthSite FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
-getRootR :: Handler RepHtml
-getRootR = do
-    maid <- maybeAuthId
-    defaultLayout [whamlet|
-<p>Your current auth ID: #{show maid}
-$maybe _ <- maid
-    <p>
-        <a href=@{AuthR LogoutR}>Logout
-$nothing
-    <p>
-        <a href=@{AuthR LoginR}>Go to the login page
-|]
-
-main :: IO ()
-main = do
-    man <- newManager def
-    warpDebug 3000 $ MyAuthSite man
-\end{lstlisting}%$
+\includecode{14/authentication.hs}
 
 Начнём с объявлений маршрутов. Сперва объявим наш стандартный маршрут \lstinline'RootR', а затем определим подсайт для аутентификации. Помните, что ему нужны четыре параметра: путь к подсайту, имя маршрута, имя подсайта и функция для получения значения подсайта. Другими словами, основываясь на строке:
 
@@ -104,7 +46,7 @@ main = do
 \begin{itemize}
     \item Ассоциированный тип \lstinline'AuthId'. Это то значение которое \lstinline'yesod-auth' будет возвращать вам, когда вы будете запрашивать, вошёл ли пользователь (через \lstinline'maybeAuthId' или \lstinline'requireAuthId'). В нашем случае, мы просто используем \lstinline'Text', для сохранения необработанного идентификатора, как вы скоро увидите это будет адрес электронной почты. 
 
-    \item \lstinline'getAuthId' получает текущий \lstinline'AuthId' из типа данных \lstinline'Creds' (credentials --- учетные данные). Этот тип имеет три части информации: используемый способ аутентификации (в нашем случае browserid или googleemail), текущий идентификатор, и ассоциированный список с различной дополнительной информацией.
+    \item \lstinline'getAuthId' получает текущий \lstinline'AuthId' из типа данных \lstinline'Creds' (credentials~--- учетные данные). Этот тип имеет три части информации: используемый способ аутентификации (в нашем случае browserid или googleemail), текущий идентификатор, и ассоциированный список с различной дополнительной информацией.
 
     \item \lstinline'loginDest' возвращает маршрут куда перенаправить пользователя после успешного входа.
 
@@ -155,7 +97,7 @@ main = do
     \item Вам нужна работающая система для отправки электронной почты. Много веб-серверов в наши дни не имеют достаточных средств для защиты от спама по сравнению с тем, что используют почтовые сервера.
 
     \begin{remark}
-    Пример ниже использует системную программу для отправки писем --- sendmail. Если вы хотите избежать хлопот работая с серверами электронной почты самостоятельно, вы можете использовать Amazon SES. Есть пакет \footnotehref{http://hackage.haskell.org/package/mime-mail-ses}{mime-mail-ses}, который предоставляет альтернативу использованию sendmail. Этот подход мы используем на сайте Haskellers.com.
+    Пример ниже использует системную программу для отправки писем~--- sendmail. Если вы хотите избежать хлопот работая с серверами электронной почты самостоятельно, вы можете использовать Amazon SES. Есть пакет \footnotehref{http://hackage.haskell.org/package/mime-mail-ses}{mime-mail-ses}, который предоставляет альтернативу использованию sendmail. Этот подход мы используем на сайте Haskellers.com.
     \end{remark}
 \end{itemize}
 
@@ -163,242 +105,13 @@ main = do
 
 Давайте посмотрим на сайт, предоставляющий аутентификацию по адресу электронной почты и паролю и хранящий пароли в Persistent базе данных SQLite.
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes, GADTs,
-             TemplateHaskell, MultiParamTypeClasses, FlexibleContexts #-}
-import Yesod
-import Yesod.Auth
-import Yesod.Auth.Email
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Data.Text (Text)
-import Network.Mail.Mime
-import qualified Data.Text.Lazy.Encoding
-import Text.Shakespeare.Text (stext)
-import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
-import Text.Hamlet (shamlet)
-import Data.Maybe (isJust)
-import Control.Monad (join)
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
-User
-    email Text
-    password Text Maybe -- Пароль может быть ещё не задан
-    verkey Text Maybe -- Используется для сброса пароля
-    verified Bool
-    UniqueUser email
-|]
-
-data MyEmailApp = MyEmailApp Connection
-
-mkYesod "MyEmailApp" [parseRoutes|
-/ RootR GET
-/auth AuthR Auth getAuth
-|]
-
-instance Yesod MyEmailApp where
-    -- Электронные письма будут содержать ссылки, так что убедитесь, что включили approot, 
-    -- чтобы ссылки были правильными!
-    approot = ApprootStatic "http://localhost:3000"
-
-instance RenderMessage MyEmailApp FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
--- Установка Persistent
-instance YesodPersist MyEmailApp where
-    type YesodPersistBackend MyEmailApp = SqlPersist
-    runDB f = do
-        MyEmailApp conn <- getYesod
-        runSqlConn f conn
-
-instance YesodAuth MyEmailApp where
-    type AuthId MyEmailApp = UserId
-
-    loginDest _ = RootR
-    logoutDest _ = RootR
-    authPlugins _ = [authEmail]
-
-    -- Необходимо найти UserId по заданному адресу электронной почты.
-    getAuthId creds = runDB $ do
-        x <- insertBy $ User (credsIdent creds) Nothing Nothing False
-        return $ Just $
-            case x of
-                Left (Entity userid _) -> userid -- свежедобавленый пользователь
-                Right userid -> userid -- существующий пользователь
-
-    authHttpManager = error "Email doesn't need an HTTP manager"
-
--- Здесь весь код работающий с электронной почтой
-instance YesodAuthEmail MyEmailApp where
-    type AuthEmailId MyEmailApp = UserId
-
-    addUnverified email verkey =
-        runDB $ insert $ User email Nothing (Just verkey) False
-
-    sendVerifyEmail email _ verurl =
-        liftIO $ renderSendMail (emptyMail $ Address Nothing "noreply")
-            { mailTo = [Address Nothing email]
-            , mailHeaders =
-                [ ("Subject", "Verify your email address")
-                ]
-            , mailParts = [[textPart, htmlPart]]
-            }
-      where
-        textPart = Part
-            { partType = "text/plain; charset=utf-8"
-            , partEncoding = None
-            , partFilename = Nothing
-            , partContent = Data.Text.Lazy.Encoding.encodeUtf8 [stext|
-Please confirm your email address by clicking on the link below.
-
-\#{verurl}
-
-Thank you
-|]
-            , partHeaders = []
-            }
-        htmlPart = Part
-            { partType = "text/html; charset=utf-8"
-            , partEncoding = None
-            , partFilename = Nothing
-            , partContent = renderHtml [shamlet|
-<p>Please confirm your email address by clicking on the link below.
-<p>
-    <a href=#{verurl}>#{verurl}
-<p>Thank you
-|]
-            , partHeaders = []
-            }
-    getVerifyKey = runDB . fmap (join . fmap userVerkey) . get
-    setVerifyKey uid key = runDB $ update uid [UserVerkey =. Just key]
-    verifyAccount uid = runDB $ do
-        mu <- get uid
-        case mu of
-            Nothing -> return Nothing
-            Just u -> do
-                update uid [UserVerified =. True]
-                return $ Just uid
-    getPassword = runDB . fmap (join . fmap userPassword) . get
-    setPassword uid pass = runDB $ update uid [UserPassword =. Just pass]
-    getEmailCreds email = runDB $ do
-        mu <- getBy $ UniqueUser email
-        case mu of
-            Nothing -> return Nothing
-            Just (Entity uid u) -> return $ Just EmailCreds
-                { emailCredsId = uid
-                , emailCredsAuthId = Just uid
-                , emailCredsStatus = isJust $ userPassword u
-                , emailCredsVerkey = userVerkey u
-                }
-    getEmail = runDB . fmap (fmap userEmail) . get
-
-getRootR :: Handler RepHtml
-getRootR = do
-    maid <- maybeAuthId
-    defaultLayout [whamlet|
-<p>Your current auth ID: #{show maid}
-$maybe _ <- maid
-    <p>
-        <a href=@{AuthR LogoutR}>Logout
-$nothing
-    <p>
-        <a href=@{AuthR LoginR}>Go to the login page
-|]
-
-main :: IO ()
-main = withSqliteConn "email.db3" $ \conn -> do
-    runSqlConn (runMigration migrateAll) conn
-    warpDebug 3000 $ MyEmailApp conn
-\end{lstlisting}
+\includecode{14/email-authentication.hs}
 
 \section{Авторизация}
 %TOCONTINUE
 Как только вы аутентифицировали пользователей, вы можете использовать их учётные данные для \emph{авторизации} дальнейших запросов. Авторизация в Yesod проста и декларативна: в большинстве случаев всего лишь необходимо добавить методы \lstinline'authRoute' и \lstinline'isAuthorized' в ваш экземпляр класса типов Yesod. Давайте рассмотрим пример:
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, TemplateHaskell, TypeFamilies,
-             MultiParamTypeClasses, QuasiQuotes #-}
-import Yesod
-import Yesod.Auth
-import Yesod.Auth.Dummy -- только для тестирования, не используйте в реальной жизни!!!
-import Data.Text (Text)
-import Network.HTTP.Conduit (Manager, newManager, def)
-
-data MyAuthSite = MyAuthSite
-    { httpManager :: Manager
-    }
-
-mkYesod "MyAuthSite" [parseRoutes|
-/ RootR GET POST
-/admin AdminR GET
-/auth AuthR Auth getAuth
-|]
-
-instance Yesod MyAuthSite where
-    authRoute _ = Just $ AuthR LoginR
-
-    -- имя маршрута и булево значение определяющее, является ли текущий запрос запросом на запись
-    isAuthorized RootR True = isAdmin
-    isAuthorized AdminR _ = isAdmin
-
-    -- любой может получить доступ к другим страницам
-    isAuthorized _ _ = return Authorized
-
-isAdmin = do
-    mu <- maybeAuthId
-    return $ case mu of
-        Nothing -> AuthenticationRequired
-        Just "admin" -> Authorized
-        Just _ -> Unauthorized "You must be an admin"
-
-instance YesodAuth MyAuthSite where
-    type AuthId MyAuthSite = Text
-    getAuthId = return . Just . credsIdent
-
-    loginDest _ = RootR
-    logoutDest _ = RootR
-
-    authPlugins _ = [authDummy]
-
-    authHttpManager = httpManager
-
-instance RenderMessage MyAuthSite FormMessage where
-    renderMessage _ _ = defaultFormMessage
-
-getRootR :: Handler RepHtml
-getRootR = do
-    maid <- maybeAuthId
-    defaultLayout [whamlet|
-<p>Note: Log in as "admin" to be an administrator.
-<p>Your current auth ID: #{show maid}
-$maybe _ <- maid
-    <p>
-        <a href=@{AuthR LogoutR}>Logout
-<p>
-    <a href=@{AdminR}>Go to admin page
-<form method=post>
-    Make a change (admins only)
-    \ #
-    <input type=submit>
-|]
-
-postRootR :: Handler ()
-postRootR = do
-    setMessage "You made some change to the page"
-    redirect RootR
-
-getAdminR :: Handler RepHtml
-getAdminR = defaultLayout [whamlet|
-<p>I guess you're an admin!
-<p>
-    <a href=@{RootR}>Return to homepage
-|]
-
-main :: IO ()
-main = do
-    manager <- newManager def
-    warpDebug 3000 $ MyAuthSite manager
-\end{lstlisting}
+\includecode{14/authorization.hs}
 
 \lstinline'authRoute' должен быть вашей страницей входа, почти всегда это будет \lstinline'AuthR LoginR'. Функция \lstinline'isAuthorized' имеет два параметра: запрашиваемый маршрут, и является ли или нет запрос запросом на запись. На самом деле вы можете переопроеделить, что является запросом на запись, используя метод \lstinline'isWriteRequest', но из коробки мы следуем принципам RESTful: все запросы кроме \lstinline'GET', \lstinline'HEAD', \lstinline'OPTIONS' или \lstinline'TRACE' -- это запросы на запись.
 

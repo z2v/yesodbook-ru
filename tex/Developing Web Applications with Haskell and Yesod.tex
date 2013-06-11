@@ -1,23 +1,32 @@
 \documentclass[openany]{book}
 
 \usepackage{fontspec}
-\defaultfontfeatures{Mapping=tex-text}  % For archaic input (e.g. convert -- to en-dash)
+\defaultfontfeatures{Scale=MatchLowercase, Mapping=tex-text}  % For archaic input (e.g. convert -- to en-dash)
 
 
 \usepackage{polyglossia}
 \setdefaultlanguage{russian}
 
-\setmainfont{Times New Roman}
-\setmonofont{Courier New}
-\setsansfont{Arial}
+\setmainfont{Liberation Serif}
+\setmonofont{Liberation Mono}
+\setsansfont{Liberation Sans}
 
-\newfontfamily\cyrillicfont{Times New Roman}
-\newfontfamily\cyrillicfontsf{Arial}
-\newfontfamily\cyrillicfonttt{Courier New}
+\newfontfamily\cyrillicfont{Liberation Serif}
+\newfontfamily\cyrillicfontsf{Liberation Sans}
+\newfontfamily\cyrillicfonttt{Liberation Mono}
 
 \usepackage{indentfirst}
 
 \usepackage{listings}
+\begingroup
+    \catcode0=12 %
+    \makeatletter
+    \g@addto@macro\lst@DefEC{%
+        \lst@CCECUse\lst@ProcessLetter
+        АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя%
+        ^^00% end marker
+    }%
+\endgroup
 
 
 % fancy headers
@@ -85,9 +94,11 @@
     captionpos=b,
     keepspaces=true,
     inputencoding=utf8,
-    basicstyle=\ttfamily\footnotesize % using monospaced font for listings
+    basicstyle=\ttfamily% using monospaced font for listings
 }
 \renewcommand*{\lstlistingname}{Листинг}
+\lstnewenvironment{code}{}{}
+\newcommand{\includecode}[2][]{\lstinputlisting[title=#2, #1]{../hs/#2}}
 
 % avoiding math minus symbol in listings
 \makeatletter
