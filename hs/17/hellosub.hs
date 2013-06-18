@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell, FlexibleInstances, OverloadedStrings #-}
 import Yesod
 
--- У дочерних сайтов, также как и у главных, есть основной тип данных.
+-- У подсайтов, также как и у основного сайта, есть основной тип данных.
 data HelloSub = HelloSub
 
 -- Тут аналог знакомого нам mkYesod, с одним дополнительным параметром.
@@ -15,7 +15,7 @@ mkYesodSub "HelloSub" [] [parseRoutes|
 getSubRootR :: Yesod master => GHandler HelloSub master RepHtml
 getSubRootR = defaultLayout [whamlet|Welcome to the subsite!|]
 
--- Давайте создадим главный сайт, который будет его вызывать.
+-- Давайте создадим основной сайт, который будет его вызывать.
 data Master = Master
     { getHelloSub :: HelloSub
     }
@@ -33,7 +33,7 @@ getRootR = defaultLayout [whamlet|
 <h1>Добро пожаловать на главную страницу
 <p>
     Обратите внимание, что вы также можете посетить #
-    <a href=@{SubsiteR SubRootR}>дочерний сайт
+    <a href=@{SubsiteR SubRootR}>подсайт
     \ .
 |]
 
