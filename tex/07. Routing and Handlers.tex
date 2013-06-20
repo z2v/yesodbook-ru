@@ -144,7 +144,6 @@ instance PathMultiPiece Page where
     toPathMultiPiece (Page x y z) = x : y : z
     fromPathMultiPiece (x:y:z) = Just $ Page x y z
     fromPathMultiPiece _ = Nothing
-main = return ()
 \end{lstlisting}%$
 
 \subsection{Наименование ресурса}
