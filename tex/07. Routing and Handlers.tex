@@ -316,12 +316,12 @@ getWikiR = return . RepPlain . toContent . T.unwords
 \begin{itemize}
 \item Это экземпляр \lstinline!MonadIO!, поэтому вы можете
   использовать любое действие \lstinline!IO! в ваших обработчиках с
-  помощью \lstinline!liftIO!. Кстати, \lstinline!liftIO! экспортируется
-  модулем \lstinline!Yesod! для вашего удобства.
+  помощью \lstinline!liftIO!. Кстати, для вашего удобства \lstinline!liftIO! экспортируется
+  модулем \lstinline!Yesod!.
 \item Как и \lstinline!Widget!, \lstinline!Handler!~--- это псевдотрансформатор
     монад (fake-monad-transformer). Он обёртывает монаду~\lstinline!ResourceT IO!.
     Мы подробно обсудим это в~\hyperref[chap:conduit]{приложении о conduit}, а
-    сейчас мы только скажем, что это позволяет вам безопасно выделять ресурсы.
+    сейчас только скажем, что это позволяет вам безопасно выделять ресурсы.
 \item Под <<псевдо>>, я имею в виду, что вы не можете использовать
   стандартную функцию \lstinline!lift!, предоставляемую пакетом
   \footnotehref{http://hackage.haskell.org/package/transformers}{transformers},
@@ -329,8 +329,8 @@ getWikiR = return . RepPlain . toContent . T.unwords
   случае с виджетами).
 \item \lstinline!Handler!~--- это просто синоним типа для
   \lstinline!GHandler!. \lstinline!GHandler! позволяет вам точно
-  указать, какой дочерний и материнский сайты вы используете. Синоним
-  \lstinline!Handler! сообщает, что дочерний и материнский сайты
+  указать, какой подсайт и основной сайт вы используете. Синоним
+  \lstinline!Handler! сообщает, что подсайт и основной сайт
   принадлежат типу вашего приложения.
 \item \lstinline!Handler! обеспечивает большое число возможностей, среди которых:
 \begin{itemize}
@@ -343,7 +343,7 @@ getWikiR = return . RepPlain . toContent . T.unwords
 \end{itemize}
 \end{itemize}
 
-В оставшейся части главы будет дано короткое введение в некоторые
+В оставшейся части главы приведено краткое введение в некоторые
 самые распространённые функции, находящиеся в монаде
 \lstinline!Handler!. Я специально не описываю функции для работы с
 сессиями; они будут рассмотрены в отдельной~\hyperref[chap:sessions]{главе}.
