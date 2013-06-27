@@ -81,6 +81,7 @@ YESODBOOK := $(MASTERTEX:.tex=.pdf)
 # Строка для запуска TeX
 #-
 TEX := xelatex
+STRICT ?= 1
 ifdef STRICT
 	TEXOPTS := -halt-on-error
 else
