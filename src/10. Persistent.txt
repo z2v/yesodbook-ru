@@ -66,10 +66,11 @@ data Person = Person
 
 It looks like everything is type safe: the database schema matches our Haskell datatypes, the database ensures that invalid data can never make it into our data store, and everything is generally awesome. Well, until:
 
-You want to pull data from the database, and the database layer gives you the data in an untyped format.
+* You want to pull data from the database, and the database layer gives you the data in an untyped format.
 * You want to find everyone older than 32, and you accidently write "thirtytwo" in your SQL statement. Guess what: that will compile just fine, and you won't find out you have a problem until runtime.
 * You decide you want to find the first 10 people alphabetically. No problem... until you make a typo in your SQL. Once again, you don't find out until runtime.
-* In dynamic languages, the answer to these issues is unit testing. For everything that can go wrong, make sure you write a test case. But as I am sure you are aware by now, that doesn't jive well with the Yesod approach to things. We like to take advantage of Haskell's strong typing to save us wherever possible, and data storage is no exception.
+
+In dynamic languages, the answer to these issues is unit testing. For everything that can go wrong, make sure you write a test case. But as I am sure you are aware by now, that doesn't jive well with the Yesod approach to things. We like to take advantage of Haskell's strong typing to save us wherever possible, and data storage is no exception.
 
 So the question remains: how can we use Haskell's type system to save the day?
 
