@@ -1,0 +1,551 @@
+name:                yesodbook-ru-examples
+version:             0.1.0.0
+synopsis:            Examples for Russian translation of the Yesod book (http://www.yesodweb.com/book-1.1/)
+homepage:            https://bitbucket.org/darkus/Yesod
+author:              
+maintainer:          
+-- copyright:           
+category:            Web
+build-type:          Simple
+-- extra-source-files:  
+cabal-version:       >=1.10
+
+executable 02-type-families
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             02/type-families.hs
+  build-depends:       base >=4.6 && <4.7
+                     , bytestring
+
+executable 03-hello-world
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             03/hello-world.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod <1.2
+
+executable 03-routes
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             03/routes.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod <1.2
+
+executable 04-i18n
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             04/i18n.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-html
+                     , hamlet
+                     , text
+                     , yesod <1.2
+
+executable 04-quasiquoter
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             04/quasiquoter.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-html
+                     , hamlet
+                     , text
+
+executable 04-query-string
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             04/query-string.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-builder
+                     , blaze-html
+                     , hamlet
+                     , http-types
+                     , text
+
+executable 04-shakespeare-text
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             04/shakespeare-text.hs
+  build-depends:       base >=4.6 && <4.7
+                     , shakespeare-text
+                     , text
+
+executable 04-url-interpolation
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             04/url-interpolation.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-html
+                     , hamlet
+                     , text
+
+executable 04-var-interpolation
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             04/var-interpolation.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-html
+                     , hamlet
+
+executable 06-slashes
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             06/slashes.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-builder
+                     , http-types
+                     , text
+                     , yesod <1.2
+
+executable 08-input-forms
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             08/input-forms.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , yesod <1.2
+
+executable 08-monadic-forms
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             08/monadic-forms.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , yesod <1.2
+
+executable 08-synopsis
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             08/synopsis.hs
+  build-depends:       base >=4.6 && <4.7
+                     , time
+                     , text
+                     , yesod-form<1.3
+                     , yesod
+
+executable 09-messages
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             09/messages.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod <1.2
+
+executable 09-session-example
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             09/session-example.hs
+  build-depends:       base >=4.6 && <4.7
+                     , clientsession
+                     , yesod <1.2
+
+executable 09-ultimate-destination
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             09/ultimate-destination.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod <1.2
+
+executable 10-attribute-default
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/attribute-default.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+
+executable 10-attributes
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/attributes.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+                     , transformers
+
+executable 10-attribute-whitespace
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/attribute-whitespace.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+
+executable 10-custom-fields
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/custom-fields.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+
+executable 10-many-to-many
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/many-to-many.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+
+executable 10-migration
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/migration.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+                     , transformers
+
+executable 10-mkmigrate
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/mkmigrate.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+
+executable 10-raw-sql
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/raw-sql.hs
+  build-depends:       base >=4.6 && <4.7
+                     , conduit
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , text
+                     , time
+                     , transformers
+
+executable 10-relations
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/relations.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+                     , transformers
+
+executable 10-synopsis
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/synopsis.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , time
+                     , transformers
+
+executable 10-uniqueness
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/uniqueness.hs
+  build-depends:       base >=4.6 && <4.7
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , resourcet
+                     , time
+                     , transformers
+
+executable 10-yesod
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             10/yesod.hs
+  build-depends:       base >=4.6 && <4.7
+                     , monad-logger
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , resourcet
+                     , time
+                     , yesod <1.2
+
+executable 12-RepHtmlJson
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             12/RepHtmlJson.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod <1.2
+
+executable 13-navbar
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             13/navbar.hs
+  build-depends:       base >=4.6 && <4.7
+                     , monad-logger
+                     , persistent-sqlite
+                     , text
+                     , time
+                     , yesod <1.2
+
+executable 13-request-information
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             13/request-information.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , yesod <1.2
+
+executable 14-authentication
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             14/authentication.hs
+  build-depends:       base >=4.6 && <4.7
+                     , http-conduit
+                     , text
+                     , yesod <1.2
+                     , yesod-auth
+
+executable 14-email-authentication
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             14/email-authentication.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-html
+                     , hamlet
+                     , mime-mail
+                     , monad-logger
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , shakespeare-text
+                     , text
+                     , yesod <1.2
+                     , yesod-auth
+
+executable 14-authorization
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             14/authorization.hs
+  build-depends:       base >=4.6 && <4.7
+                     , http-conduit
+                     , text
+                     , yesod <1.2
+                     , yesod-auth
+
+executable 16-i18n
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             16/i18n-synopsis.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod <1.2
+
+executable 17-hellosub
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             17/hellosub.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod <1.2
+
+executable 18-blog
+  default-language:    Haskell2010
+  hs-source-dirs:      hs/18
+  main-is:             blog.lhs
+  build-depends:       base >=4.6 && <4.7
+                     , monad-logger
+                     , time
+                     , persistent-sqlite
+                     , yesod <1.2
+                     , http-conduit
+                     , text
+                     , yesod-auth
+                     , yesod-form
+
+executable 19-wiki
+  default-language:    Haskell2010
+  hs-source-dirs:      hs/19
+  main-is:             Wiki.hs
+  other-modules:       Chat
+  build-depends:       base >=4.6 && <4.7
+                     , aeson
+                     , blaze-builder
+                     , containers
+                     , markdown
+                     , template-haskell
+                     , text
+                     , wai-eventsource
+                     , warp
+                     , yesod <1.2
+                     , yesod-auth
+
+executable 20-client
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             20/client.hs
+  build-depends:       base >=4.6 && <4.7
+                     , aeson
+                     , attoparsec-conduit
+                     , conduit
+                     , http-conduit
+                     , transformers
+                     , yesod <1.2
+
+executable 20-server
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             20/server.hs
+  build-depends:       base >=4.6 && <4.7
+                     , aeson
+                     , attoparsec-conduit
+                     , bytestring
+                     , conduit
+                     , http-types
+                     , lifted-base
+                     , transformers
+                     , wai
+                     , warp
+                     , yesod <1.2
+
+executable 21-sphinx
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             21/source.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-markup
+                     , bytestring
+                     , conduit
+                     , http-types
+                     , monad-logger
+                     , persistent
+                     , persistent-sqlite
+                     , pool-conduit
+                     , sphinx
+                     , text
+                     , wai
+                     , xml-conduit
+                     , xml-types
+                     , yesod <1.2
+
+executable 24-hello-world
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             24/hello-world.hs
+  build-depends:       base >=4.6 && <4.7
+                     , http-types
+                     , wai
+                     , warp
+
+executable 24-hello-world-gzip
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             24/hello-world-gzip.hs
+  build-depends:       base >=4.6 && <4.7
+                     , http-types
+                     , wai
+                     , wai-extra
+                     , warp
+
+executable 26-synopsis
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             26/synopsis.hs
+  build-depends:       base >=4.6 && <4.7
+                     , bytestring
+                     , conduit
+                     , http-conduit
+                     , transformers
+
+executable 26-response-body
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             26/response-body.hs
+  build-depends:       base >=4.6 && <4.7
+                     , bytestring
+                     , http-conduit
+                     , transformers
+
+executable 26-response-head
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             26/response-head.hs
+  build-depends:       base >=4.6 && <4.7
+                     , bytestring
+                     , http-conduit
+                     , transformers
+
+executable 27-synopsis
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/synopsis.hs
+  build-depends:       base >=4.6 && <4.7
+                     , containers
+                     , xml-conduit
+                     , xml-hamlet
+
+executable 27-cursor
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/cursor.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , xml-conduit
+
+executable 27-cursor-operator
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/cursor-operator.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , xml-conduit
+
+executable 27-cursor-h1
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/cursor-h1.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , xml-conduit
+
+executable 27-xml
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/xml.hs
+  build-depends:       base >=4.6 && <4.7
+                     , containers
+                     , xml-conduit
+
+executable 27-xml-hamlet
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/xml-hamlet.hs
+  build-depends:       base >=4.6 && <4.7
+                     , containers
+                     , xml-conduit
+                     , xml-hamlet
+
+executable 27-xml-hamlet-vars
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/xml-hamlet-vars.hs
+  build-depends:       base >=4.6 && <4.7
+                     , containers
+                     , text
+                     , xml-conduit
+                     , xml-hamlet
+
+executable 27-xml2html
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             27/xml2html.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-html
+                     , containers
+                     , xml2html
+                     , xml-conduit
+                     , xml-hamlet

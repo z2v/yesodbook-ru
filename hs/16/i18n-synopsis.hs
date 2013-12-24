@@ -4,7 +4,7 @@ import Yesod
 
 data I18N = I18N
 
-mkMessage "I18N" "messages" "en"
+mkMessage "I18N" "hs/16/messages" "en"
 
 plural :: Int -> String -> String -> String -> String
 plural 1 x _ _ = x

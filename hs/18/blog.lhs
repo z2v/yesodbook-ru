@@ -100,7 +100,7 @@ data Blog = Blog
 умолчанию.
 
 \begin{code}
-mkMessage "Blog" "../messages-blog" "en"
+mkMessage "Blog" "hs/18/messages-blog" "en"
 \end{code}
 
 Содержимое нашего файла <<en>>:
