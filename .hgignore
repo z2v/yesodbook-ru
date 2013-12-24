@@ -5,3 +5,5 @@ tmp
 *.backup
 *~
 *.pdf
+.cabal-sandbox
+cabal.sandbox.config
