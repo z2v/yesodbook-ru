@@ -1,17 +1,22 @@
-Basics
+== Basics
 
 The first step with any new technology is getting it running. The goal of
 this chapter is to get you started with a simple Yesod application, and cover
 some of the basic concepts and terminology.
 
-Hello World
+
+
+=== Hello World
 
 Let's get this book started properly: a simple web page that says Hello
 World:
 
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses,
-             TemplateHaskell, OverloadedStrings #-}
-import Yesod
+[source, haskell]
+----
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Yesod
 
 data HelloWorld = HelloWorld
 
@@ -21,26 +26,30 @@ mkYesod "HelloWorld" [parseRoutes|
 
 instance Yesod HelloWorld
 
-getHomeR :: Handler RepHtml
+getHomeR :: Handler Html
 getHomeR = defaultLayout [whamlet|Hello World!|]
 
 main :: IO ()
-main = warpDebug 3000 HelloWorld
+main = warp 3000 HelloWorld
+----
 
-If you save that code in helloworld.hs and run it with runhaskell
-helloworld.hs, you'll get a web server running on port 3000. If you point your
+If you save that code in +helloworld.hs+ and run it with +runhaskell
+helloworld.hs+, you'll get a web server running on port 3000. If you point your
 browser to http://localhost:3000, you'll get the following HTML:
 
+[source, html]
+----
 <!DOCTYPE html>
 <html><head><title></title></head><body>Hello World!</body></html>
+----
 
 We'll refer back to this example through the rest of the chapter.
 
-Routing
+=== Routing
 
 Like most modern web frameworks, Yesod follows a
-front controller
-pattern. This means that every request to a Yesod application enters at the
+link:http://en.wikipedia.org/wiki/Front_Controller_pattern[front controller
+pattern]. This means that every request to a Yesod application enters at the
 same point and is routed from there. As a contrast, in systems like PHP and ASP
 you usually create a number of different files, and the web server
 automatically directs requests to the relevant file.
@@ -48,100 +57,128 @@ automatically directs requests to the relevant file.
 In addition, Yesod uses a declarative style for specifying routes. In our
 example above, this looked like:
 
+
+[source, haskell]
+----
 mkYesod "HelloWorld" [parseRoutes|
 / HomeR GET
 |]
+----
 
-mkYesod is a Template Haskell function, and parseRoutes is a QuasiQuoter.
+
+NOTE: +mkYesod+ is a Template Haskell function, and +parseRoutes+ is a
+QuasiQuoter.
 
 In English, all this means is: In the HelloWorld application, create one route.
-I'd like to call it HomeR, it should listen for requests to / (the root of the
-application), and should answer GET requests. We call HomeR a resource, which
-is where the "R" suffix comes from.
+I'd like to call it +HomeR+, it should listen for requests to +/+ (the root of
+the application), and should answer +GET+ requests. We call +HomeR+ a resource,
+which is where the "R" suffix comes from.
 
-The R suffix on resource names is simply convention, but it's a fairly
+NOTE: The R suffix on resource names is simply convention, but it's a fairly
 universally followed convention. It makes it just a bit easier to read and
 understand code.
 
-The mkYesod TH function generates quite a bit of code here: a route data type,
-a dispatch function, and a render function. We'll look at this in more detail
-in the routing chapter. But by using the -ddump-splices GHC option, we can get
-an immediate look at the generated code. A much cleaned up version of it is:
+The +mkYesod+ TH function generates quite a bit of code here: a route data
+type, parser/render functions, a dispatch function, and some helper types.
+We'll look at this in more detail in the routing chapter. But by using the
++-ddump-splices+ GHC option, we can get an immediate look at the generated
+code. A much cleaned up version of it is:
 
+[source, haskell]
+----
 instance RenderRoute HelloWorld where
-  data Route HelloWorld = HomeR
-    deriving (Show, Eq, Read)
-  renderRoute HomeR = ([], [])
+    data Route HelloWorld = HomeR
+        deriving (Show, Eq, Read)
+    renderRoute HomeR = ([], [])
 
-instance YesodDispatch HelloWorld HelloWorld where
-    yesodDispatch master sub toMaster app404 app405 method pieces =
-        case dispatch pieces of
-            Just f -> f
-                master
-                sub
-                toMaster
-                app404
-                app405
-                method
-            Nothing -> app404
+instance ParseRoute HelloWorld where
+    parseRoute ([], _) = Just HomeR
+    parseRoute _       = Nothing
+
+instance YesodDispatch HelloWorld where
+    yesodDispatch env req =
+        yesodRunner handler env mroute req
       where
-        dispatch = Yesod.Routes.Dispatch.toDispatch
-            [ Yesod.Routes.Dispatch.Route [] False onHome
-            ]
-        onHome [] = Just $ \master sub toMaster _app404 app405 method ->
-            case method of
-                "GET" -> yesodRunner
-                    (fmap chooseRep getHomeR)
-                    master
-                    sub
-                    (Just HomeR)
-                    toMaster
-                _ -> app405 HomeR
+        mroute = parseRoute (pathInfo req, textQueryString req)
+        handler =
+            case mroute of
+                Nothing -> notFound
+                Just HomeR ->
+                    case requestMethod req of
+                        "GET" -> getHomeR
+                        _     -> badMethod
 
-getHomeR = return ()
+type Handler = HandlerT HelloWorld IO
+----
 
-main :: IO ()
-main = return ()
+We can see that the +RenderRoute+ class defines an *associated data type*
+providing the routes for our application. In this simple example, we have just
+one route: +HomeR+. In real life applications, we'll have many more, and they
+will be more complicated than our +HomeR+.
 
-Some of that will likely not make sense yet. In particular, the implementation
-of yesodDispatch is a bit hairy to accomodate different dispatch approaches and
-fit the model necessary for our high-performance routing structures. However,
-the RenderRoute implementation with its associated data type should already
-give you a good feel for what's going on under the surface.
++renderRoute+ takes a route and turns it into path segments and query string
+parameters. Again, our example is simple, so the code is likewise simple: both
+values are empty lists.
 
-Handler function
++ParseRoute+ provides the inverse function, +parseRoute+. Here we see the first
+strong motivation for our reliance on Template Haskell: it ensures that the
+parsing and rendering of routes correspond correctly with each other. This kind
+of code can easily become difficult to keep in sync when written by hand. By
+relying on code generation, we're letting the compiler (and Yesod) handle those
+details for us.
 
-So we have a route named HomeR, and it responds to GET requests. How do you
++YesodDispatch+ provides a means of taking an input request and passing it to
+the appropriate handler function. The process is essentially:
+
+1. Parse the request.
+2. Choose a handler function.
+3. Run the handler function.
+
+The code generation follows a simple format for matching routes to handler
+function names, which we'll describe in the next section.
+
+Finally, we have a simple type synonym defining +Handler+ to make our code a
+little easier to write.
+
+There's a lot more going on here than we've described. The generated dispatch
+code actually uses a far more efficient data structure, more type class
+instances are created, and there are other cases to handle such as subsites.
+We'll get into the details as we go through the book, especially in the
+``Understanding a Request'' chapter.
+
+=== Handler function
+
+So we have a route named +HomeR+, and it responds to +GET+ requests. How do you
 define your response? You write a handler function. Yesod follows a standard
-naming scheme for these functions: it's the lower case method name (e.g., GET
-becomes get) followed by the route name. In this case, the function name would
-be getHomeR.
+naming scheme for these functions: it's the lower case method name (e.g., +GET+
+becomes +get+) followed by the route name. In this case, the function name
+would be +getHomeR+.
 
 Most of the code you write in Yesod lives in handler functions. This is where
 you process user input, perform database queries and create responses. In our
-simple example, we create a response using the defaultLayout function. This
+simple example, we create a response using the +defaultLayout+ function. This
 function wraps up the content it's given in your site's template. By default,
-it produces an HTML file with a doctype and html, head and body tags. As we'll
-see in the Yesod typeclass chapter, this function can be overridden to do much
-more.
+it produces an HTML file with a doctype and +html+, +head+ and +body+ tags. As
+we'll see in the Yesod typeclass chapter, this function can be overridden to do
+much more.
 
-In our example, we pass [whamlet|Hello World!|] to defaultLayout. whamlet is
-another quasi-quoter. In this case, it converts Hamlet syntax into a Widget.
-Hamlet is the default HTML templating engine in Yesod. Together with its
-siblings Cassius, Lucius and Julius, you can create HTML, CSS and Javascript in
-a fully type-safe and compile-time-checked manner. We'll see much more about
-this in the Shakespeare chapter.
+In our example, we pass +[whamlet|Hello World!|]+ to +defaultLayout+.
++whamlet+ is another quasi-quoter. In this case, it converts Hamlet syntax into
+a Widget. Hamlet is the default HTML templating engine in Yesod. Together with
+its siblings Cassius, Lucius and Julius, you can create HTML, CSS and
+Javascript in a fully type-safe and compile-time-checked manner. We'll see much
+more about this in the Shakespeare chapter.
 
 Widgets are another cornerstone of Yesod. They allow you to create modular
 components of a site consisting of HTML, CSS and Javascript and reuse them
 throughout your site. We'll get into more detail on them in the widgets
 chapter.
 
-The Foundation
+=== The Foundation
 
-The word "HelloWorld" shows up a number of times in our example. Every Yesod
+The word `HelloWorld' shows up a number of times in our example. Every Yesod
 application has a foundation datatype. This datatype must be an instance of the
-Yesod typeclass, which provides a central place for declaring a number of
++Yesod+ typeclass, which provides a central place for declaring a number of
 different settings controlling the execution of our application.
 
 In our case, this datatype is pretty boring: it doesn't contain any
@@ -154,19 +191,21 @@ But foundations don't have to be boring: they can be used to store lots of
 useful information, usually stuff that needs to be initialized at program
 launch and used throughout. Some very common examples are:
 
+
 * A database connection pool.
 * Settings loaded from a config file.
 * An HTTP connection manager.
+* A random number generator.
 
-By the way, the word Yesod (יסוד) means foundation in Hebrew.
+NOTE: By the way, the word Yesod (יסוד) means _foundation_ in Hebrew.
 
-Running
+=== Running
 
-Once again we mention HelloWorld in our main function. Our foundation contains
-all the information we need to route and respond to requests in our
+Once again we mention +HelloWorld+ in our main function. Our foundation
+contains all the information we need to route and respond to requests in our
 application; now we just need to convert it into something that can run. A
-useful function for this in Yesod is warpDebug, which runs the Warp webserver
-with debug output enabled on the specified port (here, it's 3000).
+useful function for this in Yesod is +warp+, which runs the Warp webserver with
+a number of default settings enabled on the specified port (here, it's 3000).
 
 One of the features of Yesod is that you aren't tied down to a single
 deployment strategy. Yesod is built on top of the Web Application Interface
@@ -181,15 +220,20 @@ outside of Yesod for other Haskell development (both framework and
 non-framework applications), as well as a standard file server in a number of
 production environments.
 
-Resources and type-safe URLs
+=== Resources and type-safe URLs
 
-In our hello world, we defined just a single resource (HomeR). A web
+In our hello world, we defined just a single resource (+HomeR+). A web
 application is usually much more exciting with more than one page on it. Let's
 take a look:
 
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses,
-             TemplateHaskell, OverloadedStrings #-}
-import Yesod
+
+[source, haskell]
+----
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Yesod
 
 data Links = Links
 
@@ -205,26 +249,32 @@ getHomeR  = defaultLayout [whamlet|<a href=@{Page1R}>Go to page 1!|]
 getPage1R = defaultLayout [whamlet|<a href=@{Page2R}>Go to page 2!|]
 getPage2R = defaultLayout [whamlet|<a href=@{HomeR}>Go home!|]
 
-main = warpDebug 3000 Links
+main = warp 3000 Links
+----
 
-Overall, this is very similar to Hello World. Our foundation is now Links
-instead of HelloWorld, and in addition to the HomeR resource, we've added
-Page1R and Page2R. As such, we've also added two more handler functions:
-getPage1R and getPage2R.
+Overall, this is very similar to Hello World. Our foundation is now +Links+
+instead of +HelloWorld+, and in addition to the +HomeR+ resource, we've added
++Page1R+ and +Page2R+. As such, we've also added two more handler functions:
++getPage1R+ and +getPage2R+.
 
-The only truly new feature is inside the whamlet quasi-quotation. We'll delve
-into syntax in the Shakespeare chapter, but we can see that:
+The only truly new feature is inside the +whamlet+ quasi-quotation. We'll delve
+into syntax in the ``Shakespeare'' chapter, but we can see that:
 
+----
 <a href=@{Page1R}>Go to page 1!
+----
 
-creates a link to the Page1R resource. The important thing to note here is that
-Page1R is a data constructor. By making each resource a data constructor, we
-have a feature called type-safe URLs. Instead of splicing together strings to
-create URLs, we simply create a plain old Haskell value. By using at-sign
-interpolation (@{...}), Yesod automatically renders those values to textual
-URLs before sending things off to the user. We can see how this is implemented
-by looking again at the -ddump-splices output:
+creates a link to the +Page1R+ resource. The important thing to note here is
+that +Page1R+ is a data constructor. By making each resource a data
+constructor, we have a feature called _type-safe URLs_. Instead of splicing
+together strings to create URLs, we simply create a plain old Haskell value. By
+using at-sign interpolation (+@{...}+), Yesod automatically renders those
+values to textual URLs before sending things off to the user. We can see how
+this is implemented by looking again at the +-ddump-splices+ output:
 
+
+[source, haskell]
+----
 instance RenderRoute Links where
     data Route Links = HomeR | Page1R | Page2R
       deriving (Show, Eq, Read)
@@ -232,15 +282,13 @@ instance RenderRoute Links where
     renderRoute HomeR  = ([], [])
     renderRoute Page1R = (["page1"], [])
     renderRoute Page2R = (["page2"], [])
+----
 
-main :: IO ()
-main = return ()
-
-In the Route associated type for Links, we have additional constructors for
-Page1R and Page2R. We also now have a better glimpse of the return values for
-returnRoute. The first part of the tuple gives the path pieces for the given
-route. The second part gives the query string parameters; for almost all use
-cases, this will be an empty list.
+In the +Route+ associated type for +Links+, we have additional constructors for
++Page1R+ and +Page2R+. We also now have a better glimpse of the return values
+for +renderRoute+. The first part of the tuple gives the path pieces for the
+given route. The second part gives the query string parameters; for almost all
+use cases, this will be an empty list.
 
 It's hard to over-estimate the value of type-safe URLs. They give you a huge
 amount of flexibility and robustness when developing your application. You can
@@ -255,43 +303,45 @@ appropriately. If you miss one, you'll have 404s at runtime. In Yesod, all you
 do is update your route and compile: GHC will pinpoint every single line of
 code that needs to be corrected.
 
-The scaffolded site
+=== The scaffolded site
 
-Installing Yesod will give you both the Yesod library, as well as a yesod
+Installing Yesod will give you both the Yesod library, as well as a +yesod+
 executable. This executable accepts a few commands, but the first one you'll
-want to be acquainted with is yesod init. It will ask you some questions, and
+want to be acquainted with is +yesod init+. It will ask you some questions, and
 then generate a folder containing the default scaffolded site. Inside that
-folder, you can run cabal install --only-dependencies to build any extra
-dependencies (such as your database backends), and then yesod devel to run your
-site.
+folder, you can run +cabal install --only-dependencies+ to build any extra
+dependencies (such as your database backends), and then +yesod devel+ to run
+your site.
 
 The scaffolded site gives you a lot of best practices out of the box, setting
 up files and dependencies in a time-tested approach used by most production
 Yesod sites. However, all this convenience can get in the way of actually
 learning Yesod. Therefore, most of this book will avoid the scaffolding tool,
-and instead deal directly with Yesod as a library.
+and instead deal directly with Yesod as a library. But if you're going to build
+a real site, I strongly recommend using the scaffolding.
 
-We will cover the structure of the scaffolded site in more detail later.
+We will cover the structure of the scaffolded site in the scaffolding chapter.
 
-Development server
+=== Development server
 
 One of the advantages interpreted languages have over compiled languages is
 fast prototyping: you save changes to a file and hit refresh. If we want to
-make any changes to our Yesod apps above, we'll need to call runhaskell from
+make any changes to our Yesod apps above, we'll need to call _runhaskell_ from
 scratch, which can be a bit tedious.
 
-Fortunately, there's a solution to this: yesod devel automatically rebuilds and
-reloads your code for you. This can be a great way to develop your Yesod
+Fortunately, there's a solution to this: +yesod devel+ automatically rebuilds
+and reloads your code for you. This can be a great way to develop your Yesod
 projects, and when you're ready to move to production, you still get to compile
 down to incredibly efficient code. The Yesod scaffolding automatically sets
 things up for you. This gives you the best of both worlds: rapid prototyping
-and fast production code.
+*and* fast production code.
 
-It's a little bit more involved to set up your code to be used by yesod devel,
-so our examples will just use warpDebug. But when you're ready to make your
-real-world applications, yesod devel will be waiting for you.
+It's a little bit more involved to set up your code to be used by _yesod
+devel_, so our examples will just use +warp+. Fortunately, the scaffolded site
+is fully configured to use the development server, so when you're ready to move
+over to the real world, it will be waiting for you.
 
-Summary
+=== Summary
 
 Every Yesod application is built around a foundation datatype. We associate
 some resources with that datatype and define some handler functions, and Yesod
@@ -299,12 +349,14 @@ handles all of the routing. These resources are also data constructors, which
 lets us have type-safe URLs.
 
 By being built on top of WAI, Yesod applications can run with a number of
-different backends. warpDebug is an easy way to get started, as it's included
-with Yesod. For rapid development, yesod devel is a good choice. And when
-you're ready to move to production, you have Warp as a high-performance option.
+different backends. For simple apps, the +warp+ function provides a convenient
+way to use the Warp web server. For rapid development, using +yesod devel+ is a
+good choice.  And when you're ready to move to production, you have the full
+power and flexibility to configure Warp (or any other WAI handler) to suit your
+needs.
 
 When developing in Yesod, we get a number of choices for coding style:
-quasi-quotation or external files, warpDebug or yesod devel, and so on. The
+quasi-quotation or external files, +warp+ or +yesod devel+, and so on. The
 examples in this book will tend towards using the choices that are easiest to
 copy-and-paste, but the more powerful options will be available when you start
 building real Yesod applications.
