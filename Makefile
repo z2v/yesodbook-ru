@@ -65,7 +65,7 @@ dirs:
 
 # Успешная сборка примеров требует наличия следующих пакетов:
 HACKAGES = \
-	'yesod-platform<1.2' \
+	yesod-platform \
 	persistent-sqlite \
 	sphinx \
 	wai-eventsource \
