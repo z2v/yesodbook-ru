@@ -1,56 +1,120 @@
 Yesod Typeclass
 
-Every one of our Yesod applications requires an instance of the Yesod typeclass. So far, we've only seen defaultLayout. In this chapter, we'll explore the meaning of many of the methods of the Yesod typeclass.
+Every one of our Yesod applications requires an instance of the Yesod
+typeclass. So far, we've only seen defaultLayout. In this chapter, we'll
+explore the meaning of many of the methods of the Yesod typeclass.
 
-The Yesod typeclass gives us a central place for defining settings for our application. Eeverything else has a default definition which is usually the right thing. But in order to build a powerful, customized application, you'll usually end up wanting to override at least a few of these methods.
+The Yesod typeclass gives us a central place for defining settings for our
+application. Eeverything else has a default definition which is usually the
+right thing. But in order to build a powerful, customized application, you'll
+usually end up wanting to override at least a few of these methods.
 
 Rendering and Parsing URLs
 
-We've already mentioned how Yesod is able to automatically render type-safe URLs into a textual URL that can be inserted into an HTML page. Let's say we have a route definition that looks like:
+We've already mentioned how Yesod is able to automatically render type-safe
+URLs into a textual URL that can be inserted into an HTML page. Let's say we
+have a route definition that looks like:
 
 mkYesod "MyApp" [parseRoutes|
 /some/path SomePathR GET
 ]
 
-If we place SomePathR into a hamlet template, how does Yesod render it? Yesod always tries to construct absolute URLs. This is especially useful once we start creating XML sitemaps and Atom feeds, or sending emails. But in order to construct an absolute URL, we need to know the domain name of the application.
+If we place SomePathR into a hamlet template, how does Yesod render it? Yesod
+always tries to construct absolute URLs. This is especially useful once we
+start creating XML sitemaps and Atom feeds, or sending emails. But in order to
+construct an absolute URL, we need to know the domain name of the application.
 
-You might think we could get that information from the user's request, but we still need to deal with ports. And even if we get the port number from the request, are we using HTTP or HTTPS? And even if you know that, such an approach would mean that, depending on how the user submitted a request would generate different URLs. For example, we would generate different URLs depending if the user connected to "example.com" or "www.example.com". For Search Engine Optimization, we want to be able to consolidate on a single canonical URL.
+You might think we could get that information from the user's request, but we
+still need to deal with ports. And even if we get the port number from the
+request, are we using HTTP or HTTPS? And even if you know that, such an
+approach would mean that, depending on how the user submitted a request would
+generate different URLs. For example, we would generate different URLs
+depending if the user connected to "example.com" or "www.example.com". For
+Search Engine Optimization, we want to be able to consolidate on a single
+canonical URL.
 
-And finally, Yesod doesn't make any assumption about where you host your application. For example, I may have a mostly static site (http://static.example.com/), but I'd like to stick a Yesod-powered Wiki at /wiki/. There is no reliable way for an application to determine what subpath it is being hosted from. So instead of doing all of this guesswork, Yesod needs you to tell it the application root.
+And finally, Yesod doesn't make any assumption about where you host your
+application. For example, I may have a mostly static site
+(http://static.example.com/), but I'd like to stick a Yesod-powered Wiki at
+/wiki/. There is no reliable way for an application to determine what subpath
+it is being hosted from. So instead of doing all of this guesswork, Yesod needs
+you to tell it the application root.
 
 Using the wiki example, you would write your Yesod instance as:
 
 instance Yesod MyWiki where
     approot = ApprootStatic "http://static.example.com/wiki"
 
-Notice that there is no trailing slash there. Next, when Yesod wants to construct a URL for SomePathR, it determines that the relative path for SomePathR is /some/path, appends that to your approot and creates http://static.example.com/wiki/some/path.
+Notice that there is no trailing slash there. Next, when Yesod wants to
+construct a URL for SomePathR, it determines that the relative path for
+SomePathR is /some/path, appends that to your approot and creates
+http://static.example.com/wiki/some/path.
 
-But if you remember, most of our examples so far haven't used an approot method. In those cases, our application gets a blank approot, or the empty string. This works for many use cases, since many applications are served from the root of the domain. In such a case, a route like SomePathR will be rendered to /some/path, which is a valid relative link from anywhere in your site. However, some use cases (like Atom/RSS feeds or XML sitemaps) require absolute paths. In such cases, you should state your approot explicitly.
+But if you remember, most of our examples so far haven't used an approot
+method. In those cases, our application gets a blank approot, or the empty
+string. This works for many use cases, since many applications are served from
+the root of the domain. In such a case, a route like SomePathR will be rendered
+to /some/path, which is a valid relative link from anywhere in your site.
+However, some use cases (like Atom/RSS feeds or XML sitemaps) require absolute
+paths. In such cases, you should state your approot explicitly.
 
-In addition to the ApprootStatic constructor demonstrated above, you can also use the ApprootMaster and ApprootRequest constructors. The former allows you to determine the approot from the foundation value, which would let you load up the approot from a config file, for instance. The latter allows you to additionally use the request value to determine the approot; using this, you could for example provide a different domain name depending on how the user requested the site in the first place.
+In addition to the ApprootStatic constructor demonstrated above, you can also
+use the ApprootMaster and ApprootRequest constructors. The former allows you to
+determine the approot from the foundation value, which would let you load up
+the approot from a config file, for instance. The latter allows you to
+additionally use the request value to determine the approot; using this, you
+could for example provide a different domain name depending on how the user
+requested the site in the first place.
 
-The scaffolded site uses ApprootMaster by default, and pulls your approot from a config file on launch. Additionally, it load different settings for developing, testing, staging, and production builds, so you can easily test on one domain- like localhost- and serve from a different domain.
+The scaffolded site uses ApprootMaster by default, and pulls your approot from
+a config file on launch. Additionally, it load different settings for
+developing, testing, staging, and production builds, so you can easily test on
+one domain- like localhost- and serve from a different domain.
 
 joinPath
 
-In order to convert a type-safe URL into a text value, Yesod uses two helper functions. The first is the renderRoute method of the RenderRoute typeclass. Every type-safe URL is an instance of this typeclass. renderRoute converts a value into a list of path pieces. For example, our SomePathR from above would be converted into ["some", "path"].
+In order to convert a type-safe URL into a text value, Yesod uses two helper
+functions. The first is the renderRoute method of the RenderRoute
+typeclass.  Every type-safe URL is an instance of this typeclass. renderRoute
+converts a value into a list of path pieces. For example, our SomePathR from
+above would be converted into ["some", "path"].
 
-Actually, renderRoute produces both the path pieces and a list of query-string parameters. The default instances of renderRoute always provide an empty list of query string parameters. However, it is possible to override this. One notable case is the static subsite, which puts a hash of the file contents in the query string for caching purposes.
+Actually, renderRoute produces both the path pieces and a list of
+query-string parameters. The default instances of renderRoute always provide
+an empty list of query string parameters. However, it is possible to override
+this. One notable case is the static subsite, which puts a hash of the file
+contents in the query string for caching purposes.
 
-The other function is the joinPath method of the Yesod typeclass. This function takes four arguments: the foundation value, the application root, a list of path segments and a list of query string parameters, and returns a textual URL. The default implementation does the "right thing": it separates the path pieces by forward slashes, prepends the application root and appends the query string.
+The other function is the joinPath method of the Yesod typeclass. This function takes four arguments:
+the foundation value, the application root, a list of path segments and a list
+of query string parameters, and
+returns a textual URL.  The default implementation does the "right thing":
+it separates the path pieces by forward slashes, prepends the application root
+and appends the query string.
 
-If you are happy with default URL rendering, you should not need to modify it. However, if you want to modify URL rendering to do things like append a trailing slash, this would be the place to do it.
+If you are happy with default URL rendering, you should not need to modify it.
+However, if you want to modify URL rendering to do things like append a
+trailing slash, this would be the place to do it.
 
 cleanPath
 
-The flip side to joinPath is cleanPath. Let's look at how it gets used in the dispatch process:
+The flip side to joinPath is cleanPath. Let's look at how it gets used in
+the dispatch process:
 
 1. The path info requested by the user is split into a series of path pieces.
-2. We pass the path pieces to the cleanPath function.
-3. If cleanPath indicates a redirect (a Left response), then a 301 response is sent to the client. This is used to force canonical URLs (eg, remove extra slashes).
-4. Otherwise, we try to dispatch using the response from cleanPath (a Right). If this works, we return a response. Otherwise, we return a 404.
 
-This combination allows subsites to retain full control of how their URLs appear, yet allows master sites to have modified URLs. As a simple example, let's see how we could modify Yesod to always produce trailing slashes on URLs:
+2. We pass the path pieces to the cleanPath function.
+
+3. If cleanPath indicates a redirect (a Left response), then a 301 response
+is sent to the client. This is used to force canonical URLs (eg, remove extra
+slashes).
+
+4. Otherwise, we try to dispatch using the response from cleanPath (a
+Right).  If this works, we return a response. Otherwise, we return a 404.
+
+This combination allows subsites to retain full control of how their URLs
+appear, yet allows master sites to have modified URLs. As a simple example,
+let's see how we could modify Yesod to always produce trailing slashes on URLs:
 
 {-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
 
@@ -89,31 +153,53 @@ instance Yesod Slash where
         -- remove empty pieces.
         | otherwise = Left $ filter (not . T.null) s
 
-getRootR = defaultLayout [whamlet|
-<p>
-    <a href=@{RootR}>RootR
-<p>
-    <a href=@{FooR}>FooR
-|]
+getRootR = defaultLayout
+    [whamlet|
+        <p>
+            <a href=@{RootR}>RootR
+        <p>
+            <a href=@{FooR}>FooR
+    |]
 
 getFooR = getRootR
 
 main = warpDebug 3000 Slash
 
-First, let's look at our joinPath implementation. This is copied almost verbatim from the default Yesod implementation, with one difference: we append an extra empty string to the end. When dealing with path pieces, an empty string will append another slash. So adding an extra empty string will force a trailing slash.
+First, let's look at our joinPath implementation. This is copied almost
+verbatim from the default Yesod implementation, with one difference: we append
+an extra empty string to the end. When dealing with path pieces, an empty
+string will append another slash. So adding an extra empty string will force a
+trailing slash.
 
-cleanPath is a little bit trickier. First, we check for the empty path like before, and if so pass it through as-is. We use Right to indicate that a redirect is not necessary. The next clause is actually checking for two different possible URL issues:
+cleanPath is a little bit trickier. First, we check for the empty path like
+before, and if so pass it through as-is. We use Right to indicate that a
+redirect is not necessary. The next clause is actually checking for two
+different possible URL issues:
 
-* There is a double slash, which would show up as an empty string in the middle of our paths.
-* There is a missing trailing slash, which would show up as the last piece not being an empty string.
+* There is a double slash, which would show up as an empty string in the middle
+  of our paths.
+* There is a missing trailing slash, which would show up as the last piece not
+  being an empty string.
 
-Assuming neither of those conditions hold, then only the last piece is empty, and we should dispatch based on all but the last piece. However, if this is not the case, we want to redirect to a canonical URL. In this case, we strip out all empty pieces and do not bother appending a trailing slash, since joinPath will do that for us.
+Assuming neither of those conditions hold, then only the last piece is empty,
+and we should dispatch based on all but the last piece. However, if this is not
+the case, we want to redirect to a canonical URL. In this case, we strip out
+all empty pieces and do not bother appending a trailing slash, since joinPath
+will do that for us.
 
 defaultLayout
 
-Most websites like to apply some general template to all of their pages. defaultLayout is the recommended approach for this. While you could just as easily define your own function and call that instead, when you override defaultLayout all of the Yesod-generated pages (error pages, authentication pages) automatically get this style.
+Most websites like to apply some general template to all of their pages.
+defaultLayout is the recommended approach for this. While you could just as
+easily define your own function and call that instead, when you override
+defaultLayout all of the Yesod-generated pages (error pages, authentication
+pages) automatically get this style.
 
-Overriding is very straight-forward: we use widgetToPageContent to convert a Widget to a title, head tags and body tags, and then use hamletToRepHtml to convert a Hamlet template into a RepHtml. We can even add extra widget components, like a Lucius template. from within defaultLayout. An example should make this all clear:
+Overriding is very straight-forward: we use widgetToPageContent to convert a
+Widget to a title, head tags and body tags, and then use hamletToRepHtml to
+convert a Hamlet template into a RepHtml. We can even add extra widget
+components, like a Lucius template. from within defaultLayout. An example
+should make this all clear:
 
     defaultLayout contents = do
         PageContent title headTags bodyTags <- widgetToPageContent $ do
@@ -146,26 +232,33 @@ main = warpDebug 4000 Layout
 
 getMessage
 
-Even though we haven't covered sessions yet, I'd like to mention getMessage here. A common pattern in web development is setting a message in one handler and displaying it in another. For example, if a user POSTs a form, you may want to redirect him/her to another page along with a "Form submission complete" message.
+Even though we haven't covered sessions yet, I'd like to mention getMessage
+here. A common pattern in web development is setting a message in one handler
+and displaying it in another. For example, if a user POSTs a form, you may
+want to redirect him/her to another page along with a "Form submission
+complete" message.  This is commonly known as
+Post/Redirect/Get.
 
-This is commonly known as Post/Redirect/Get.
-To facilitate this, Yesod comes built in with a pair of functions: setMessage sets a message in the user session, and getMessage retrieves the message (and clears it, so it doesn't appear a second time). It's recommended that you put the result of getMessage into your defaultLayout. For example:
+To facilitate this, Yesod comes built in with a pair of functions: setMessage
+sets a message in the user session, and getMessage retrieves the message (and
+clears it, so it doesn't appear a second time). It's recommended that you put
+the result of getMessage into your defaultLayout. For example:
 
     defaultLayout contents = do
         PageContent title headTags bodyTags <- widgetToPageContent contents
         mmsg <- getMessage
         hamletToRepHtml [hamlet|
-$doctype 5
+            $doctype 5
 
-<html>
-    <head>
-        <title>#{title}
-        ^{headTags}
-    <body>
-        $maybe msg <- mmsg
-            <div #message>#{msg}
-        ^{bodyTags}
-|]
+            <html>
+                <head>
+                    <title>#{title}
+                    ^{headTags}
+                <body>
+                    $maybe msg <- mmsg
+                        <div #message>#{msg}
+                    ^{bodyTags}
+        |]
 getRootR = defaultLayout [whamlet|<a href="@{MsgR}">message|]
 getMsgR = setMessage "foo" >> redirect RootR >> return ()
 main = warpDebug 4000 Layout
@@ -174,7 +267,10 @@ We'll cover getMessage/setMessage in more detail when we discuss sessions.
 
 Custom error pages
 
-One of the marks of a professional web site is a properly designed error page. Yesod gets you a long way there by automatically using your defaultLayout for displaying error pages. But sometimes, you'll want to go even further. For this, you'll want to override the errorHandler method:
+One of the marks of a professional web site is a properly designed error page.
+Yesod gets you a long way there by automatically using your defaultLayout for
+displaying error pages. But sometimes, you'll want to go even further. For
+this, you'll want to override the errorHandler method:
 
     errorHandler NotFound = fmap chooseRep $ defaultLayout $ do
         setTitle "Request page not located"
@@ -186,7 +282,10 @@ One of the marks of a professional web site is a properly designed error page. Y
 getRootR = defaultLayout [whamlet|Hello World|]
 main = warpDebug 4000 Layout
 
-Here we specify a custom 404 error page. We can also use the defaultErrorHandler when we don't want to write a custom handler for each error type. Due to type constraints, we need to start off our methods with fmap chooseRep, but otherwise you can write a typical handler function.
+Here we specify a custom 404 error page. We can also use the
+defaultErrorHandler when we don't want to write a custom handler for each
+error type. Due to type constraints, we need to start off our methods with
+fmap chooseRep, but otherwise you can write a typical handler function.
 
 In fact, you could even use special responses like redirects:
 
@@ -195,64 +294,99 @@ In fact, you could even use special responses like redirects:
 getRootR = defaultLayout [whamlet|Hello World|]
 main = warpDebug 4000 Layout
 
-Even though you can do this, I don't actually recommend such practices. A 404 should be a 404.
+Even though you can do this, I don't actually recommend such practices.
+A 404 should be a 404.
 
 External CSS and Javascript
 
 The functionality described here is automatically included in the scaffolded site, so you don't need to worry about implementing this yourself.
 
-One of the most powerful, and most intimidating, methods in the Yesod typeclass is addStaticContent. Remember that a Widget consists of multiple components, including CSS and Javascript. How exactly does that CSS/JS arrive in the user's browser? By default, they are served in the <head> of the page, inside <style> and <script> tags, respectively.
+One of the most powerful, and most intimidating, methods in the Yesod typeclass
+is addStaticContent. Remember that a Widget consists of multiple components,
+including CSS and Javascript. How exactly does that CSS/JS arrive in the user's
+browser? By default, they are served in the <head> of the page, inside
+<style> and <script> tags, respectively.
 
-That might be simple, but it's far from efficient. Every page load will now require loading up the CSS/JS from scratch, even if nothing changed! What we really want is to store this content in an external file and then refer to it from the HTML.
+That might be simple, but it's far from efficient. Every page load will now
+require loading up the CSS/JS from scratch, even if nothing changed! What we
+really want is to store this content in an external file and then refer to it
+from the HTML.
 
-This is where addStaticContent comes in. It takes three arguments: the filename extension of the content (css or js), the mime-type of the content (text/css or text/javascript) and the content itself. It will then return one of three possible results:
+This is where addStaticContent comes in. It takes three arguments: the
+filename extension of the content (css or js), the mime-type of the content
+(text/css or text/javascript) and the content itself. It will then return
+one of three possible results:
 
 Nothing
-
-No static file saving occurred; embed this content directly in the HTML. This is the default behavior.
+No static file saving occurred; embed this content directly in the
+HTML. This is the default behavior.
 
 Just (Left Text)
-
-This content was saved in an external file, and use the given textual link to refer to it.
+This content was saved in an external file, and use the
+given textual link to refer to it.
 
 Just (Right (Route a, Query))
+Same, but now use a type-safe URL along with
+some query string parameters.
 
-Same, but now use a type-safe URL along with some query string parameters.
+The Left result is useful if you want to store your static files on an
+external server, such as a CDN or memory-backed server. The Right result is
+more commonly used, and ties in very well with the static subsite. This is the
+recommended approach for most applications, and is provided by the scaffolded
+site by default.
 
-The Left result is useful if you want to store your static files on an external server, such as a CDN or memory-backed server. The Right result is more commonly used, and ties in very well with the static subsite. This is the recommended approach for most applications, and is provided by the scaffolded site by default.
+You might be wondering: if this is the recommended approach, why isn't it
+the default? The problem is that it makes a number of assumptions that don't
+universally hold: your application has a static subsite, and the location of
+your static files.
 
-You might be wondering: if this is the recommended approach, why isn't it the default? The problem is that it makes a number of assumptions that don't universally hold: your application has a static subsite, and the location of your static files.
-
-The scaffolded addStaticContent does a number of intelligent things to help you out:
+The scaffolded addStaticContent does a number of intelligent things to help
+you out:
 
 * It automatically minifies your Javascript using the hjsmin package.
-* It names the output files based on a hash of the file contents. This means you can set your cache headers to far in the future without fears of stale content.
-* Also, since filenames are based on hashes, you can be guaranteed that a file doesn't need to be written if a file with the same name already exists. The scaffold code automatically checks for the existence of that file, and avoids the costly disk I/O of a write if it's not necessary.
+* It names the output files based on a hash of the file contents. This means
+  you can set your cache headers to far in the future without fears of stale
+  content.
+* Also, since filenames are based on hashes, you can be guaranteed that a file
+  doesn't need to be written if a file with the same name already exists. The
+  scaffold code automatically checks for the existence of that file, and avoids
+  the costly disk I/O of a write if it's not necessary.
 
 Smarter Static Files
 
-Google recommends an important optimization: serve static files from a separate domain. The advantage to this approach is that cookies set on your main domain are not sent when retrieving static files, thus saving on a bit of bandwidth.
+Google recommends an important optimization:
+serve
+static files from a separate domain. The advantage to this approach is that
+cookies set on your main domain are not sent when retrieving static files, thus
+saving on a bit of bandwidth.
 
-To facilitate this, we have the urlRenderOverride method. This method intercepts the normal URL rendering and sets a special value for some routes. For example, the scaffolding defines this method as:
+To facilitate this, we have the urlRenderOverride method. This method
+intercepts the normal URL rendering and sets a special value for some routes.
+For example, the scaffolding defines this method as:
 
-    urlRenderOverride y (StaticR s) =
-        Just $ uncurry (joinPath y (Settings.staticRoot $ settings y)) $ renderRoute s
-    urlRenderOverride _ _ = Nothing
+urlRenderOverride y (StaticR s) =
+    Just $ uncurry (joinPath y (Settings.staticRoot $ settings y)) $ renderRoute s
 
-This means that static routes are served from a special static root, which you can configure to be a different domain. This is a great example of the power and flexibility of type-safe URLs: with a single line of code you're able to change the rendering of static routes throughout all of your handlers.
+urlRenderOverride _ _ = Nothing
+
+This means that static routes are served from a special static root, which you
+can configure to be a different domain. This is a great example of the power
+and flexibility of type-safe URLs: with a single line of code you're able to
+change the rendering of static routes throughout all of your handlers.
 
 Authentication/Authorization
 
-For simple applications, checking permissions inside each handler function can be a simple, convenient approach. However, it doesn't scale well. Eventually, you're going to want to have a more declarative approach. Many systems out there define ACLs, special config files, and a lot of other hocus-pocus. In Yesod, it's just plain old Haskell. There are three methods involved:
+For simple applications, checking permissions inside each handler function can
+be a simple, convenient approach. However, it doesn't scale well. Eventually,
+you're going to want to have a more declarative approach. Many systems out
+there define ACLs, special config files, and a lot of other hocus-pocus. In
+Yesod, it's just plain old Haskell. There are three methods involved:
 
 isWriteRequest
-
 Determine if the current request is a "read" or "write" operations. By default, Yesod follows RESTful principles, and assumes GET, HEAD, OPTIONS, and TRACE requests are read-only, while all others are can write.
 
 isAuthorized
-
 Takes a route (i.e., type-safe URL) and a boolean indicating whether or not the request is a write request. It returns an AuthResult, which can have one of three values:
-
 * Authorized
 * AuthenticationRequired
 * Unauthorized
@@ -260,43 +394,65 @@ Takes a route (i.e., type-safe URL) and a boolean indicating whether or not the 
 By default, it returns Authorized for all requests.
 
 authRoute
+If isAuthorized returns AuthenticationRequired, then redirect
+to the given route. If no route is provided (the default), return a 403
+"Permission Denied" message.
 
-If isAuthorized returns AuthenticationRequired, then redirect to the given route. If no route is provided (the default), return a 403 "Permission Denied" message.
-
-These methods tie in nicely with the yesod-auth package, which is used by the scaffolded site to provide a number of authentication options, such as OpenID, BrowserID, email, username and Twitter. We'll cover more concrete examples in the auth chapter.
+These methods tie in nicely with the yesod-auth package, which is used by the
+scaffolded site to provide a number of authentication options, such as OpenID,
+BrowserID, email, username and Twitter. We'll cover more concrete
+examples in the auth chapter.
 
 Some Simple Settings
 
-Not everything in the Yesod typeclass is complicated. Some methods are simple functions. Let's just go through the list:
+Not everything in the Yesod typeclass is complicated. Some methods are simple
+functions. Let's just go through the list:
 
 encryptKey
+Yesod uses client-side sessions, which are stored in encrypted,
+cryptographically-hashed cookies. Well, as long as you provide an encryption
+key. If this function returns Nothing, then sessions are disabled. This can be
+a useful optimization on sites that don't need session facilities, as it avoids
+an encrypt/decrypt pair on each request.
 
-Yesod uses client-side sessions, which are stored in encrypted, cryptographically-hashed cookies. Well, as long as you provide an encryption key. If this function returns Nothing, then sessions are disabled. This can be a useful optimization on sites that don't need session facilities, as it avoids an encrypt/decrypt pair on each request.
-
-The combination of encryption and hashing guarantees two properties: the session payload is tamper-proof, and is opaque. Encryption without hashing would allow a user to randomly change the cookie data and still have it accepted by the server, while hashing without encryption would allow inspection of the data.
+The combination of encryption and hashing guarantees two properties: the
+session payload is tamper-proof, and is opaque. Encryption without hashing
+would allow a user to randomly change the cookie data and still have it
+accepted by the server, while hashing without encryption would allow inspection
+of the data.
 
 clientSessionDuration
-
 How long a session should last for. By default, this is two hours.
 
 sessionIpAddress
-
-By default, sessions are tied to an individual IP address. If your users are sitting behind a proxy server, this can cause trouble when their IP suddenly changes. This setting lets you disable this security feature.
+By default, sessions are tied to an individual IP address. If your users are
+sitting behind a proxy server, this can cause trouble when their IP suddenly
+changes. This setting lets you disable this security feature.
 
 cookiePath
-
-What paths within your current domain to set cookies for. The default is "/", and will almost always be correct. One exception might be when you're serving from a subpath within a domain (like our wiki example above).
+What paths within your current domain to set cookies for. The default is "/",
+and will almost always be correct. One exception might be when you're serving
+from a subpath within a domain (like our wiki example above).
 
 maximumContentLength
-
-To prevent Denial of Server (DoS) attacks, Yesod will limit the size of request bodies. Some of the time, you'll want to bump that limit for some routes (e.g., a file upload page). This is where you'd do that.
+To prevent Denial of Server (DoS) attacks, Yesod will
+limit the size of request bodies. Some of the time, you'll want to bump that
+limit for some routes (e.g., a file upload page). This is where you'd do that.
 
 yepnopeJs
-
-You can specify the location of the yepnope Javascript library. If this is given, then yepnope will be used to asynchronously load all of the Javascript on your page.
+You can specify the location of the yepnope Javascript library. If this is
+given, then yepnope will be used to asynchronously load all of the Javascript
+on your page.
 
 Summary
 
-The Yesod typeclass has a number of overrideable methods that allow you to configure your application. They are all optional, and provide sensible defaults. By using built-in Yesod constructs like defaultLayout and getMessage, you'll get a consistent look-and-feel throughout your site, including pages automatically generated by Yesod such as error pages and authentication.
+The Yesod typeclass has a number of overrideable methods that allow you to
+configure your application. They are all optional, and provide sensible
+defaults. By using built-in Yesod constructs like defaultLayout and
+getMessage, you'll get a consistent look-and-feel throughout your site,
+including pages automatically generated by Yesod such as error pages and
+authentication.
 
-We haven't covered all the methods in the Yesod typeclass in this chapter. For a full listing of methods available, you should consult the Haddock documentation.
+We haven't covered all the methods in the Yesod typeclass in this chapter. For
+a full listing of methods available, you should consult the Haddock
+documentation.
