@@ -28,33 +28,32 @@ data Person = Person Text Int
   \item Определение \lstinline'data', как в приведённом выше примере с \lstinline'Person'. Вы можете также создавать алгебраические типы данных (АТД), такие как \lstinline'data Vehicle = Bycicle GearCount | Car Make Model'.
 \end{itemize}
 
-\subsection{Конструктор данных}
-
+\begin{description}
+\item[Конструктор данных] \hfill \\
 В приведённых выше примерах \lstinline'Person', \lstinline'Make', Bicycle и Car~--- конструкторы данных.
 
-\subsection{Конструктор типа}
-
+\item[Конструктор типа] \hfil \\
 В свою очередь \lstinline'Person', \lstinline'Make' и \lstinline'Vehicle'~--- это конструкторы типов.
 
-\subsection{Переменные типов}
-
+\item[Переменные типов] \hfill \\
 Рассмотрим тип данных \lstinline'data Maybe a = Just a | Nothing'. Здесь \lstinline'a'~--- переменная типа.
+\end{description}
 
 \section{Инструментарий}
 
 Для разработки на Haskell вам понадобятся два основных инструмента. Glasgow Haskell Compiler (GHC)~--- стандартный компилятор Haskell, единственный официально поддерживаемый Yesod. Также вам понадобится Cabal~--- стандартное средство сборки для Haskell. Cabal используется не только для сборки локального кода, он также может автоматически скачивать и устанавливать зависимости из Hackage, репозитория пакетов Haskell.
 
-Тем, кто работает в среде Windows или Mac, настоятельно рекомендуется скачать \href{http://hackage.haskell.org/platform/}{Haskell Platform}\footnote{\href{http://hackage.haskell.org/platform/}{\texttt{http://hackage.haskell.org/platform/}}}. Многие дистрибутивы Linux содержат Haskell Platform в своих репозиториях. Например, в дистрибутивах, основанных на Debian, стоит начать с выполнения команды \texttt{apt-get install haskell-platform}. Если в вашем дистрибутиве Haskell Platform недоступна, вы можете установить её вручную, следуя инструкциям на официальном сайте.
+Тем, кто работает в среде Windows или Mac, настоятельно рекомендуется скачать \footnotehref{http://hackage.haskell.org/platform/}{Haskell Platform}. Многие дистрибутивы Linux содержат Haskell Platform в своих репозиториях. Например, в дистрибутивах, основанных на Debian, стоит начать с выполнения команды \texttt{apt-get install haskell-platform}. Если в вашем дистрибутиве Haskell Platform недоступна, вы можете установить её вручную, следуя инструкциям на официальном сайте.
 
-Ещё один важный инструмент, который вам нужно будет обновить~--- это \texttt{alex}. Haskell Platform включает версию 2, но используемой Yesod программе минификации JavaScript, \href{http://hackage.haskell.org/package/hjsmin}{hjsmin}\footnote{\href{http://hackage.haskell.org/package/hjsmin}{\texttt{http://hackage.haskell.org/package/hjsmin}}}, требуется версия 3. Не забудьте выполнить \texttt{cabal install alex} после установки Haskell Platform, иначе получите сообщения об ошибках в отношении пакета \href{http://hackage.haskell.org/package/language-javascript}{language-javascript}\footnote{\href{http://hackage.haskell.org/package/language-javascript}{\texttt{http://hackage.haskell.org/package/language-javascript}}}.
+Ещё один важный инструмент, который вам нужно будет обновить~--- это \texttt{alex}. Haskell Platform включает версию 2, но используемой Yesod программе минификации JavaScript, hjsmin, требуется версия 3. Не забудьте выполнить \texttt{cabal install alex} после установки Haskell Platform, иначе получите сообщения об ошибках при установке пакета language-javascript.
 
 \begin{remark}
 Некоторым нравится жить на острие прогресса и устанавливать последнюю версию GHC до того, как она станет доступна в Haskell Platform. Мы стараемся поддерживать совместимость Yesod со всеми современными версиями GHC, но официально мы поддерживаем только Haskell Platform. Если вы всё-таки решили пойти по пути ручной установки GHC, то имейте в виду:
 
 \begin{itemize}
   \item Вам нужно будет установить некоторые дополнительные инструменты, в частности, \texttt{alex} и \texttt{happy}.
-  \item Убедитесь, что установлены все \href{http://www.vex.net/~trebla/haskell/haskell-platform.xhtml}{требуемые C-библиотеки}\footnote{\href{http://www.vex.net/~trebla/haskell/haskell-platform.xhtml}{\texttt{http://www.vex.net/\~{}trebla/haskell/haskell-platform.xhtml}}}. В дистрибутивах, основанных на Debian, это можно сделать, выполнив команду:\\
- \texttt{apt-get install libedit-dev libbsd-dev lbgmp3-dev zlib1g-dev freeglut3-dev}.
+  \item Убедитесь, что установлены все \footnotehref{http://www.vex.net/~trebla/haskell/haskell-platform.xhtml}{требуемые C-библиотеки}. В дистрибутивах, основанных на Debian, это можно сделать, выполнив команду:\\
+ \texttt{apt-get install libedit-dev libbsd-dev libgmp3-dev zlib1g-dev freeglut3-dev}.
 \end{itemize}
 \end{remark}
 
@@ -64,11 +63,13 @@ data Person = Person Text Int
 
 \begin{itemize}
   \item \texttt{cabal update} скачивает актуальный список пакетов с Hackage.
-  \item \texttt{cabal install yesod-platform} устанавливает Yesod и его зависимости.
+  \item \texttt{cabal install yesod} устанавливает Yesod и все его зависимости.
 \end{itemize}
 
 \begin{remark}
-Многие члены сообщества предпочитают выполнять изолированную сборку пакетов Haskell, что предотвращает порчу существующих пакетов вследствие установки Yesod или порчу Yesod из-за установки каких-то пакетов в будущем. В этой книге я не буду углубляться в детали того, как это делается, но два наиболее часто используемых для этих целей инструмента~--- это \href{http://hackage.haskell.org/package/cabal-dev}{cabal-dev}\footnote{\href{http://hackage.haskell.org/package/cabal-dev}{\texttt{http://hackage.haskell.org/package/cabal-dev}}} и \href{http://hackage.haskell.org/package/hsenv}{hsenv}\footnote{\href{http://hackage.haskell.org/package/hsenv}{\texttt{http://hackage.haskell.org/package/hsenv}}}.
+    Возможно, вы захотите выполнить изолированную установку своего Yesod
+    проекта, используя соответствующую возможность \texttt{cabal}, запустив
+    команду~\texttt{cabal~sandbox~init}.
 \end{remark}
 
 \section{Указания компилятору}
@@ -85,9 +86,9 @@ data Person = Person Text Int
 \item добавить блок \texttt{extensions} в файл \texttt{cabal}.
 \end{itemize}
 
-Лично я никогда не использую подход с аргументами командной строки. Это личное предпочтение, но мне нравится, когда мои настройки явным образом указаны в файле. В общем случае также рекомендуется избегать помещения расширений в файл \texttt{cabal}. Впрочем, в сгенерированном Yesod шаблоне сайта \marginpar{Нужно добавить ссылку на главу <<Scaffolding and the Site Template>>} мы намеренно применяем этот подход, чтобы избежать необходимости задавать одни и те же указания компилятору в каждом исходном файле.
+Лично я никогда не использую подход с аргументами командной строки. Это личное предпочтение, но мне нравится, когда мои настройки явным образом указаны в файле. В общем случае также рекомендуется избегать помещения расширений в файл \texttt{cabal}. Впрочем, в сгенерированном Yesod шаблоне сайта мы намеренно применяем этот подход, чтобы избежать необходимости задавать одни и те же указания компилятору в каждом исходном файле.
 
-В конечном счёте мы будем использовать в этой книге немало языковых расширений (начальный каркас сайта использует 11). Мы не будем рассматривать назначение каждого из них. За этим, пожалуйста, обращайтесь к \href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{документации по GHC}\footnote{\href{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{\texttt{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}}}.
+В конечном счёте мы будем использовать в этой книге немало языковых расширений (начальный каркас сайта использует 11). Мы не будем рассматривать назначение каждого из них. За этим, пожалуйста, обращайтесь к \footnotehref{http://www.haskell.org/ghc/docs/latest/html/users\_guide/ghc-language-features.html}{документации по GHC}.
 
 \section{Перегруженные строки}
 
@@ -110,7 +111,6 @@ class IsString a where
 
 \begin{lstlisting}
 {-# LANGUAGE OverloadedStrings, TypeSynonymInstances, FlexibleInstances #-}
-
 import Data.Text (Text)
 
 class DoSomething a where
@@ -134,10 +134,10 @@ myFunc = something "hello"
 
 \includecode{02/type-families.hs}
 
-Новый синтаксис выражается в возможности разместить тип внутри класса и экземпляра. Вместо этого мы также можем использовать \lstinline'data', что создаст новый тип данных вместо ссылки на уже существующий.
+Новый синтаксис~--- это возможность разместить декларации типа~(\lstinline'type') внутри класса и экземпляра. Вместо этого мы также можем использовать \lstinline'data', что создаст новый тип данных вместо ссылки на уже существующий.
 
 \begin{remark}
-Есть и другие способы использования ассоциированных типов вне контекста класса типов. Однако в Yesod все наши ассоциированные типы являются, фактически, частью класса типов. Более подробную информацию о семействах типов можно найти на соответствующей \href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{странице Haskell Wiki}\footnote{\href{http://www.haskell.org/haskellwiki/GHC/Type\_families}{\texttt{http://www.haskell.org/haskellwiki/GHC/Type\_families}}}.
+Есть и другие способы использования ассоциированных типов вне контекста класса типов. Однако в Yesod все наши ассоциированные типы являются, фактически, частью класса типов. Более подробную информацию о семействах типов можно найти на соответствующей \footnotehref{http://www.haskell.org/haskellwiki/GHC/Type\_families}{странице Haskell Wiki}.
 \end{remark}
 
 \section{Template Haskell}
@@ -155,7 +155,7 @@ $(hamletFile "myfile.hamlet")
 \end{lstlisting}
 %$
 
-(Hamlet обсуждается в главе о Shakespeare.) \marginpar{Вставить ссылку на главу <<Shakespearean Templates>>}Символ доллара, за которым следует открывающая скобка, сообщает GHC, что то, что следует далее, является функцией Template Haskell. Код внутри скобок затем запускается компилятором и генерирует АСД программы на Haskell, которое затем компилируется. И да, \href{http://www.yesodweb.com/blog/2010/09/yo-dawg-template-haskell}{метапрограммирование можно использовать даже здесь}\footnote{\href{http://www.yesodweb.com/blog/2010/09/yo-dawg-template-haskell}{\texttt{http://www.yesodweb.com/blog/2010/09/yo-dawg-template-haskell}}}.
+(Hamlet обсуждается в \hyperref[chap:shakespeare]{главе о Shakespeare}.) Символ доллара, за которым следует открывающая скобка, сообщает GHC, что то, что следует далее, является функцией Template Haskell. Код внутри скобок затем запускается компилятором и генерирует АСД программы на Haskell, которое затем компилируется. И да, \footnotehref{http://www.yesodweb.com/blog/2010/09/yo-dawg-template-haskell}{метапрограммирование можно использовать даже здесь}.
 
 Приятная особенность~--- код на TH может выполнять произвольные действия ввода-вывода, и, следовательно, мы можем разместить входные данные во внешних файлах, которые будут разбираться во время компиляции. Одним из примеров использования этой возможости является получение шаблонов HTML, CSS и JavaScript, проверяемых во время компиляции.
 
@@ -178,12 +178,12 @@ myThCode
 Может быть полезно посмотреть, какой код генерирует для вас Template Haskell. Для этого вам нужно использовать опцию GHC \texttt{-ddump-splices}.
 
 \begin{remark}
-Есть ещё много других особенностей Template Haskell, которые здесь не рассматриваются. Более подробную информацию можете посмотреть на \href{http://www.haskell.org/haskellwiki/Template\_Haskell}{странице Haskell Wiki}\footnote{\href{http://www.haskell.org/haskellwiki/Template\_Haskell}{\texttt{http://www.haskell.org/haskellwiki/Template\_Haskell}}}.
+Есть ещё много других особенностей Template Haskell, которые здесь не рассматриваются. Более подробную информацию можете посмотреть на \footnotehref{http://www.haskell.org/haskellwiki/Template\_Haskell}{странице Haskell Wiki}.
 \end{remark}
 
 \subsection{QuasiQuotes}
 
-QuasiQuotes (QQ)~--- это небольшое расширение Template Haskell, которое позволяет нам включать произвольные данные в файлы с исходным кодом на Haskell. Например, выше упоминалась функция Template Haskell \lstinline'hamletFile', которая считывает содержимое шаблона из внешнего файла. У нас также есть обработчик квазицитирования, называемый hamlet, который считывает содержимое, хранящееся непосредственно в исходном коде:
+QuasiQuotes (QQ)~--- это небольшое расширение Template Haskell, которое позволяет нам включать произвольные данные в файлы с исходным кодом на Haskell. Например, выше упоминалась функция Template Haskell \lstinline'hamletFile', которая считывает содержимое шаблона из внешнего файла. У нас также есть обработчик квазицитирования, называемый~\lstinline'hamlet', который считывает содержимое, хранящееся непосредственно в исходном коде:
 
 \begin{lstlisting}
 {-# LANGUAGE QuasiQuotes #-}
