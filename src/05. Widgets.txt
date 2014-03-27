@@ -1,10 +1,22 @@
 Widgets
 
-One of the challenges in web development is that we have to coordinate three different client-side technologies: HTML, CSS and Javascript. Worse still, we have to place these components in different locations on the page: CSS in a style tag in the head, Javascript in a script tag in the head, and HTML in the body. And never mind if you want to put your CSS and Javascript in separate files!
+One of the challenges in web development is that we have to coordinate three
+different client-side technologies: HTML, CSS and Javascript. Worse still, we
+have to place these components in different locations on the page: CSS in a
+style tag in the head, Javascript in a script tag in the head, and HTML in the
+body. And never mind if you want to put your CSS and Javascript in separate
+files!
 
-In practice, this works out fairly nicely when building a single page, because we can separate our structure (HTML), style (CSS) and logic (Javascript). But when we want to build modular pieces of code that can be easily composed, it can be a headache to coordinate all three pieces separately. Widgets are Yesod's solution to the problem. They also help with the issue of including libraries, such as jQuery, one time only.
+In practice, this works out fairly nicely when building a single page, because
+we can separate our structure (HTML), style (CSS) and logic (Javascript). But
+when we want to build modular pieces of code that can be easily composed, it
+can be a headache to coordinate all three pieces separately. Widgets are
+Yesod's solution to the problem. They also help with the issue of including
+libraries, such as jQuery, one time only.
 
-Our four template languages- Hamlet, Cassius, Lucius and Julius- provide the raw tools for constructing your output. Widgets provide the glue that allows them to work together seamlessly.
+Our four template languages- Hamlet, Cassius, Lucius and Julius- provide the
+raw tools for constructing your output. Widgets provide the glue that allows
+them to work together seamlessly.
 
 Synopsis
 
@@ -12,47 +24,74 @@ getRootR = defaultLayout $ do
     setTitle "My Page Title"
     toWidget [lucius| h1 { color: green; } |]
     addScriptRemote "https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"
-    toWidget [julius|
-$(function() {
-    $("h1").click(function(){ alert("You clicked on the heading!"); });
-});
-|]
-    toWidgetHead [hamlet| <meta name=keywords content="some sample keywords">|]
-    toWidget [hamlet| <h1>Here's one way of including content |]
-    [whamlet| <h2>Here's another |]
-    toWidgetBody [julius| alert("This is included in the body itself"); |]
+    toWidget
+        [julius|
+            $(function() {
+                $("h1").click(function(){
+                    alert("You clicked on the heading!");
+                });
+            });
+        |]
+    toWidgetHead
+        [hamlet|
+            <meta name=keywords content="some sample keywords">
+        |]
+    toWidget
+        [hamlet|
+            <h1>Here's one way of including content
+        |]
+    [whamlet|<h2>Here's another |]
+    toWidgetBody
+        [julius|
+            alert("This is included in the body itself");
+        |]
 
 main = warpDebug 3000 W
 
 This produces the following HTML (indentation added):
 
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html>
-    <head>
-        <title>My Page Title</title>
-        <style>h1 { color : green }</style>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
-        <script>
-$(function() {
-    $("h1").click(function(){ alert("You clicked on the heading!"); });
-});
-</script>
-        <meta name="keywords" content="some sample keywords">
-    </head>
-    <body>
-        <h1>Here's one way of including content </h1>
-        <h2>Here's another </h2>
-        <script> alert("This is included in the body itself"); </script>
-    </body>
+  <head>
+    <title>My Page Title</title>
+    <style>h1 { color : green }</style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+    <script>
+      $(function() {
+        $("h1").click(function(){
+          alert("You clicked on the heading!"); });
+        });
+    </script>
+    <meta name="keywords" content="some sample keywords">
+  </head>
+  <body>
+    <h1>Here's one way of including content</h1>
+    <h2>Here's another</h2>
+    <script>
+      alert("This is included in the body itself");
+    </script>
+  </body>
 </html>
 
 What's in a Widget?
 
-At a very superficial level, an HTML document is just a bunch of nested tags. This is the approach most HTML generation tools take: you simply define hierarchies of tags and are done with it. But let's imagine that I want to write a component of a page for displaying the navbar. I want this to be "plug and play": I simply call the function at the right time, and the navbar is inserted at the correct point in the hierarchy.
+At a very superficial level, an HTML document is just a bunch of nested tags.
+This is the approach most HTML generation tools take: you simply define hierarchies of
+tags and are done with it. But let's imagine that I want to write a component
+of a page for displaying the navbar. I want this to be "plug and play": I simply call
+the function at the right time, and the navbar is inserted at the correct point
+in the hierarchy.
 
-This is where our superficial HTML generation breaks down. Our navbar likely consists of some CSS and JavaScript in addition to HTML. By the time we call the navbar function, we have already rendered the <head> tag, so it is too late to add a new <style> tag for our CSS declarations. Under normal strategies, we would need to break up our navbar function into three parts: HTML, CSS and JavaScript, and make sure that we always call all three pieces.
+This is where our superficial HTML generation breaks down. Our navbar likely
+consists of some CSS and JavaScript in addition to HTML. By the time we call
+the navbar function, we have already rendered the <head> tag, so it is too
+late to add a new <style> tag for our CSS declarations. Under normal
+strategies, we would need to break up our navbar function into three parts:
+HTML, CSS and JavaScript, and make sure that we always call all three pieces.
 
-Widgets take a different approach. Instead of viewing an HTML document as a monolithic tree of tags, widgets see a number of distinct components in the page. In particular:
+Widgets take a different approach. Instead of viewing an HTML document as a
+monolithic tree of tags, widgets see a number of distinct components in the
+page. In particular:
 
 * The title
 * External stylesheets
@@ -62,47 +101,72 @@ Widgets take a different approach. Instead of viewing an HTML document as a mono
 * Arbitrary <head> content
 * Arbitrary <body> content
 
-Different components have different semantics. For example, there can only be one title, but there can be multiple external scripts and stylesheets. However, those external scripts and stylesheets should only be included once. Arbitrary head and body content, on the other hand, has no limitation (someone may want to have five lorem ipsum blocks after all).
+Different components have different semantics. For example, there can only be
+one title, but there can be multiple external scripts and stylesheets. However,
+those external scripts and stylesheets should only be included once. Arbitrary
+head and body content, on the other hand, has no limitation (someone may want
+to have five lorem ipsum blocks after all).
 
-The job of a widget is to hold onto these disparate components and apply proper logic for combining different widgets together. This consists of things like taking the first title set and ignoring others, filtering duplicates from the list of external scripts and stylesheets, and concatenating head and body content.
+The job of a widget is to hold onto these disparate components and apply proper
+logic for combining different widgets together. This consists of things like
+taking the first title set and ignoring others, filtering duplicates from the
+list of external scripts and stylesheets, and concatenating head and body
+content.
 
 Constructing Widgets
 
-In order to use widgets, you'll obviously need to be able to get your hands on them. The most common way will be via the ToWidget typeclass, and its toWidget method. This allows you to convert your Shakespearean templates directly to a Widget: Hamlet code will appear in the body, Julius scripts inside a <script> tag in the head, and Cassius and Lucius in a <style> tag.
+In order to use widgets, you'll obviously need to be able to get your hands on
+them. The most common way will be via the ToWidget typeclass, and its
+toWidget method. This allows you to convert your Shakespearean templates
+directly to a Widget: Hamlet code will appear in the body, Julius scripts
+inside a <script> tag in the head, and Cassius and Lucius in a
+<style> tag.
 
-You can actually override the default behavior and have the script and style code appear in a separate file. The scaffolded site provides this for you automatically. Additionally, we'll see in the Yesod typeclass chapter how to turn on asynchronous script loading, which will place your script content at the end of the body.
+You can actually override the default behavior and have the script and
+style code appear in a separate file. The scaffolded site provides this for you
+automatically. Additionally, we'll see in the Yesod typeclass chapter how to
+turn on asynchronous script loading, which will place your script content at
+the end of the body.
 
-But what if you want to add some <meta> tags, which need to appear in the head? Or if you want some Javascript to appear in the body instead of the head? For these purposes, Yesod provides two additional type classes: ToWidgetHead and ToWidgetBody. These work exactly as they seem they should.
+But what if you want to add some <meta> tags, which need to appear in
+the head?  Or if you want some Javascript to appear in the body instead of the
+head? For these purposes, Yesod provides two additional type classes:
+ToWidgetHead and ToWidgetBody. These work exactly as they seem they should.
 
-In addition, there are a number of other functions for creating specific kinds of Widgets:
+In addition, there are a number of other functions for creating specific kinds
+of Widgets:
 
 setTitle
-
 Turns some HTML into the page title.
 
 addCassiusMedia, addLuciusMedia
-
-Works the same as toWidget, but takes an additional parameter to indicate what kind of media this applies to. Useful for creating print stylesheets, for instance.
+Works the same as toWidget, but takes an
+additional parameter to indicate what kind of media this applies to. Useful for
+creating print stylesheets, for instance.
 
 addStylesheet
-
-Adds a reference, via a <link> tag, to an external stylesheet. Takes a type-safe URL.
+Adds a reference, via a <link> tag, to an external
+stylesheet. Takes a type-safe URL.
 
 addStylesheetRemote
-
-Same as addStylesheet, but takes a normal URL. Useful for referring to files hosted on a CDN, like Google's jQuery UI CSS files.
+Same as addStylesheet, but takes a normal URL. Useful
+for referring to files hosted on a CDN, like Google's jQuery UI CSS files.
 
 addScript
-
-Adds a reference, via a <script> tag, to an external script. Takes a type-safe URL.
+Adds a reference, via a <script> tag, to an external script.
+Takes a type-safe URL.
 
 addScriptRemote
-
-Same as addScript, but takes a normal URL. Useful for referring to files hosted on a CDN, like Google's jQuery.
+Same as addScript, but takes a normal URL. Useful for
+referring to files hosted on a CDN, like Google's jQuery.
 
 Combining Widgets
 
-The whole idea of widgets is to increase composability. You can take these individual pieces of HTML, CSS and Javascript, combine them together into something more complicated, and then combine these larger entities into complete pages. This all works naturally through the Monad instance of Widget, meaning you can use do-notation to compose pieces together.
+The whole idea of widgets is to increase composability. You can take these
+individual pieces of HTML, CSS and Javascript, combine them together into
+something more complicated, and then combine these larger entities into
+complete pages. This all works naturally through the Monad instance of
+Widget, meaning you can use do-notation to compose pieces together.
 
 Combining Widgets
 
@@ -121,11 +185,17 @@ myWidget = do
 -- or, if you want
 myWidget' = myWidget1 >> myWidget2
 
-If you're so inclined, there's also a Monoid instance of Widget, meaning you can use mconcat or a Writer monad to build things up. In my experience, it's easiest and most natural to just use do-notation.
+If you're so inclined, there's also a Monoid instance of Widget,
+meaning you can use mconcat or a Writer monad to build things up. In my
+experience, it's easiest and most natural to just use do-notation.
 
 Generate IDs
 
-If we're really going for true code reuse here, we're eventually going to run into name conflicts. Let's say that there are two helper libraries that both use the class name "foo" to affect styling. We want to avoid such a possibility. Therefore, we have the newIdent function. This function automatically generates a word that is unique for this handler.
+If we're really going for true code reuse here, we're eventually going to run
+into name conflicts. Let's say that there are two helper libraries that both
+use the class name "foo" to affect styling. We want to avoid such a
+possibility. Therefore, we have the newIdent function. This function
+automatically generates a word that is unique for this handler.
 
 Using newIdent
 
@@ -136,77 +206,147 @@ getRootR = defaultLayout $ do
 
 main = warpDebug 3000 W
 
-You might be wondering: what does lift mean? A Widget is a monad transformer, sitting on top of a Handler. newIdent is a function of a Handler, so we need to "lift" the function from the Handler layer to the Widget layer to use it. We can actually use this same approach to perform complex actions, like database queries, from within a widget. We'll cover that when we discuss Yesod's monads.
+You might be wondering: what does lift mean? A Widget is a monad transformer,
+sitting on top of a Handler. newIdent is a function of a Handler, so we need to
+"lift" the function from the Handler layer to the Widget layer to use it. We
+can actually use this same approach to perform complex actions, like database
+queries, from within a widget. We'll cover that when we discuss Yesod's monads.
 
 whamlet
 
-Let's say you've got a fairly standard Hamlet template, that embeds another Hamlet template to represent the footer:
+Let's say you've got a fairly standard Hamlet template, that embeds another
+Hamlet template to represent the footer:
 
-page = [hamlet|
-<p>This is my page. I hope you enjoyed it.
-^{footer}
-|]
+page =
+    [hamlet|
+        <p>This is my page. I hope you enjoyed it.
+        ^{footer}
+    |]
 
-footer = [hamlet|
-<footer>
-    <p>That's all folks!
-|]
+footer =
+    [hamlet|
+        <footer>
+            <p>That's all folks!
+    |]
 
-That works fine if the footer is plain old HTML, but what if we want to add some style? Well, we can easily spice up the footer by turning it into a Widget:
+That works fine if the footer is plain old HTML, but what if we want to add
+some style? Well, we can easily spice up the footer by turning it into a
+Widget:
 
 footer = do
-    toWidget [lucius| footer { font-weight: bold; text-align: center } |]
-    toWidget [hamlet|
-<footer>
-    <p>That's all folks!
-|]
+    toWidget
+        [lucius|
+            footer {
+                font-weight: bold;
+                text-align: center
+            }
+        |]
+    toWidget
+        [hamlet|
+            <footer>
+                <p>That's all folks!
+        |]
 
-But now we've got a problem: a Hamlet template can only embed another Hamlet template; it knows nothing about a Widget. This is where whamlet comes in. It takes exactly the same syntax as normal Hamlet, and variable (#{...}) and URL (@{...}) interpolation are unchanged. But embedding (^{...}) takes a Widget, and the final result is a Widget. To use it, we can just do:
+But now we've got a problem: a Hamlet template can only embed another Hamlet
+template; it knows nothing about a Widget. This is where whamlet comes in. It
+takes exactly the same syntax as normal Hamlet, and variable (#{...}) and URL
+(@{...}) interpolation are unchanged. But embedding (^{...}) takes a Widget,
+and the final result is a Widget. To use it, we can just do:
 
-page = [whamlet|
-<p>This is my page. I hope you enjoyed it.
-^{footer}
-|]
+page =
+    [whamlet|
+        <p>This is my page. I hope you enjoyed it.
+        ^{footer}
+    |]
 
-There is also whamletFile, if you would prefer to keep your template in a separate file.
+There is also whamletFile, if you would prefer to keep your template in a
+separate file.
 
-The scaffolded site has an even more convenient function, widgetFile, which will also include your Lucius, Cassius, and Julius files automatically. We'll cover that in the scaffolding chapter.
+The scaffolded site has an even more convenient function, widgetFile,
+which will also include your Lucius, Cassius, and Julius files automatically.
+We'll cover that in the scaffolding chapter.
 
 Types
 
-You may have noticed that I've been avoiding type signatures so far. That's because there's a little bit of a complication involved here. At the most basic level, all you need to know is that there's a type synonym called Widget which you will almost always use. The technical details follow, but don't worry if it's a little hazy.
+You may have noticed that I've been avoiding type signatures so far.
+That's because there's a little bit of a complication involved here. At the
+most basic level, all you need to know is that there's a type synonym called
+Widget which you will almost always use. The technical details follow, but
+don't worry if it's a little hazy.
 
-There isn't actually a Widget type defined in the Yesod libraries, since the exact meaning of it changes between sites. Instead, we have a more general type GWidget sub master a. The first two parameters give the sub and master foundation types, respectively. The final parameter is the contained value, just like any Monad has.
+There isn't actually a Widget type defined in the Yesod libraries, since the
+exact meaning of it changes between sites. Instead, we have a more general type
+GWidget sub master a. The first two parameters give the sub and master
+foundation types, respectively. The final parameter is the contained value,
+just like any Monad has.
 
-So what's the deal with that sub/master stuff? Well, when you're writing some reusable code, such as a CRUD application, you can write it as a subsite that can be embedded within any other Yesod application. In such a case, we need to keep track of information for both the sub and master sites. The simplest example is for the type-safe URLs: Yesod needs to know how to take a route for your CRUD subsite and turn it into a route for the master site so that it can be properly rendered.
+So what's the deal with that sub/master stuff? Well, when you're writing some
+reusable code, such as a CRUD application, you can write it as a subsite that
+can be embedded within any other Yesod application. In such a case, we need to
+keep track of information for both the sub and master sites. The simplest
+example is for the type-safe URLs: Yesod needs to know how to take a route for
+your CRUD subsite and turn it into a route for the master site so that it can
+be properly rendered.
 
-However, that sub/master distinction only ever matters when you're interacting with subsites. When you're writing your standard response code, you're dealing with just your application, and so the sub and master sites will be the same. Since this is the most common case, the scaffolded site declares a type synonym to help you out. Let's say your foundation type is MyCoolApp, it will define type Widget = GWidget MyCoolApp MyCoolApp (). Therefore, we can get some very user-friendly type signatures on our widgets:
+However, that sub/master distinction only ever matters when you're interacting
+with subsites. When you're writing your standard response code, you're dealing
+with just your application, and so the sub and master sites will be the same.
+Since this is the most common case, the scaffolded site declares a type synonym
+to help you out. Let's say your foundation type is MyCoolApp, it will define
+type Widget = GWidget MyCoolApp MyCoolApp (). Therefore, we can get some very
+user-friendly type signatures on our widgets:
 
 footer :: Widget
 footer = do
-    toWidget [lucius| footer { font-weight: bold; text-align: center } |]
-    toWidget [hamlet|
-<footer>
-    <p>That's all folks!
-|]
+    toWidget
+        [lucius|
+            footer {
+                font-weight: bold;
+                text-align: center
+            }
+        |]
+    toWidget
+        [hamlet|
+            <footer>
+                <p>That's all folks!
+        |]
 
 page :: Widget
-page = [whamlet|
-<p>This is my page. I hope you enjoyed it.
-^{footer}
-|]
+page =
+    [whamlet|
+        <p>This is my page. I hope you enjoyed it.
+        ^{footer}
+    |]
 
-If you've been paying close attention, you might be confused. We used lift on Widget in the ID generation example above, but GWidget isn't actually a monad transformer. What's going on here? Well, in older versions of Yesod, it was a transformer around the Handler type. Unfortunately, this led to difficult-to-parse error messages. As a result, GWidget is now a newtype wrapper that hides away its monad-transformer essence. But we still want to be able to lift functions from the inner Handler monad.
+If you've been paying close attention, you might be confused. We used lift on
+Widget in the ID generation example above, but GWidget isn't actually a monad
+transformer. What's going on here? Well, in older versions of Yesod, it was a
+transformer around the Handler type. Unfortunately, this led to
+difficult-to-parse error messages. As a result, GWidget is now a newtype
+wrapper that hides away its monad-transformer essence. But we still want to be
+able to lift functions from the inner Handler monad.
 
-To solve this, Yesod provides an alternate, more general lift function that works for both standard MonadTrans instances, and special newtype wrappers like GWidget. As a result, you can pretend like GWidget is a standard transformer, while still getting to keep your nice error message.
+To solve this, Yesod provides an alternate, more general lift function that
+works for both standard MonadTrans instances, and special newtype wrappers like
+GWidget. As a result, you can pretend like GWidget is a standard transformer,
+while still getting to keep your nice error message.
 
-One last point: just like we have the breakdown between Widget and GWidget, we have a similar breakdown between Handler and GHandler.
+One last point: just like we have the breakdown between Widget and GWidget, we
+have a similar breakdown between Handler and GHandler.
 
 Using Widgets
 
-It's all well and good that we have these beautiful Widget datatypes, but how exactly do we turn them into something the user can interact with? The most commonly used function is defaultLayout, which essentially has the type signature Widget -> Handler RepHtml. (I say "essentially" because of the whole GHandler issue.) RepHtml is a datatype containing some raw HTML output ready to be sent over the wire.
+It's all well and good that we have these beautiful Widget datatypes, but how
+exactly do we turn them into something the user can interact with? The most
+commonly used function is defaultLayout, which essentially has the type
+signature Widget -> Handler RepHtml. (I say "essentially" because of the whole
+GHandler issue.) RepHtml is a datatype containing some raw HTML output ready to
+be sent over the wire.
 
-defaultLayout is actually a typeclass method, which can be overridden for each application. This is how Yesod apps are themed. So we're still left with the question: when we're inside defaultLayout, how do we unwrap a Widget? The answer is widgetToPageContent. Let's look at some (simplified) types:
+defaultLayout is actually a typeclass method, which can be overridden for
+each application. This is how Yesod apps are themed. So we're still left with
+the question: when we're inside defaultLayout, how do we unwrap a Widget?
+The answer is widgetToPageContent. Let's look at some (simplified) types:
 
 widgetToPageContent :: Widget -> Handler (PageContent url)
 data PageContent url = PageContent
@@ -215,40 +355,56 @@ data PageContent url = PageContent
     , pageBody :: HtmlUrl url
     }
 
-This is getting closer to what we need. We now have direct access to the HTML making up the head and body, as well as the title. At this point, we can use Hamlet to combine them all together into a single document, along with our site layout, and we use hamletToRepHtml to render that Hamlet result into actual HTML that's ready to be shown to the user. The next figure demonstrates this process.
+This is getting closer to what we need. We now have direct access to the HTML
+making up the head and body, as well as the title. At this point, we can use
+Hamlet to combine them all together into a single document, along with our site
+layout, and we use hamletToRepHtml to render that Hamlet result into actual
+HTML that's ready to be shown to the user. The next figure demonstrates this
+process.
 
 Using widgetToPageContent
 
 myLayout :: GWidget s MyApp () -> GHandler s MyApp RepHtml
 myLayout widget = do
     pc <- widgetToPageContent widget
-    hamletToRepHtml [hamlet|
-$doctype 5
-<html>
-    <head>
-        <title>#{pageTitle pc}
-        <meta charset=utf-8>
-        <style>body { font-family: verdana }
-        ^{pageHead pc}
-    <body>
-        <article>
-            ^{pageBody pc}
-|]
+    hamletToRepHtml
+        [hamlet|
+            $doctype 5
+            <html>
+                <head>
+                    <title>#{pageTitle pc}
+                    <meta charset=utf-8>
+                    <style>body { font-family: verdana }
+                    ^{pageHead pc}
+                <body>
+                    <article>
+                        ^{pageBody pc}
+        |]
 
 instance Yesod MyApp where
     defaultLayout = myLayout
 
 main = warpDebug 3000 MyApp
 
-You may have noticed that we used GWidget and GHandler instead of Widget and Handler. That's because defaultLayout is a method that can be called by subsites to ensure that they get the same styling as the master site. Therefore, we need to keep our types flexible here.
+You may have noticed that we used GWidget and GHandler instead of Widget and
+Handler. That's because defaultLayout is a method that can be called by
+subsites to ensure that they get the same styling as the master site.
+Therefore, we need to keep our types flexible here.
 
-This is all well and good, but there's one thing that bothers me: that style tag. There are a few problems with it:
+This is all well and good, but there's one thing that bothers me: that style
+tag. There are a few problems with it:
 
-* Unlike Lucius or Cassius, it doesn't get compile-time checked for correctness.
-* Granted that the current example is very simple, but in something more complicated we could get into character escaping issues.
-* We'll now have two style tags instead of one: the one produced by myLayout, and the one generated in the pageHead based on the styles set in the widget.
+* Unlike Lucius or Cassius, it doesn't get compile-time checked for
+  correctness.
+* Granted that the current example is very simple, but in something more
+  complicated we could get into character escaping issues.
+* We'll now have two style tags instead of one: the one produced by myLayout,
+  and the one generated in the pageHead based on the styles set in the widget.
 
-We have one more trick in our bag to address this: we apply some last-minute adjustments to the widget itself before calling widgetToPageContent. It's actually very easy to do: we just use do-notation again, as in Last-Minute Widget Adjustment.
+We have one more trick in our bag to address this: we apply some last-minute
+adjustments to the widget itself before calling widgetToPageContent. It's
+actually very easy to do: we just use do-notation again, as in Last-Minute
+Widget Adjustment.
 
 Last-Minute Widget Adjustment
 
@@ -257,17 +413,18 @@ myLayout widget = do
     pc <- widgetToPageContent $ do
         widget
         toWidget [lucius| body { font-family: verdana } |]
-    hamletToRepHtml [hamlet|
-$doctype 5
-<html>
-    <head>
-        <title>#{pageTitle pc}
-        <meta charset=utf-8>
-        ^{pageHead pc}
-    <body>
-        <article>
-            ^{pageBody pc}
-|]
+    hamletToRepHtml
+        [hamlet|
+            $doctype 5
+            <html>
+                <head>
+                    <title>#{pageTitle pc}
+                    <meta charset=utf-8>
+                    ^{pageHead pc}
+                <body>
+                    <article>
+                        ^{pageBody pc}
+        |]
 
 instance Yesod MyApp where
     defaultLayout = myLayout
@@ -276,6 +433,10 @@ main = warpDebug 3000 MyApp
 
 Summary
 
-The basic building block of each page is a widget. Individual snippets of HTML, CSS, and Javascript can be turned into widgets via the polymorphic toWidget function. Using do-notation, you can combine these individual widgets into larger widgets, eventually containing all the content of your page.
+The basic building block of each page is a widget. Individual snippets of HTML,
+CSS, and Javascript can be turned into widgets via the polymorphic toWidget
+function. Using do-notation, you can combine these individual widgets into
+larger widgets, eventually containing all the content of your page.
 
-Unwrapping these widgets is usually performed within the defaultLayout function, which can be used to apply a unified look-and-feel to all your pages.
+Unwrapping these widgets is usually performed within the defaultLayout
+function, which can be used to apply a unified look-and-feel to all your pages.
