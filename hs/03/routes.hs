@@ -1,5 +1,7 @@
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses,
-             TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 import Yesod
 
 data Links = Links
@@ -16,4 +18,4 @@ getHomeR  = defaultLayout [whamlet|<a href=@{Page1R}>Перейти на стр�
 getPage1R = defaultLayout [whamlet|<a href=@{Page2R}>Перейти на страницу 2!|]
 getPage2R = defaultLayout [whamlet|<a href=@{HomeR}>Вернуться к началу!|]
 
-main = warpDebug 3000 Links
+main = warp 3000 Links

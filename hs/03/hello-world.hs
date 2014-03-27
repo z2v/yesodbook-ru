@@ -1,4 +1,6 @@
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 import Yesod
 
 data HelloWorld = HelloWorld
@@ -9,8 +11,8 @@ mkYesod "HelloWorld" [parseRoutes|
 
 instance Yesod HelloWorld
 
-getHomeR :: Handler RepHtml
+getHomeR :: Handler Html
 getHomeR = defaultLayout [whamlet|Здравствуй, Мир!|]
 
 main :: IO ()
-main = warpDebug 3000 HelloWorld
+main = warp 3000 HelloWorld
