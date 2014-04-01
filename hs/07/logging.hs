@@ -8,10 +8,10 @@ import           Yesod
 
 data App = App
 instance Yesod App where
-    -- This function controls which messages are logged
+    -- Эта функция контролирует, какие сообщения протоколировать
     shouldLog App src level =
-        True -- good for development
-        -- level == LevelWarn || level == LevelError -- good for production
+        True -- подходит для разработки
+        -- level == LevelWarn || level == LevelError -- подходит для продуктива
 
 mkYesod "App" [parseRoutes|
 / HomeR GET
@@ -19,16 +19,16 @@ mkYesod "App" [parseRoutes|
 
 getHomeR :: Handler Html
 getHomeR = do
-    $logDebug "Trying to read data file"
+    $logDebug "Пытаемся прочитать файл с данными"
     edata <- liftIO $ try $ readFile "datafile.txt"
     case edata :: Either IOException String of
         Left e -> do
-            $logError $ "Could not read datafile.txt"
-            defaultLayout [whamlet|An error occurred|]
+            $logError $ "Не удалось прочитать файл"
+            defaultLayout [whamlet|Возникла ошибка|]
         Right str -> do
-            $logInfo "Reading of data file succeeded"
+            $logInfo "Файл успешно прочитан"
             let ls = lines str
-            when (length ls < 5) $ $logWarn "Less than 5 lines of data"
+            when (length ls < 5) $ $logWarn "Меньше 5-ти строк данных"
             defaultLayout
                 [whamlet|
                     <ol>
