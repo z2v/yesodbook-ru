@@ -1,4 +1,4 @@
-Forms
+== Forms
 
 I've mentioned the boundary issue already: whenever data enters or leaves an
 application, we need to validate it. Probably the most difficult place this
@@ -23,41 +23,46 @@ API. It builds on top of Yesod's widgets to simplify styling of forms and
 applying Javascript appropriately. And like the rest of Yesod, it uses
 Haskell's type system to make sure everything is working correctly.
 
-Synopsis
+=== Synopsis
 
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, MultiParamTypeClasses,
-    OverloadedStrings, TypeFamilies #-}
-import Yesod
-import Yesod.Form.Jquery
-import Data.Time (Day)
-import Data.Text (Text)
-import Control.Applicative ((<$>), (<*>))
+[source, haskell]
+----
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Control.Applicative ((<$>), (<*>))
+import           Data.Text           (Text)
+import           Data.Time           (Day)
+import           Yesod
+import           Yesod.Form.Jquery
 
-data Synopsis = Synopsis
+data App = App
 
-mkYesod "Synopsis" [parseRoutes|
-/ RootR GET
+mkYesod "App" [parseRoutes|
+/ HomeR GET
 /person PersonR POST
 |]
 
-instance Yesod Synopsis
+instance Yesod App
 
 -- Tells our application to use the standard English messages.
 -- If you want i18n, then you can supply a translating function instead.
-instance RenderMessage Synopsis FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
 -- And tell us where to find the jQuery libraries. We'll just use the defaults,
 -- which point to the Google CDN.
-instance YesodJquery Synopsis
+instance YesodJquery App
 
 -- The datatype we wish to receive from the form
 data Person = Person
-    { personName :: Text
-    , personBirthday :: Day
+    { personName          :: Text
+    , personBirthday      :: Day
     , personFavoriteColor :: Maybe Text
-    , personEmail :: Text
-    , personWebsite :: Maybe Text
+    , personEmail         :: Text
+    , personWebsite       :: Maybe Text
     }
   deriving Show
 
@@ -68,7 +73,8 @@ data Person = Person
 -- discussion regarding runFormGet and runFormPost below for further
 -- explanation.
 --
--- * We have the sub and master site types, as usual.
+-- * We have our Handler as the inner monad, which indicates which site this is
+-- running in.
 --
 -- * FormResult can be in three states: FormMissing (no data available),
 -- FormFailure (invalid data) and FormSuccess
@@ -81,7 +87,7 @@ data Person = Person
 -- > personForm :: Form Person
 --
 -- For our purposes, it's good to see the long version.
-personForm :: Html -> MForm Synopsis Synopsis (FormResult Person, Widget)
+personForm :: Html -> MForm Handler (FormResult Person, Widget)
 personForm = renderDivs $ Person
     <$> areq textField "Name" Nothing
     <*> areq (jqueryDayField def
@@ -93,8 +99,8 @@ personForm = renderDivs $ Person
     <*> aopt urlField "Website" Nothing
 
 -- The GET handler displays the form
-getRootR :: Handler RepHtml
-getRootR = do
+getHomeR :: Handler Html
+getHomeR = do
     -- Generate the form to be displayed
     (widget, enctype) <- generateFormPost personForm
     defaultLayout
@@ -105,12 +111,12 @@ getRootR = do
             <form method=post action=@{PersonR} enctype=#{enctype}>
                 ^{widget}
                 <p>It also doesn't include the submit button.
-                <input type=submit>
+                <button>Submit
         |]
 
 -- The POST handler processes the form. If it is successful, it displays the
 -- parsed person. Otherwise, it displays the form again with error messages.
-postPersonR :: Handler RepHtml
+postPersonR :: Handler Html
 postPersonR = do
     ((result, widget), enctype) <- runFormPost personForm
     case result of
@@ -120,30 +126,30 @@ postPersonR = do
                 <p>Invalid input, let's try again.
                 <form method=post action=@{PersonR} enctype=#{enctype}>
                     ^{widget}
-                    <input type=submit>
+                    <button>Submit
             |]
 
 main :: IO ()
-main = warpDebug 3000 Synopsis
+main = warp 3000 App
+----
 
-Kinds of Forms
+=== Kinds of Forms
 
 Before jumping into the types themselves, we should begin with an overview of
 the different kinds of forms. There are three categories:
 
-Applicative
-These are the most commonly used (it's what appeared in the
+Applicative:: These are the most commonly used (it's what appeared in the
 synopsis). Applicative gives us some nice properties of letting error messages
 coallesce together and keep a very high-level, declarative approach. (For more
-information on applicative code, see the Haskell wiki.)
+information on applicative code, see
+link:http://www.haskell.org/haskellwiki/Applicative_functor[the Haskell
+wiki].)
 
-Monadic
-A more powerful alternative to applicative. While this allows you
+Monadic:: A more powerful alternative to applicative. While this allows you
 more flexibility, it does so at the cost of being more verbose. Useful if you
 want to create forms that don't fit into the standard two-column look.
 
-Input
-Used only for receiving input. Does not generate any HTML for receiving
+Input:: Used only for receiving input. Does not generate any HTML for receiving
 the user input. Useful for interacting with existing forms.
 
 In addition, there are a number of different variables that come into play for
@@ -156,264 +162,192 @@ each form and field you will want to set up:
 An overriding goal is to minimize the number of field definitions and let them
 work in as many contexts as possible. One result of this is that we end up with
 a few extra words for each field. In the synopsis, you may have noticed things
-like areq and that extra Nothing parameter. We'll cover why all of those
+like +areq+ and that extra +Nothing+ parameter. We'll cover why all of those
 exist in the course of this chapter, but for now realize that by making these
 parameters explicit, we are able to reuse the individuals fields (like
-intField) in many different ways.
++intField+) in many different ways.
 
 A quick note on naming conventions. Each form type has a one-letter prefix (A,
-M and I) which is used in a few places, such as saying MForm. We also use req
+M and I) which is used in a few places, such as saying +MForm+. We also use req
 and opt to mean required and optional. Combining these, we create a required
-applicative field with areq, or an optional input field with iopt.
+applicative field with +areq+, or an optional input field with +iopt+.
 
-Types
+=== Types
 
-The Yesod.Form.Types module declares a few types. Let's start off with some
-simple helpers:
+The Yesod.Form.Types module declares a few types. We won't cover all the types
+available, but will instead focus on the most crucial. Let's start with some of
+the simple ones:
 
-Enctype
-The encoding type, either UrlEncoded or Multipart. This datatype
-declares an instance of ToHtml, so you can use the enctype directly in
+Enctype:: The encoding type, either +UrlEncoded+ or +Multipart+. This datatype
+declares an instance of +ToHtml+, so you can use the enctype directly in
 Hamlet.
 
-Env
-Maps a parameter name to a list of values.
-
-FileEnv
-Maps a parameter name to the associated uploaded file.
-
-Ints
-As mentioned in the introduction, yesod-form automatically assigns a unique name to each field. Ints is used to keep track of the next number to assign.
-
-FormResult
-Has one of three possible states: FormMissing if no data was
-submitted, FormFailure if there was an error parsing the form (e.g., missing
-a required field, invalid content), or FormSuccess if everything went
+FormResult:: Has one of three possible states: +FormMissing+ if no data was
+submitted, +FormFailure+ if there was an error parsing the form (e.g., missing
+a required field, invalid content), or +FormSuccess+ if everything went
 smoothly.
 
-Next we have three datatypes used for defining individual fields.
+FormMessage:: Represents all of the different messages that can be generated as
+a data type. For example, +MsgInvalidInteger+ is used by the library to
+indicate that the textual value provided is not an integer. By keeping this
+data highly structured, you are able to provide any kind of rendering function
+you want, which allows for internationalization (i18n) of your application.
 
-A
-field is a single piece of information, such as a number, a string or an email
+Next we have some datatypes used for defining individual fields. We define a
+field as a single piece of information, such as a number, a string, or an email
 address. Fields are combined together to build forms.
 
-Field
-Defines two pieces of functionality: how to parse the text input from a
+Field:: Defines two pieces of functionality: how to parse the text input from a
 user into a Haskell value, and how to create the widget to be displayed to the
-user. yesod-form defines a number of individual Fields in Yesod.Form.Fields.
+user. +yesod-form+ defines a number of individual Fields in Yesod.Form.Fields.
 
-FieldSettings
-Basic information on how a field should be displayed, such as
-the display name, an optional tooltip, and possibly hardcoded id and name
-attributes. (If none are provided, they are automatically generated.)
-
-FieldSettings provides an IsString instance, so when you need to provide a
-FieldSettings value, you can actually type in a literal string. That's how we
+FieldSettings:: Basic information on how a field should be displayed, such as
+the display name, an optional tooltip, and possibly hardcoded +id+ and +name+
+attributes. (If none are provided, they are automatically generated.) Note that
++FieldSettings+ provides an +IsString+ instance, so when you need to provide a
++FieldSettings+ value, you can actually type in a literal string. That's how we
 interacted with it in the synopsis.
 
-FieldView
-An intermediate format containing a bunch of view information on a field. This
-is hardly ever used directly by the user, we'll see more details later.
-
 And finally, we get to the important stuff: the forms themselves. There are
-three types for this: MForm is for monadic forms, AForm for applicative and
-IForm (declared in IForm) for input. MForm is actually a type synonym for a
+three types for this: +MForm+ is for monadic forms, +AForm+ for applicative and
++FormInput+ for input. +MForm+ is actually a type synonym for a
 monad stack that provides the following features:
 
-* A Reader monad giving us the parameters (Env and FileEnv), the master site
-  argument and the list of languages the user supports. The last two
-  are used for i18n (more on this
+* A +Reader+ monad giving us the parameters submitted by the user, the
+  foundation datatype and the list of languages the user supports. The last two
+  are used for rendering of the ++FormMessage++s to support i18n (more on this
   later).
 
-* A Writer monad keeping track of the Enctype. A form will always be
-  UrlEncoded, unless there is a file input field, which will force us to use
+* A +Writer+ monad keeping track of the +Enctype+. A form will always be
+  +UrlEncoded+, unless there is a file input field, which will force us to use
   multipart instead.
 
-* A State monad holding an Ints to keep track of the next unique name to produce.
+* A +State+ monad keeping track of generated names and identifiers for fields.
 
-An AForm is pretty similar. However, there are a few major differences:
+An +AForm+ is pretty similar. However, there are a few major differences:
 
-* It produces a list of FieldViews. This allows us to keep an abstract idea of
-  the form display, and then at the end of the day choose an appropriate
-  function for laying it out on the page. In the synopsis, we used renderDivs,
-  which creates a bunch of div tags. Another option would be
-  renderTable.
+* It produces a list of ++FieldView++s, which are used for tracking what we
+  will display to the user. This allows us to keep an abstract idea of the form
+  display, and then at the end of the day choose an appropriate function for
+  laying it out on the page. In the synopsis, we used +renderDivs+, which
+  creates a bunch of div tags. Two other options are +renderBootstrap+ and
+  +renderTable+.
 
-* It does not provide a Monad instance. The goal of Applicative is to allow
+* It does not provide a +Monad+ instance. The goal of +Applicative+ is to allow
   the entire form to run, grab as much information on each field as possible,
-  and then create the final result. This cannot work in the context of Monad.
+  and then create the final result. This cannot work in the context of +Monad+.
 
-An IForm is even simpler: it returns either a list of error messages or a
+A +FormInput+ is even simpler: it returns either a list of error messages or a
 result.
 
-Converting
+=== Converting
 
-"But wait a minute," you say. "You said the synopsis uses applicative forms,
-but I'm sure the type signature said MForm. Shouldn't it be Monadic?" That's
+``But wait a minute,'' you say. ``You said the synopsis uses applicative forms,
+but I'm sure the type signature said +MForm+. Shouldn't it be Monadic?'' That's
 true, the final form we produced was monadic. But what really happened is that
 we converted an applicative form to a monadic one.
 
 Again, our goal is to reuse code as much as possible, and minimize the number
 of functions in the API. And Monadic forms are more powerful than Applicative,
-if more clumsy, so anything that can be expressed in an Applicative form could
+if a bit clumsy, so anything that can be expressed in an Applicative form could
 also be expressed in a Monadic form. There are two core functions that help out
-with this: aformToForm converts any applicative form to a monadic one, and
-formToAForm converts certain kinds of monadic forms to applicative forms.
+with this: +aformToForm+ converts any applicative form to a monadic one, and
++formToAForm+ converts certain kinds of monadic forms to applicative forms.
 
-"But wait another minute," you insist. "I didn't see any aformToForm!" Also
-true. The renderDivs function takes care of that for us.
+``But wait *another* minute,'' you insist. ``I didn't see any +aformToForm+!''
+Also true. The +renderDivs+ function takes care of that for us.
 
-Create AForms
+=== Create ++AForm++s
 
 Now that I've (hopefully) convinced you that in our synopsis we were really
 dealing with applicative forms, let's have a look and try to understand how
 these things get created. Let's take a simple example:
 
+[source, haskell]
+----
 data Car = Car
     { carModel :: Text
     , carYear  :: Int
     }
   deriving Show
 
-carAForm :: AForm Synopsis Synopsis Car
+carAForm :: AForm Handler Car
 carAForm = Car
     <$> areq textField "Model" Nothing
     <*> areq intField "Year" Nothing
 
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm :: Html -> MForm Handler (FormResult Car, Widget)
 carForm = renderTable carAForm
+----
 
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-Here, we've explicitly split up applicative and monadic forms. In carAForm,
-we use the <$> and <*> operators. This should not be surprising; these are
+Here, we've explicitly split up applicative and monadic forms. In +carAForm+,
+we use the +<$>+ and +<*>+ operators. This should not be surprising; these are
 almost always used in applicative-style code. And we have one line for each
-record in our Car datatype. Perhaps unsurprisingly, we have a
-textField for the Text record, and an intField for the Int record.
+record in our +Car+ datatype. Perhaps also unsurprisingly, we have a
++textField+ for the +Text+ record, and an +intField+ for the +Int+ record.
 
-Let's look a bit more closely at the areq function. Its (simplified) type
-signature is Field a -> FieldSettings -> Maybe a -> AForm a. So that
-first argument is going to determine the datatype of this field, how to parse
-it, and how to render it. The next argument, FieldSettings, tells us the
+Let's look a bit more closely at the +areq+ function. Its (simplified) type
+signature is +Field a -> FieldSettings -> Maybe a -> AForm a+. That
+first argument specifies the datatype of this field, how to parse
+it, and how to render it. The next argument, +FieldSettings+, tells us the
 label, tooltip, name and ID of the field. In this case, we're using the
-previously-mentioned IsString instance of FieldSettings.
+previously-mentioned +IsString+ instance of +FieldSettings+.
 
-And what's up with that Maybe a? It provides the optional default value. For
+And what's up with that +Maybe a+? It provides the optional default value. For
 example, if we want our form to fill in "2007" as the default car year, we
-would use areq intField "Year" (Just 2007). We can even take this to the next
+would use +areq intField "Year" (Just 2007)+. We can even take this to the next
 level, and have a form that takes an optional parameter giving the default
 values.
 
-Form with default values
-
-carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+[source, haskell]
+----
+carAForm :: Maybe Car -> AForm Handler Car
 carAForm mcar = Car
     <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq intField "Year" (carYear <$> mcar)
+    <*> areq intField  "Year"  (carYear  <$> mcar)
+----
 
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable (carAForm $ Just $ Car "Forte" 2010)
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-Optional fields
+==== Optional fields
 
 Suppose we wanted to have an optional field (like the car color). All we do
-instead is use the aopt function.
+instead is use the +aopt+ function.
 
-Optional fields
-
-data Car = Car
-    { carModel :: Text
-    , carYear :: Int
-    , carColor :: Maybe Text
-    }
-  deriving Show
-
-carAForm :: AForm Synopsis Synopsis Car
+[source, haskell]
+----
+carAForm :: AForm Handler Car
 carAForm = Car
     <$> areq textField "Model" Nothing
     <*> areq intField "Year" Nothing
     <*> aopt textField "Color" Nothing
-
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable carAForm
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
+----
 
 And like required fields, the last argument is the optional default value.
-However, this has two layers of Maybe wrapping. This may seem redundant (and it
-is), but it makes it much easier to write code that takes an optional
+However, this has two layers of Maybe wrapping. This is actually a bit
+redundant, but it makes it much easier to write code that takes an optional
 default form parameter, such as in the next example.
 
-Default optional fields
-
-data Car = Car
-    { carModel :: Text
-    , carYear :: Int
-    , carColor :: Maybe Text
-    }
-  deriving Show
-
-carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+[source, haskell]
+----
+carAForm :: Maybe Car -> AForm Handler Car
 carAForm mcar = Car
     <$> areq textField "Model" (carModel <$> mcar)
     <*> areq intField  "Year"  (carYear  <$> mcar)
     <*> aopt textField "Color" (carColor <$> mcar)
 
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
+carForm :: Html -> MForm Handler (FormResult Car, Widget)
 carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
+----
 
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-Validation
+=== Validation
 
 How would we make our form only accept cars created after 1990? If you
-remember, we said above that the Field itself contained the information on
-what is a valid entry. So all we need to do is write a new Field, right?
+remember, we said above that the +Field+ itself contained the information on
+what is a valid entry. So all we need to do is write a new +Field+, right?
 Well, that would be a bit tedious. Instead, let's just modify an existing one:
 
-carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+[source, haskell]
+----
+carAForm :: Maybe Car -> AForm Handler Car
 carAForm mcar = Car
     <$> areq textField    "Model" (carModel <$> mcar)
     <*> areq carYearField "Year"  (carYear  <$> mcar)
@@ -427,56 +361,34 @@ carAForm mcar = Car
     validateYear y
         | y < 1990 = Left errorMessage
         | otherwise = Right y
+----
 
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-The trick here is the check function. It takes a function (validateYear)
+The trick here is the +check+ function. It takes a function (+validateYear+)
 that returns either an error message or a modified field value. In this
 example, we haven't modified the value at all. That is usually going to be the
 case. This kind of checking is very common, so we have a shortcut:
 
+
+[source, haskell]
+----
 carYearField = checkBool (>= 1990) errorMessage intField
+----
 
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-checkBool takes two parameters: a condition that must be fulfilled, and an
++checkBool+ takes two parameters: a condition that must be fulfilled, and an
 error message to be displayed if it was not.
 
-You may have noticed the explicit Text type signature on errorMessage.
-In the presence of OverloadedStrings, this is necessary. In
+NOTE: You may have noticed the explicit +Text+ type signature on
++errorMessage+. In the presence of +OverloadedStrings+, this is necessary. In
 order to support i18n, messages can have many different datatypes, and GHC has
-no way of determining which instance of IsString you intended to use.
+no way of determining which instance of +IsString+ you intended to use.
 
 It's great to make sure the car isn't too old. But what if we want to make sure
 that the year specified is not from the future? In order to look up the current
-year, we'll need to run some IO. For such circumstances, we'll need checkM:
+year, we'll need to run some +IO+. For such circumstances, we'll need +checkM+,
+which allows our validation code to perform arbitrary actions:
 
+[source, haskell]
+----
     carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
 
     inPast y = do
@@ -491,38 +403,25 @@ getCurrentYear = do
     let today = utctDay now
     let (year, _, _) = toGregorian today
     return $ fromInteger year
+----
 
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just "gray"
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-inPast is a function that will return an Either result. However, it uses a Handler
-monad. We use liftIO getCurrentYear to get the current year and then compare
++inPast+ is a function that will return an +Either+ result in the +Handler+
+monad. We use +liftIO getCurrentYear+ to get the current year and then compare
 it against the user-supplied year. Also, notice how we can chain together
 multiple validators.
 
-Since the checkM validator runs in the Handler monad, it has access
+
+NOTE: Since the +checkM+ validator runs in the +Handler+ monad, it has access
 to a lot of the stuff you can normally do in Yesod. This is especially useful
 for running database actions, which we'll cover in the Persistent chapter.
 
-More sophisticated fields
+=== More sophisticated fields
 
 Our color entry field is nice, but it's not exactly user-friendly. What we
 really want is a drop-down list.
 
-Drop-down lists
-
+[source, haskell]
+----
 data Car = Car
     { carModel :: Text
     , carYear :: Int
@@ -533,7 +432,7 @@ data Car = Car
 data Color = Red | Blue | Gray | Black
     deriving (Show, Eq, Enum, Bounded)
 
-carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
+carAForm :: Maybe Car -> AForm Handler Car
 carAForm mcar = Car
     <$> areq textField "Model" (carModel <$> mcar)
     <*> areq carYearField "Year" (carYear <$> mcar)
@@ -541,244 +440,128 @@ carAForm mcar = Car
   where
     colors :: [(Text, Color)]
     colors = [("Red", Red), ("Blue", Blue), ("Gray", Gray), ("Black", Black)]
-    errorMessage :: Text
-    errorMessage = "Your car is too old, get a new one!"
+----
 
-    carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
++selectFieldList+ takes a list of pairs. The first item in the pair is the text displayed to the user in the drop-down list, and the second item is the actual Haskell value. Of course, the code above looks really repetitive; we can get the same result using the Enum and Bounded instance GHC automatically derives for us.
 
-    inPast y = do
-        thisYear <- liftIO getCurrentYear
-        return $ if y <= thisYear
-            then Right y
-            else Left ("You have a time machine!" :: Text)
+[source, haskell]
+----
+colors = map (pack . show &&& id) [minBound..maxBound]
+----
 
-getCurrentYear :: IO Int
-getCurrentYear = do
-    now <- getCurrentTime
-    let today = utctDay now
-    let (year, _, _) = toGregorian today
-    return $ fromInteger year
-
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just Black
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-selectFieldList takes a list of pairs. The first item in the pair is the text displayed to the user in the drop-down list, and the second item is the actual Haskell value. Of course, the code above looks really repetitive; we can get the same result using the Enum and Bounded instance GHC automatically derives for us.
-
-Uses Enum and Bounded
-
-data Car = Car
-    { carModel :: Text
-    , carYear :: Int
-    , carColor :: Maybe Color
-    }
-  deriving Show
-
-data Color = Red | Blue | Gray | Black
-    deriving (Show, Eq, Enum, Bounded)
-
-carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
-carAForm mcar = Car
-    <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq carYearField "Year" (carYear <$> mcar)
-    <*> aopt (selectFieldList colors) "Color" (carColor <$> mcar)
-  where
-    colors = map (pack . show &&& id) $ [minBound..maxBound]
-    errorMessage :: Text
-    errorMessage = "Your car is too old, get a new one!"
-
-    carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
-
-    inPast y = do
-        thisYear <- liftIO getCurrentYear
-        return $ if y <= thisYear
-            then Right y
-            else Left ("You have a time machine!" :: Text)
-
-getCurrentYear :: IO Int
-getCurrentYear = do
-    now <- getCurrentTime
-    let today = utctDay now
-    let (year, _, _) = toGregorian today
-    return $ fromInteger year
-
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just Black
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-[minBound..maxBound] gives us a list of all the different Color values. We
-then apply a map and &&& (a.k.a, the fan-out operator) to turn that into a
++[minBound..maxBound]+ gives us a list of all the different +Color+ values. We
+then apply a +map+ and +&&&+ (a.k.a, the fan-out operator) to turn that into a
 list of pairs.
 
-Some people prefer radio buttons to drop-down lists. Fortunately, this is just a one-word change. For example, see Radio buttons
+Some people prefer radio buttons to drop-down lists. Fortunately, this is just a one-word change.
 
-Radio buttons
+[source, haskell]
+----
+carAForm = Car
+    <$> areq textField               "Model" Nothing
+    <*> areq intField                "Year"  Nothing
+    <*> aopt (radioFieldList colors) "Color" Nothing
+----
 
-data Car = Car
-    { carModel :: Text
-    , carYear :: Int
-    , carColor :: Maybe Color
-    }
-  deriving Show
-
-data Color = Red | Blue | Gray | Black
-    deriving (Show, Eq, Enum, Bounded)
-
-carAForm :: Maybe Car -> AForm Synopsis Synopsis Car
-carAForm mcar = Car
-    <$> areq textField "Model" (carModel <$> mcar)
-    <*> areq carYearField "Year" (carYear <$> mcar)
-    <*> aopt (radioFieldList colors) "Color" (carColor <$> mcar)
-  where
-    colors = map (pack . show &&& id) $ [minBound..maxBound]
-    errorMessage :: Text
-    errorMessage = "Your car is too old, get a new one!"
-
-    carYearField = checkM inPast $ checkBool (>= 1990) errorMessage intField
-
-    inPast y = do
-        thisYear <- liftIO getCurrentYear
-        return $ if y <= thisYear
-            then Right y
-            else Left ("You have a time machine!" :: Text)
-
-getCurrentYear :: IO Int
-getCurrentYear = do
-    now <- getCurrentTime
-    let today = utctDay now
-    let (year, _, _) = toGregorian today
-    return $ fromInteger year
-
-carForm :: Html -> MForm Synopsis Synopsis (FormResult Car, Widget)
-carForm = renderTable $ carAForm $ Just $ Car "Forte" 2010 $ Just Black
-
-getCarR :: Handler RepHtml
-getCarR = do
-    ((result, widget), enctype) <- runFormGet carForm
-    case result of
-        FormSuccess car -> defaultLayout [whamlet|<p>#{show car}|]
-        _ -> defaultLayout [whamlet|
-<form method=get action=@{CarR} enctype=#{enctype}>
-    <table>
-        ^{widget}
-    <input type=submit>
-|]
-
-Running forms
+=== Running forms
 
 At some point, we're going to need to take our beautiful forms and produce some
 results. There are a number of different functions available for this, each
 with its own purpose. I'll go through them, starting with the most common.
 
-runFormPost
-This will run your form against any submitted POST parameters.
-If this is not a POST submission, it will return a FormMissing. This
+runFormPost:: This will run your form against any submitted +POST+ parameters.
+If this is not a +POST+ submission, it will return a +FormMissing+. This
 automatically inserts a security token as a hidden form field to avoid
-CSRF attacks.
+link:http://en.wikipedia.org/wiki/Cross-site_request_forgery[cross-site request
+forgery] (CSRF) attacks.
 
-runFormGet
-Same as runFormPost, for GET parameters. In order to
-distinguish a normal GET page load from a GET submission, it includes an
-extra _hasdata hidden field in the form.
+runFormGet:: The equivalent of +runFormPost+ for GET parameters. In order to
+distinguish a normal +GET+ page load from a +GET+ submission, it includes an
+extra +_hasdata+ hidden field in the form. Unlike runFormPost, it does
+not include CSRF protection.
 
-runFormPostNoNonce
-Same as runFormPost, but does not include (or require)
+runFormPostNoToken:: Same as +runFormPost+, but does not include (or require)
 the CSRF security token.
 
-generateFormPost
-Instead of binding to existing POST parameters, acts as if
+generateFormPost:: Instead of binding to existing +POST+ parameters, acts as if
 there are none. This can be useful when you want to generate a new form after a
 previous form was submitted, such as in a wizard.
 
-generateFormGet
-Same as generateFormPost, but for GET.
+generateFormGet:: Same as +generateFormPost+, but for +GET+.
 
-The return type from the first three is ((FormResult a, Widget), Enctype).
-The Widget will already have any validation errors and previously submitted
+The return type from the first three is +((FormResult a, Widget), Enctype)+.
+The +Widget+ will already have any validation errors and previously submitted
 values.
 
-i18n
+=== i18n
 
 There have been a few references to i18n in this chapter. The topic will get
 more thorough coverage in its own chapter, but since it has such a profound
-effect on yesod-form, I wanted to give a brief overview. The idea behind i18n
+effect on +yesod-form+, I wanted to give a brief overview. The idea behind i18n
 in Yesod is to have data types represent messages. Each site can have an
-instance of RenderMessage for a given datatype which will translate that
+instance of +RenderMessage+ for a given datatype which will translate that
 message based on a list of languages the user accepts. As a result of all this,
 there are a few things you should be aware of:
 
-* There is an automatic instance of RenderMessage for Text in every site,
+* There is an automatic instance of +RenderMessage+ for +Text+ in every site,
   so you can just use plain strings if you don't care about i18n support.
   However, you may need to use explicit type signatures occassionally.
 
-* yesod-form expresses all of its messages in terms of the FormMessage datatype. Therefore, to use yesod-form, you'll need to have an appropriate RenderMessage instance. A simple one that uses the default English translations would be:
-
-
-instance RenderMessage MyApp FormMessage where
+*  +yesod-form+ expresses all of its messages in terms of the +FormMessage+ datatype. Therefore, to use +yesod-form+, you'll need to have an appropriate +RenderMessage+ instance. A simple one that uses the default English translations would be:
+[source, haskell]
+----
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
+----
 
 This is provided automatically by the scaffolded site.
 
-Monadic Forms
+=== Monadic Forms
 
 Often times, a simple form layout is adequate, and applicative forms excel at
 this approach. Sometimes, however, you'll want to have a more customized look
 to your form.
 
-A non-standard form layout
+[[monadic-x-4]]
+
+.A non-standard form layout
+image::images/monadic-form.png[]
 
 For these use cases, monadic forms fit the bill. They are a bit more verbose
 than their applicative cousins, but this verbosity allows you to have complete
 control over what the form will look like. In order to generate the form above,
 we could code something like this.
 
-{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
-             TemplateHaskell, MultiParamTypeClasses #-}
 
-import Yesod
-import Control.Applicative
-import Data.Text (Text)
+[source, haskell]
+----
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Control.Applicative
+import           Data.Text           (Text)
+import           Yesod
 
-data MFormExample = MFormExample
+data App = App
 
-mkYesod "MFormExample" [parseRoutes|
-/ RootR GET
+mkYesod "App" [parseRoutes|
+/ HomeR GET
 |]
 
-instance Yesod MFormExample
+instance Yesod App
 
-instance RenderMessage MFormExample FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
 data Person = Person
     { personName :: Text
-    , personAge :: Int
+    , personAge  :: Int
     }
     deriving Show
 
-personForm :: Html -> MForm MFormExample MFormExample (FormResult Person, Widget)
+personForm :: Html -> MForm Handler (FormResult Person, Widget)
 personForm extra = do
     (nameRes, nameView) <- mreq textField "this is not used" Nothing
     (ageRes, ageView) <- mreq intField "neither is this" Nothing
@@ -799,11 +582,11 @@ personForm extra = do
                     ^{fvInput ageView}
                     \ years old. #
                     <input type=submit value="Introduce myself">
-                |]
+            |]
     return (personRes, widget)
 
-getRootR :: Handler RepHtml
-getRootR = do
+getHomeR :: Handler Html
+getHomeR = do
     ((res, widget), enctype) <- runFormGet personForm
     defaultLayout
         [whamlet|
@@ -813,50 +596,54 @@ getRootR = do
         |]
 
 main :: IO ()
-main = warpDebug 3000 MFormExample
+main = warp 3000 App
+----
 
-Similar to the applicative areq, we use mreq for monadic forms. (And yes,
-there's also mopt for optional fields.) But there's a big difference: mreq
+Similar to the applicative +areq+, we use +mreq+ for monadic forms. (And yes,
+there's also +mopt+ for optional fields.) But there's a big difference: +mreq+
 gives us back a pair of values. Instead of hiding away the FieldView value and
-automatically inserting it into a widget, we get the control to insert it as
+automatically inserting it into a widget, we have the ability to insert it as
 we see fit.
 
-FieldView has a number of pieces of information. The most important is
-fvInput, which is the actual form field. In this example, we also use fvId,
-which gives us back the HTML id attribute of the input tag. In our example,
++FieldView+ has a number of pieces of information. The most important is
++fvInput+, which is the actual form field. In this example, we also use +fvId+,
+which gives us back the HTML +id+ attribute of the input tag. In our example,
 we use that to specify the width of the field.
 
-You might be wondering what the story is with the "this is not used" and
-"neither is this" values. mreq takes a FieldSettings as its second
-argument.  Since FieldSettings provides an IsString instance, the strings
+You might be wondering what the story is with the ``this is not used'' and
+``neither is this'' values. +mreq+ takes a +FieldSettings+ as its second
+argument. Since +FieldSettings+ provides an +IsString+ instance, the strings
 are essentially expanded by the compiler to:
 
+[source, haskell]
+----
 fromString "this is not used" == FieldSettings
     { fsLabel = "this is not used"
     , fsTooltip = Nothing
     , fsId = Nothing
     , fsName = Nothing
-    , fsClass = []
+    , fsAttrs = []
     }
+----
 
-In the case of applicative forms, the fsLabel and fsTooltip values are used
+In the case of applicative forms, the +fsLabel+ and +fsTooltip+ values are used
 when constructing your HTML. In the case of monadic forms, Yesod does not
-generate any of the "wrapper" HTML for you, and therefore these values are
-ignored. However, we still keep the FieldSettings parameter to allow you to
-override the id and name attributes of your fields if desired.
+generate any of the ``wrapper'' HTML for you, and therefore these values are
+ignored. However, we still keep the +FieldSettings+ parameter to allow you to
+override the +id+ and +name+ attributes of your fields if desired.
 
-The other interesting bit is the extra value. GET forms include an extra
-field to indicate that they have been submitted, and POST forms include a
-security tokens to prevent CSRF attacks. If you don't include this extra hidden
-field in your form, Yesod will not accept it.
+The other interesting bit is the +extra+ value. +GET+ forms include an extra
+field to indicate that they have been submitted, and +POST+ forms include a
+security token to prevent CSRF attacks. If you don't include this extra hidden
+field in your form, the form submission will fail.
 
-Other than that, things are pretty straight-forward. We create our personRes
-value by combining together the nameRes and ageRes values, and then return
-a tuple of the person and the widget. And in the getRootR function,
+Other than that, things are pretty straight-forward. We create our +personRes+
+value by combining together the +nameRes+ and +ageRes+ values, and then return
+a tuple of the person and the widget. And in the +getHomeR+ function,
 everything looks just like an applicative form. In fact, you could swap out our
 monadic form with an applicative one and the code would still work.
 
-Input forms
+=== Input forms
 
 Applicative and monadic forms handle both the generation of your HTML code and
 the parsing of user input. Sometimes, you only want to do the latter, such as
@@ -866,10 +653,10 @@ forms.
 
 These work mostly the same as applicative and monadic forms, with some differences:
 
-* You use runInputPost and runInputGet.
+* You use +runInputPost+ and +runInputGet+.
 
-* You use ireq and iopt. These functions now only take two arguments: the
-  field type and the name (i.e., HTML name attribute) of the field in
+* You use +ireq+ and +iopt+. These functions now only take two arguments: the
+  field type and the name (i.e., HTML +name+ attribute) of the field in
   question.
 
 * After running a form, it returns the value. It doesn't return a widget or an
@@ -884,42 +671,49 @@ applicative or monadic form, you will be brought back to the same page, with
 your previously entered values in the form, and an error message explaning what
 you need to correct. With input forms, the user simply gets an error message.
 
-{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
-             TemplateHaskell, MultiParamTypeClasses #-}
+[source, haskell]
+----
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Control.Applicative
+import           Data.Text           (Text)
+import           Yesod
 
-import Yesod
-import Control.Applicative
-import Data.Text (Text)
+data App = App
 
-data Input = Input
-
-mkYesod "Input" [parseRoutes|
-/ RootR GET
+mkYesod "App" [parseRoutes|
+/ HomeR GET
 /input InputR GET
 |]
 
-instance Yesod Input
+instance Yesod App
 
-instance RenderMessage Input FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
-data Person = Person { personName :: Text, personAge :: Int }
+data Person = Person
+    { personName :: Text
+    , personAge  :: Int
+    }
     deriving Show
 
-getRootR :: Handler RepHtml
-getRootR = defaultLayout
+getHomeR :: Handler Html
+getHomeR = defaultLayout
     [whamlet|
         <form action=@{InputR}>
             <p>
-                My name is #
+                My name is
                 <input type=text name=name>
-                \ and I am #
+                and I am
                 <input type=text name=age>
-                \ years old. #
+                years old.
                 <input type=submit value="Introduce myself">
     |]
 
-getInputR :: Handler RepHtml
+getInputR :: Handler Html
 getInputR = do
     person <- runInputGet $ Person
                 <$> ireq textField "name"
@@ -927,14 +721,15 @@ getInputR = do
     defaultLayout [whamlet|<p>#{show person}|]
 
 main :: IO ()
-main = warpDebug 3000 Input
+main = warp 3000 App
+----
 
-Custom fields
+=== Custom fields
 
 The fields that come built-in with Yesod will likely cover the vast majority of
 your form needs. But occassionally, you'll need something more specialized.
-Fortunately, you can create new forms in Yesod yourself. The Field datatype has
-two records: fieldParse takes a list of values submitted by the user and
+Fortunately, you can create new forms in Yesod yourself. The +Field+ constructor
+has three values: +fieldParse+ takes a list of values submitted by the user and
 returns one of three results:
 
 * An error message saying validation failed.
@@ -943,54 +738,64 @@ returns one of three results:
 
 * Nothing, indicating that no data was supplied.
 
-That last case might sound surprising: shouldn't Yesod
+That last case might sound surprising. It would seem that Yesod can
 automatically know that no information is supplied when the input list is
-empty? Well, no actually.
-Checkboxes, for instance, indicate an unchecked state by sending
+empty. But in reality, for some field types, the lack of any input is actually
+valid input. Checkboxes, for instance, indicate an unchecked state by sending
 in an empty list.
 
-Also, what's up with the list? Shouldn't it be a Maybe? Well, that's also not the
+Also, what's up with the list? Shouldn't it be a +Maybe+? That's also not the
 case. With grouped checkboxes and multi-select lists, you'll have multiple
 widgets with the same name. We also use this trick in our example below.
 
-The second record is fieldView, and it renders a widget to display to the
-user. This function has four arguments: the id attribute, the name attribute,
-the result and a Bool indicating if the field is required.
+The second value in the constructor is +fieldView+, and it renders a widget to display to the
+user. This function has the following arguments:
 
-What did I mean by result? It's actually an Either, giving either the unparsed
-input (when parsing failed) or the successfully parsed value. intField is a
-great example of how this works. If you type in 42, the value of result
-will be Right 42. But if you type in turtle, the result will be Left
-"turtle". This lets you put in a value attribute on your input tag that will
+. The +id+ attribute.
+. The +name+ attribute.
+. Any other arbitrary attributes.
+
+. The result, given as an +Either+ value. This will provide either the unparsed
+input (when parsing failed) or the successfully parsed value. +intField+ is a
+great example of how this works. If you type in **`42`**, the value of result
+will be +Right 42+. But if you type in **`turtle`**, the result will be +Left
+"turtle"+. This lets you put in a value attribute on your input tag that will
 give the user a consistent experience.
 
-As a small example, we'll create a new field type that is a password confirm
+. A +Bool+ indicating if the field is required.
+
+The final value in the constructor is +fieldEnctype+. If you're dealing with
+file uploads, this should be +Multipart+; otherwise, it should be +UrlEncoded+.
+
+As a small example, let's create a new field type that is a password confirm
 field. This field has two text inputs- both with the same name attribute- and
 returns an error message if the values don't match. Note that, unlike most
-fields, it does not provide a value attribute on the input tags, as you don't
-want to send back a user-entered password in your HTML ever.
+fields, it does _not_ provide a value attribute on the input tags, as you don't
+want to send back a user-entered password in your HTML *ever*.
 
 
-
-passwordConfirmField :: Field sub master Text
+[source, haskell]
+----
+passwordConfirmField :: Field Handler Text
 passwordConfirmField = Field
-    { fieldParse = \rawVals ->
+    { fieldParse = \rawVals _fileVals ->
         case rawVals of
             [a, b]
                 | a == b -> return $ Right $ Just a
                 | otherwise -> return $ Left "Passwords don't match"
             [] -> return $ Right Nothing
             _ -> return $ Left "You must enter two values"
-    , fieldView = \idAttr nameAttr _ eResult isReq ->
+    , fieldView = \idAttr nameAttr otherAttrs eResult isReq ->
         [whamlet|
-            <input id=#{idAttr} name=#{nameAttr} type=password>
+            <input id=#{idAttr} name=#{nameAttr} *{otherAttrs} type=password>
             <div>Confirm:
-            <input id=#{idAttr}-confirm name=#{nameAttr} type=password>
+            <input id=#{idAttr}-confirm name=#{nameAttr} *{otherAttrs} type=password>
         |]
+    , fieldEnctype = UrlEncoded
     }
 
-getRootR :: Handler RepHtml
-getRootR = do
+getHomeR :: Handler Html
+getHomeR = do
     ((res, widget), enctype) <- runFormGet $ renderDivs
         $ areq passwordConfirmField "Password" Nothing
     defaultLayout
@@ -999,21 +804,109 @@ getRootR = do
             <form enctype=#{enctype}>
                 ^{widget}
                 <input type=submit value="Change password">
-    |]
-main :: IO ()
-main = warpDebug 3000 Password
+        |]
+----
 
-Summary
+=== Values that don't come from the user
+
+Imagine you're writing a blog hosting web app, and you want to have a form for
+users to enter a blog post. A blog post will consist of four pieces of
+information:
+
+* Title
+* HTML contents
+* User ID of the author
+* Publication date
+
+We want the user to enter the first two values, but not the second two. User ID
+should be determined automatically by authenticating the user (a topic we
+haven't covered yet), and the publication date should just be the current time.
+The question is, how do we keep our simple applicative form syntax, and yet
+pull in values that don't come from the user?
+
+The answer is two separate helper functions:
+
+* +pure+ allows us to wrap up a plain value as an applicative form value.
+* +lift+ allows us to run arbitrary +Handler+ actions inside an applicative form.
+
+Let's see an example of using these two functions:
+
+[source, haskell]
+----
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+module Case where
+
+import           Control.Applicative
+import           Data.Text           (Text)
+import           Data.Time
+import           Yesod
+
+-- In the authentication chapter, we'll address this properly
+newtype UserId = UserId Int
+    deriving Show
+
+data App = App
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET POST
+|]
+
+instance Yesod App
+
+instance RenderMessage App FormMessage where
+    renderMessage _ _ = defaultFormMessage
+
+type Form a = Html -> MForm Handler (FormResult a, Widget)
+
+data Blog = Blog
+    { blogTitle    :: Text
+    , blogContents :: Textarea
+    , blogUser     :: UserId
+    , blogPosted   :: UTCTime
+    }
+    deriving Show
+
+form :: UserId -> Form Blog
+form userId = renderDivs $ Blog
+    <$> areq textField "Title" Nothing
+    <*> areq textareaField "Contents" Nothing
+    <*> pure userId
+    <*> lift (liftIO getCurrentTime)
+
+getHomeR :: Handler Html
+getHomeR = do
+    let userId = UserId 5 -- again, see the authentication chapter
+    ((res, widget), enctype) <- runFormPost $ form userId
+    defaultLayout
+        [whamlet|
+            <p>Previous result: #{show res}
+            <form method=post action=@{HomeR} enctype=#{enctype}>
+                ^{widget}
+                <input type=submit>
+        |]
+
+postHomeR :: Handler Html
+postHomeR = getHomeR
+
+main :: IO ()
+main = warp 3000 App
+----
+
+=== Summary
 
 Forms in Yesod are broken up into three groups. Applicative is the most common,
 as it provides a nice user interface with an easy-to-use API. Monadic forms
 give you more power, but are harder to use. Input forms are intended when you
 just want to read data from the user, not generate the input widgets.
 
-There are a number of different Fields provided by Yesod out-of-the-box. In
+There are a number of different ++Field++s provided by Yesod out-of-the-box. In
 order to use these in your forms, you need to indicate the kind of form and
 whether the field is required or optional. The result is six helper functions:
-areq, aopt, mreq, mopt, ireq, and iopt.
++areq+, +aopt+, +mreq+, +mopt+, +ireq+, and +iopt+.
 
 Forms have significant power available. They can automatically insert
 Javascript to help you leverage nicer UI controls, such as a jQuery UI date
