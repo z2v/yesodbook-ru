@@ -70,6 +70,7 @@ HACKAGES = \
 	sphinx \
 	wai-eventsource \
 	markdown \
+	pool-conduit \
 	xml2html \
 	xml-hamlet
 

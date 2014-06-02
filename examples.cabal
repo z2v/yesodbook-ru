@@ -378,6 +378,7 @@ executable 18-blog
                      , persistent-sqlite
                      , yesod
                      , http-conduit
+                     , http-client
                      , text
                      , yesod-auth
                      , yesod-form

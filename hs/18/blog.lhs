@@ -16,7 +16,7 @@
 \begin{code}
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, GADTs, FlexibleContexts,
-             MultiParamTypeClasses #-}
+             MultiParamTypeClasses, DeriveDataTypeable #-}
 \end{code}
 
 Теперь импорт.
@@ -25,16 +25,17 @@
 import Yesod
 import Yesod.Auth
 import Yesod.Form.Nic (YesodNic, nicHtmlField)
-import Yesod.Auth.BrowserId (authBrowserId)
+import Yesod.Auth.BrowserId (authBrowserId, def)
 import Data.Text (Text)
-import Network.HTTP.Conduit (Manager, newManager, def)
+import Network.HTTP.Client (defaultManagerSettings)
+import Network.HTTP.Conduit (Manager, newManager)
 import Database.Persist.Sqlite
-    ( ConnectionPool, SqlPersist, runSqlPool, runMigration
-    , createSqlitePool
+    ( ConnectionPool, SqlPersistT, runSqlPool, runMigration
+    , createSqlitePool, runSqlPersistMPool
     )
 import Data.Time (UTCTime, getCurrentTime)
 import Control.Applicative ((<$>), (<*>), pure)
-import Control.Monad.Logger (runNoLoggingT)
+import Data.Typeable (Typeable)
 \end{code}%$
 
 Сначала мы настроим наши сущности Persistent. Мы создадим наши типы данных
@@ -53,20 +54,19 @@ User
    email Text
    UniqueUser email
 \end{code}
+Чтобы работало кэширование из пакета \texttt{yesod-auth}, наш
+тип~\lstinline{User} должен быть экземпляром класса~\lstinline{Typeable}.
+\begin{code}
+   deriving Typeable
+\end{code}
 
-Запись в блоге.
+Отдельная запись в блоге (я не пользуюсь словом <<пост>>, чтобы избежать
+путаницы с методом POST отправки запроса).
 \begin{code}
 Entry
    title Text
    posted UTCTime
    content Html
-\end{code}
-Мы должны добавить \lstinline!deriving!, поскольку \lstinline!Html! не
-определяет экземпляры для \lstinline!Read!, \lstinline!Show! или
-\lstinline!Eq!. Если вы получаете сообщение об ошибке <<cannot derive>> в своём
-собственном коде, попробуйте добавить \lstinline!deriving!.
-\begin{code}
-   deriving
 \end{code}
 
 И комментарий к записи.
@@ -116,10 +116,10 @@ mkMessage "Blog" "hs/18/messages-blog" "en"
 
 \begin{code}
 mkYesod "Blog" [parseRoutes|
-/ RootR GET
-/blog BlogR GET POST
-/blog/#EntryId EntryR GET POST
-/auth AuthR Auth getAuth
+/               HomeR   GET
+/blog           BlogR   GET   POST
+/blog/#EntryId  EntryR  GET   POST
+/auth           AuthR   Auth  getAuth
 |]
 \end{code}
 
@@ -225,7 +225,7 @@ textarea {
 (заголовок, содержимое тегов \lstinline!<head>! и \lstinline!<body>!) в
 конечный результат.
 \begin{code}
-        hamletToRepHtml [hamlet|
+        giveUrlRenderer [hamlet|
 $doctype 5
 <html>
     <head>
@@ -252,7 +252,7 @@ isAdmin user = userEmail user == "michael@snoyman.com"
 выполнять действия.
 \begin{code}
 instance YesodPersist Blog where
-   type YesodPersistBackend Blog = SqlPersist
+   type YesodPersistBackend Blog = SqlPersistT
    runDB f = do
        master <- getYesod
        let pool = connPool master
@@ -262,7 +262,7 @@ instance YesodPersist Blog where
 Это синоним типа для удобства. Он определяется автоматически при генерации
 шаблона сайта.
 \begin{code}
-type Form x = Html -> MForm Blog Blog (FormResult x, Widget)
+type Form x = Html -> MForm Handler (FormResult x, Widget)
 \end{code}
 
 Для использования yesod-form и yesod-auth нам нужен экземпляр
@@ -283,17 +283,18 @@ instance YesodNic Blog
 \begin{code}
 instance YesodAuth Blog where
     type AuthId Blog = UserId
-    loginDest _ = RootR
-    logoutDest _ = RootR
+    loginDest _ = HomeR
+    logoutDest _ = HomeR
     authHttpManager = httpManager
 \end{code}
 
-Мы будем использовать систему \footnotehref{https://browserid.org/}{BrowserID},
+Мы будем использовать систему \footnotehref{https://browserid.org/}{BrowserID}
+(также известную как Mozilla Persona),
 использующую адрес электронной почты в качестве вашего идентификатора. Это
 позволит в будущем легко перейти на другие системы для локально
 аутентифицируемых адресов электронной почты (также входит в yesod-auth).
 \begin{code}
-    authPlugins _ = [authBrowserId]
+    authPlugins _ = [authBrowserId def]
 \end{code}
 
 Эта функция принимает регистрационные данные пользователя (то есть, адрес
@@ -311,8 +312,8 @@ instance YesodAuth Blog where
 заголовке страницы. Мы также используем это сообщение с
 \lstinline'`_{Msg...}`'-интерполяцией в Hamlet.
 \begin{code}
-getRootR :: Handler RepHtml
-getRootR = defaultLayout $ do
+getHomeR :: Handler Html
+getHomeR = defaultLayout $ do
     setTitleI MsgHomepageTitle
     [whamlet|
 <p>_{MsgWelcomeHomepage}
@@ -324,18 +325,26 @@ getRootR = defaultLayout $ do
 Определяем форму для добавления новых записей. Мы хотим, чтобы пользователь
 заполнил заголовок и содержание, а дату создания записи заполним автоматически
 с помощью \lstinline'`getCurrentTime`'.
+
+Обратите внимание на странноватую манеру выполнения действий ввода/вывода:
+\lstinline!lift (liftIO getCurrentTime)!. Причина: аппликативные формы не
+являются монадами и поэтому не могут быть экземплярами класса~\lstinline{MonadIO}.
+Вместо этого, мы используем \lstinline!lift!, чтобы выполнить действие в нижележащей
+монаде~\lstinline{Handler}, и~\lstinline{liftIO}, чтобы конвертировать действие
+ввода/вывода в действие~\lstinline{Handler}.
+
 \begin{code}
 entryForm :: Form Entry
 entryForm = renderDivs $ Entry
     <$> areq textField (fieldSettingsLabel MsgNewEntryTitle) Nothing
-    <*> aformM (liftIO getCurrentTime)
+    <*> lift (liftIO getCurrentTime)
     <*> areq nicHtmlField (fieldSettingsLabel MsgNewEntryContent) Nothing
 \end{code}
 
 Получаем список всех записей и для администратора отображаем форму создания
 новой записи.
 \begin{code}
-getBlogR :: Handler RepHtml
+getBlogR :: Handler Html
 getBlogR = do
     muser <- maybeAuth
     entries <- runDB $ selectList [] [Desc EntryPosted]
@@ -375,7 +384,7 @@ $nothing
 пользователя на эту запись. В противном случае мы просим пользователя
 попробовать ещё раз.
 \begin{code}
-postBlogR :: Handler RepHtml
+postBlogR :: Handler Html
 postBlogR = do
     ((res, entryWidget), enctype) <- runFormPost entryForm
     case res of
@@ -401,8 +410,8 @@ postBlogR = do
 commentForm :: EntryId -> Form Comment
 commentForm entryId = renderDivs $ Comment
     <$> pure entryId
-    <*> aformM (liftIO getCurrentTime)
-    <*> aformM requireAuthId
+    <*> lift (liftIO getCurrentTime)
+    <*> lift requireAuthId
     <*> areq textField (fieldSettingsLabel MsgCommentName) Nothing
     <*> areq textareaField (fieldSettingsLabel MsgCommentText) Nothing
 \end{code}
@@ -410,7 +419,7 @@ commentForm entryId = renderDivs $ Comment
 Показываем отдельную запись, комментарии и, для зарегистрированных
 пользователей, форму добавления комментария.
 \begin{code}
-getEntryR :: EntryId -> Handler RepHtml
+getEntryR :: EntryId -> Handler Html
 getEntryR entryId = do
     (entry, comments) <- runDB $ do
         entry <- get404 entryId
@@ -449,7 +458,7 @@ getEntryR entryId = do
 
 Получаем добавляемый комментарий.
 \begin{code}
-postEntryR :: EntryId -> Handler RepHtml
+postEntryR :: EntryId -> Handler Html
 postEntryR entryId = do
     ((res, commentWidget), enctype) <-
         runFormPost (commentForm entryId)
@@ -475,9 +484,9 @@ main = do
     -- создаём новый пул
     pool <- createSqlitePool "blog.db3" 10
     -- выполняем необходимую миграцию
-    runNoLoggingT $ runSqlPool (runMigration migrateAll) pool
+    runSqlPersistMPool (runMigration migrateAll) pool
     -- создаём новый менеджер HTTP
-    manager <- newManager def
+    manager <- newManager defaultManagerSettings
     -- запускаем наш сервер
-    warpDebug 3000 $ Blog pool manager
+    warp 3000 $ Blog pool manager
 \end{code}
