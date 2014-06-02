@@ -1,10 +1,17 @@
 Blog: i18n, authentication, authorization, and database
 
-This is a simple blog app. It allows an admin to add blog posts via a rich text editor (nicedit), allows logged-in users to comment, and has full i18n support. It is also a good example of using a POersistent database, leveraging Yesod's authorization system, and templates.
+This is a simple blog app. It allows an admin to add blog posts via a rich text
+editor (nicedit), allows logged-in users to comment, and has full i18n support.
+It is also a good example of using a Persistent database, leveraging Yesod's
+authorization system, and templates.
 
-While in general we recommend placing templates, Persist entity definitions, and routing in separate files, we'll keep it all in one file here for convenience. The one exception you'll see below will be i18n messages.
+While in general we recommend placing templates, Persist entity definitions,
+and routing in separate files, we'll keep it all in one file here for
+convenience. The one exception you'll see below will be i18n messages.
 
-We'll start off with our language extensions. In scaffolded code, the language extensions are specified in the cabal file, so you won't need to put this in your individual Haskell files.
+We'll start off with our language extensions. In scaffolded code, the language
+extensions are specified in the cabal file, so you won't need to put this in
+your individual Haskell files.
 
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, GADTs, FlexibleContexts,
@@ -25,24 +32,31 @@ import Database.Persist.Sqlite
 import Data.Time (UTCTime, getCurrentTime)
 import Control.Applicative ((<$>), (<*>), pure)
 
-First we'll set up our Persistent entities. We're going to both create our data types (via mkPersist) and create a migration function, which will automatically create and update our SQL schema. If you were using the MongoDB backend, migration would not be needed.
+First we'll set up our Persistent entities. We're going to both create our data
+types (via mkPersist) and create a migration function, which will automatically
+create and update our SQL schema. If you were using the MongoDB backend,
+migration would not be needed.
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
-Keeps track of users. In a more robust application, we would also keep account creation date, display name, etc.
+Keeps track of users. In a more robust application, we would also keep account
+creation date, display name, etc.
 
 User
    email Text
    UniqueUser email
 
-An individual blog entry (I've avoided using the word "post" due to the confusion with the request method POST).
+An individual blog entry (I've avoided using the word "post" due to the
+confusion with the request method POST).
 
 Entry
    title Text
    posted UTCTime
    content Html
 
-We need to tack on this "deriving" line since Html doesn't specify instances for Read, Show or Eq. If you get an error message about "cannot derive" in your own code, try adding the deriving statement.
+We need to tack on this "deriving" line since Html doesn't specify instances
+for Read, Show or Eq. If you get an error message about "cannot derive" in your
+own code, try adding the deriving statement.
 
    deriving
 
@@ -56,62 +70,75 @@ Comment
    text Textarea
 |]
 
-Every site has a foundation datatype. This value is initialized before launching your application, and is available throughout. We'll store a database connection pool and HTTP connection manager in ours. See the very end of this file for how those are initialized.
+Every site has a foundation datatype. This value is initialized before
+launching your application, and is available throughout. We'll store a database
+connection pool and HTTP connection manager in ours. See the very end of this
+file for how those are initialized.
 
 data Blog = Blog
-   { connPool :: ConnectionPool
+   { connPool    :: ConnectionPool
    , httpManager :: Manager
    }
 
-To make i18n easy and translator friendly, we have a special file format for translated messages. There is a single file for each language, and each file is named based on the language code (e.g., en, es, de-DE) and placed in that folder. We also specify the main language file (here, "en") as a default language.
+To make i18n easy and translator friendly, we have a special file format for
+translated messages. There is a single file for each language, and each file is
+named based on the language code (e.g., en, es, de-DE) and placed in that
+folder. We also specify the main language file (here, "en") as a default
+language.
 
 mkMessage "Blog" "../messages-blog" "en"
 
 Our en message file contains the following content:
 
-    NotAnAdmin: You must be an administrator to access this page.
+NotAnAdmin: You must be an administrator to access this page.
 
-    WelcomeHomepage: Welcome to the homepage
-    SeeArchive: See the archive
+WelcomeHomepage: Welcome to the homepage
+SeeArchive: See the archive
 
-    NoEntries: There are no entries in the blog
-    LoginToPost: Admins can login to post
-    NewEntry: Post to blog
-    NewEntryTitle: Title
-    NewEntryContent: Content
+NoEntries: There are no entries in the blog
+LoginToPost: Admins can login to post
+NewEntry: Post to blog
+NewEntryTitle: Title
+NewEntryContent: Content
 
-    PleaseCorrectEntry: Your submitted entry had some errors, please correct and try again.
-    EntryCreated title@Text: Your new blog post, #{title}, has been created
+PleaseCorrectEntry: Your submitted entry had some errors, please correct and try again.
+EntryCreated title@Text: Your new blog post, #{title}, has been created
 
-    EntryTitle title@Text: Blog post: #{title}
-    CommentsHeading: Comments
-    NoComments: There are no comments
-    AddCommentHeading: Add a Comment
-    LoginToComment: You must be logged in to comment
-    AddCommentButton: Add comment
+EntryTitle title@Text: Blog post: #{title}
+CommentsHeading: Comments
+NoComments: There are no comments
+AddCommentHeading: Add a Comment
+LoginToComment: You must be logged in to comment
+AddCommentButton: Add comment
 
-    CommentName: Your display name
-    CommentText: Comment
-    CommentAdded: Your comment has been added
-    PleaseCorrectComment: Your submitted comment had some errors, please correct and try again.
+CommentName: Your display name
+CommentText: Comment
+CommentAdded: Your comment has been added
+PleaseCorrectComment: Your submitted comment had some errors, please correct and try again.
 
-    HomepageTitle: Yesod Blog Demo
-    BlogArchiveTitle: Blog Archive
+HomepageTitle: Yesod Blog Demo
+BlogArchiveTitle: Blog Archive
 
-Now we're going to set up our routing table. We have four entries: a homepage, an entry list page (BlogR), an individual entry page (EntryR) and our authentication subsite. Note that BlogR and EntryR both accept GET and POST methods. The POST methods are for adding a new blog post and adding a new comment, respectively.
+Now we're going to set up our routing table. We have four entries: a homepage,
+an entry list page (BlogR), an individual entry page (EntryR) and our
+authentication subsite. Note that BlogR and EntryR both accept GET and POST
+methods. The POST methods are for adding a new blog post and adding a new
+comment, respectively.
 
 mkYesod "Blog" [parseRoutes|
-/ RootR GET
-/blog BlogR GET POST
+/              RootR  GET
+/blog          BlogR  GET POST
 /blog/#EntryId EntryR GET POST
-/auth AuthR Auth getAuth
+/auth          AuthR  Auth getAuth
 |]
 
-Every foundation needs to be an instance of the Yesod typeclass. This is where we configure various settings.
+Every foundation needs to be an instance of the Yesod typeclass. This is where
+we configure various settings.
 
 instance Yesod Blog where
 
-The base of our application. Note that in order to make BrowserID work properly, this must be a valid URL.
+The base of our application. Note that in order to make BrowserID work
+properly, this must be a valid URL.
 
     approot = ApprootStatic "http://localhost:3000"
 
@@ -121,7 +148,10 @@ Our authorization scheme. We want to have the following rules:
 * Only logged in users can add a new comment.
 * All other pages can be accessed by anyone.
 
-We set up our routes in a RESTful way, where the actions that could make changes are always using a POST method. As a result, we can simply check for whether or not a request is a write request, given by the True in the second field.
+We set up our routes in a RESTful way, where the actions that could make
+changes are always using a POST method. As a result, we can simply check for
+whether or not a request is a write request, given by the True in the second
+field.
 
 First, we'll authorize requests to add a new entry.
 
@@ -149,15 +179,23 @@ Where a user should be redirected to if they get an AuthenticationRequired.
 
     authRoute _ = Just (AuthR LoginR)
 
-This is where we define our site look-and-feel. The function is given the content for the individual page, and wraps it up with a standard template.
+This is where we define our site look-and-feel. The function is given the
+content for the individual page, and wraps it up with a standard template.
 
     defaultLayout inside = do
 
-Yesod encourages the get-following-post pattern, where after a POST, the user is redirected to another page. In order to allow the POST page to give the user some kind of feedback, we have the getMessage and setMessage functions. It's a good idea to always check for pending messages in your defaultLayout function.
+Yesod encourages the get-following-post pattern, where after a POST, the user
+is redirected to another page. In order to allow the POST page to give the user
+some kind of feedback, we have the getMessage and setMessage functions. It's a
+good idea to always check for pending messages in your defaultLayout function.
 
         mmsg <- getMessage
 
-We use widgets to compose together HTML, CSS and Javascript. At the end of the day, we need to unwrap all of that into simple HTML. That's what the widgetToPageContent function is for. We're going to give it a widget consisting of the content we received from the individual page (inside), plus a standard CSS for all pages. We'll use the Lucius template language to create the latter.
+We use widgets to compose together HTML, CSS and Javascript. At the end of the
+day, we need to unwrap all of that into simple HTML. That's what the
+widgetToPageContent function is for. We're going to give it a widget consisting
+of the content we received from the individual page (inside), plus a standard
+CSS for all pages. We'll use the Lucius template language to create the latter.
 
         pc <- widgetToPageContent $ do
             toWidget [lucius|
@@ -176,7 +214,8 @@ textarea {
 |]
             inside
 
-And finally we'll use a new Hamlet template to wrap up the individual components (title, head data and body data) into the final output.
+And finally we'll use a new Hamlet template to wrap up the individual
+components (title, head data and body data) into the final output.
 
         hamletToRepHtml [hamlet|
 $doctype 5
@@ -190,12 +229,16 @@ $doctype 5
         ^{pageBody pc}
 |]
 
-This is a simple function to check if a user is the admin. In a real application, we would likely store the admin bit in the database itself, or check with some external system. For now, I've just hard-coded my own email address.
+This is a simple function to check if a user is the admin. In a real
+application, we would likely store the admin bit in the database itself, or
+check with some external system. For now, I've just hard-coded my own email
+address.
 
 isAdmin :: User -> Bool
 isAdmin user = userEmail user == "michael@snoyman.com"
 
-In order to access the database, we need to create a YesodPersist instance, which says which backend we're using and how to run an action.
+In order to access the database, we need to create a YesodPersist instance,
+which says which backend we're using and how to run an action.
 
 instance YesodPersist Blog where
    type YesodPersistBackend Blog = SqlPersist
@@ -204,16 +247,20 @@ instance YesodPersist Blog where
        let pool = connPool master
        runSqlPool f pool
 
-This is a convenience synonym. It is defined automatically for you in the scaffolding.
+This is a convenience synonym. It is defined automatically for you in the
+scaffolding.
 
 type Form x = Html -> MForm Blog Blog (FormResult x, Widget)
 
-In order to use yesod-form and yesod-auth, we need an instance of RenderMessage for FormMessage. This allows us to control the i18n of individual form messages.
+In order to use yesod-form and yesod-auth, we need an instance of RenderMessage
+for FormMessage. This allows us to control the i18n of individual form
+messages.
 
 instance RenderMessage Blog FormMessage where
     renderMessage _ _ = defaultFormMessage
 
-In order to use the built-in nic HTML editor, we need this instance. We just take the default values, which use a CDN-hosted version of Nic.
+In order to use the built-in nic HTML editor, we need this instance. We just
+take the default values, which use a CDN-hosted version of Nic.
 
 instance YesodNic Blog
 
@@ -225,11 +272,15 @@ instance YesodAuth Blog where
     logoutDest _ = RootR
     authHttpManager = httpManager
 
-We'll use [BrowserID](https://browserid.org/), which is a third-party system using email addresses as your identifier. This makes it easy to switch to other systems in the future, locally authenticated email addresses (also included with yesod-auth).
+We'll use [BrowserID](https://browserid.org/),
+which is a third-party system using email addresses as your identifier. This
+makes it easy to switch to other systems in the future, locally authenticated
+email addresses (also included with yesod-auth).
 
     authPlugins _ = [authBrowserId]
 
-This function takes someone's login credentials (i.e., his/her email address) and gives back a UserId.
+This function takes someone's login credentials (i.e., his/her email address)
+and gives back a UserId.
 
     getAuthId creds = do
         let email = credsIdent creds
@@ -237,7 +288,9 @@ This function takes someone's login credentials (i.e., his/her email address) an
         res <- runDB $ insertBy user
         return $ Just $ either entityKey id res
 
-Homepage handler. The one important detail here is our usage of `setTitleI`, which allows us to use i18n messages for the title. We also use this message with a `_{Msg...}` interpolation in Hamlet.
+Homepage handler. The one important detail here is our usage of `setTitleI`,
+which allows us to use i18n messages for the title. We also use this message
+with a `_{Msg...}` interpolation in Hamlet.
 
 getRootR :: Handler RepHtml
 getRootR = defaultLayout $ do
@@ -248,7 +301,8 @@ getRootR = defaultLayout $ do
    <a href=@{BlogR}>_{MsgSeeArchive}
 |]
 
-Define a form for adding new entries. We want the user to provide the title and content, and then fill in the post date automatically via `getCurrentTime`.
+Define a form for adding new entries. We want the user to provide the title and
+content, and then fill in the post date automatically via `getCurrentTime`.
 
 entryForm :: Form Entry
 entryForm = renderDivs $ Entry
@@ -256,7 +310,8 @@ entryForm = renderDivs $ Entry
     <*> aformM (liftIO getCurrentTime)
     <*> areq nicHtmlField (fieldSettingsLabel MsgNewEntryContent) Nothing
 
-Get the list of all blog entries, and present an admin with a form to create a new entry.
+Get the list of all blog entries, and present an admin with a form to create a
+new entry.
 
 getBlogR :: Handler RepHtml
 getBlogR = do
@@ -274,7 +329,10 @@ $else
             <li>
                 <a href=@{EntryR entryId}>#{entryTitle entry}
 
-We have three possibilities: the user is logged in as an admin, the user is logged in and is not an admin, and the user is not logged in. In the first case, we should display the entry form. In the second, we'll do nothing. In the third, we'll provide a login link.
+We have three possibilities: the user is logged in as an admin, the user is
+logged in and is not an admin, and the user is not logged in. In the first
+case, we should display the entry form. In the second, we'll do nothing. In the
+third, we'll provide a login link.
 
 $maybe Entity _ user <- muser
     $if isAdmin user
@@ -287,7 +345,10 @@ $nothing
         <a href=@{AuthR LoginR}>_{MsgLoginToPost}
 |]
 
-Process an incoming entry addition. We don't do any permissions checking, since isAuthorized handles it for us. If the form submission was valid, we add the entry to the database and redirect to the new entry. Otherwise, we ask the user to try again.
+Process an incoming entry addition. We don't do any permissions checking, since
+isAuthorized handles it for us. If the form submission was valid, we add the
+entry to the database and redirect to the new entry. Otherwise, we ask the user
+to try again.
 
 postBlogR :: Handler RepHtml
 postBlogR = do
@@ -306,7 +367,10 @@ postBlogR = do
         <input type=submit value=_{MsgNewEntry}>
 |]
 
-A form for comments, very similar to our entryForm above. It takes the EntryId of the entry the comment is attached to. By using pure, we embed this value in the resulting Comment output, without having it appear in the generated HTML.
+A form for comments, very similar to our entryForm above. It takes the
+EntryId of the entry the comment is attached to. By using pure, we embed
+this value in the resulting Comment output, without having it appear in the
+generated HTML.
 
 commentForm :: EntryId -> Form Comment
 commentForm entryId = renderDivs $ Comment
@@ -316,7 +380,8 @@ commentForm entryId = renderDivs $ Comment
     <*> areq textField (fieldSettingsLabel MsgCommentName) Nothing
     <*> areq textareaField (fieldSettingsLabel MsgCommentText) Nothing
 
-Show an individual entry, comments, and an add comment form if the user is logged in.
+Show an individual entry, comments, and an add comment form if the user is
+logged in.
 
 getEntryR :: EntryId -> Handler RepHtml
 getEntryR entryId = do
