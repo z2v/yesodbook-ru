@@ -1,6 +1,8 @@
 Wiki: markdown, chat subsite, event source
 
-This example will tie together a few different ideas. We'll start with a chat subsite, which allows us to embed a chat widget on any page. We'll use the HTML 5 event source API to handle sending events from the server to the client.
+This example will tie together a few different ideas. We'll start with a chat
+subsite, which allows us to embed a chat widget on any page. We'll use the HTML
+5 event source API to handle sending events from the server to the client.
 
 -- @Chat.hs
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
@@ -103,72 +105,78 @@ chatWidget toMaster = do
         then do
             -- Logged in: show the widget
             [whamlet|
-<div ##{chat}>
-    <h2>Chat
-    <div ##{output}>
-    <input ##{input} type=text placeholder="Enter Message">
-|]
+                <div ##{chat}>
+                    <h2>Chat
+                    <div ##{output}>
+                    <input ##{input} type=text placeholder="Enter Message">
+            |]
             -- Just some CSS
             toWidget [lucius|
-##{chat} {
-    position: absolute;
-    top: 2em;
-    right: 2em;
-}
-##{output} {
-    width: 200px;
-    height: 300px;
-    border: 1px solid #999;
-    overflow: auto;
-}
-|]
+                ##{chat} {
+                    position: absolute;
+                    top: 2em;
+                    right: 2em;
+                }
+                ##{output} {
+                    width: 200px;
+                    height: 300px;
+                    border: 1px solid #999;
+                    overflow: auto;
+                }
+            |]
             -- And now that Javascript
             toWidgetBody [julius|
-// Set up the receiving end
-var output = document.getElementById("#{output}");
-var src = new EventSource("@{toMaster ReceiveR}");
-src.onmessage = function(msg) {
-    // This function will be called for each new message.
-    var p = document.createElement("p");
-    p.appendChild(document.createTextNode(msg.data));
-    output.appendChild(p);
+                // Set up the receiving end
+                var output = document.getElementById("#{output}");
+                var src = new EventSource("@{toMaster ReceiveR}");
+                src.onmessage = function(msg) {
+                    // This function will be called for each new message.
+                    var p = document.createElement("p");
+                    p.appendChild(document.createTextNode(msg.data));
+                    output.appendChild(p);
 
-    // And now scroll down within the output div so the most recent message
-    // is displayed.
-    output.scrollTop = output.scrollHeight;
-};
+                    // And now scroll down within the output div so the most recent message
+                    // is displayed.
+                    output.scrollTop = output.scrollHeight;
+                };
 
-// Set up the sending end: send a message via Ajax whenever the user hits
-// enter.
-var input = document.getElementById("#{input}");
-input.onkeyup = function(event) {
-    var keycode = (event.keyCode ? event.keyCode : event.which);
-    if (keycode == '13') {
-        var xhr = new XMLHttpRequest();
-        var val = input.value;
-        input.value = "";
-        var params = "?message=" + encodeURI(val);
-        xhr.open("POST", "@{toMaster SendR}" + params);
-        xhr.send(null);
-    }
-}
-|]
+                // Set up the sending end: send a message via Ajax whenever the user hits
+                // enter.
+                var input = document.getElementById("#{input}");
+                input.onkeyup = function(event) {
+                    var keycode = (event.keyCode ? event.keyCode : event.which);
+                    if (keycode == '13') {
+                        var xhr = new XMLHttpRequest();
+                        var val = input.value;
+                        input.value = "";
+                        var params = "?message=" + encodeURI(val);
+                        xhr.open("POST", "@{toMaster SendR}" + params);
+                        xhr.send(null);
+                    }
+                }
+            |]
         else do
             -- User isn't logged in, give a not-logged-in message.
             master <- lift getYesod
             [whamlet|
-<p>
-    You must be #
-    $maybe ar <- authRoute master
-        <a href=@{ar}>logged in
-    $nothing
-        logged in
-    \ to chat.
-|]
+                <p>
+                    You must be #
+                    $maybe ar <- authRoute master
+                        <a href=@{ar}>logged in
+                    $nothing
+                        logged in
+                    \ to chat.
+            |]
 
-This module stands on its own, and can be used in any application. Next we'll provide such a driver application: a wiki. Our wiki will have a hard-coded homepage, and then a wiki section of the site. We'll be using multiple dynamic pieces to allow an arbitrary hierarchy of pages within the Wiki.
+This module stands on its own, and can be used in any application. Next we'll
+provide such a driver application: a wiki. Our wiki will have a hard-coded
+homepage, and then a wiki section of the site. We'll be using multiple dynamic
+pieces to allow an arbitrary hierarchy of pages within the Wiki.
 
-For storage, we'll just use a mutable reference to a Map. For a production application, this should be replaced with a proper database. The content will be stored and served as Markdown. yesod-auth's dummy plugin will provide us with (fake) authentication.
+For storage, we'll just use a mutable reference to a Map. For a production
+application, this should be replaced with a proper database. The content will
+be stored and served as Markdown. yesod-auth's dummy plugin will provide us
+with (fake) authentication.
 
 {-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
              TemplateHaskell, FlexibleInstances, MultiParamTypeClasses,
@@ -205,8 +213,8 @@ data Wiki = Wiki
 mkYesod "Wiki" [parseRoutes|
 / RootR GET                 -- the homepage
 /wiki/*Texts WikiR GET POST -- note the multipiece for the wiki hierarchy
-/chat ChatR Chat getChat    -- the chat subsite
-/auth AuthR Auth getAuth    -- the auth subsite
+/chat        ChatR Chat getChat    -- the chat subsite
+/auth        AuthR Auth getAuth    -- the auth subsite
 |]
 
 instance Yesod Wiki where
@@ -217,21 +225,22 @@ instance Yesod Wiki where
     defaultLayout widget = do
         pc <- widgetToPageContent $ widget >> chatWidget ChatR
         mmsg <- getMessage
-        hamletToRepHtml [hamlet|
-$doctype 5
-<html>
-    <head>
-        <title>#{pageTitle pc}
-        ^{pageHead pc}
-    <body>
-        $maybe msg <- mmsg
-            <div .message>#{msg}
-        <nav>
-            <a href=@{AuthR LoginR}>Login
-            \ | #
-            <a href=@{AuthR LogoutR}>Logout
-        ^{pageBody pc}
-|]
+        hamletToRepHtml
+            [hamlet|
+                $doctype 5
+                <html>
+                    <head>
+                        <title>#{pageTitle pc}
+                        ^{pageHead pc}
+                    <body>
+                        $maybe msg <- mmsg
+                            <div .message>#{msg}
+                        <nav>
+                            <a href=@{AuthR LoginR}>Login
+                            \ | #
+                            <a href=@{AuthR LogoutR}>Logout
+                        ^{pageBody pc}
+            |]
 
 -- Fairly standard YesodAuth instance. We'll use the dummy plugin so that you
 -- can create any name you want, and store the login name as the AuthId.
@@ -288,12 +297,12 @@ getWikiR page = do
             Just text -> toWidget $ markdown def $ TL.fromStrict text
             Nothing -> [whamlet|<p>Page does not yet exist|]
         [whamlet|
-<h2>Edit page
-<form method=post>
-    ^{form}
-    <div>
-        <input type=submit>
-|]
+            <h2>Edit page
+            <form method=post>
+                ^{form}
+                <div>
+                    <input type=submit>
+        |]
 
 -- Get a submitted wiki page and updated the contents.
 postWikiR :: [Text] -> Handler RepHtml
@@ -308,12 +317,13 @@ postWikiR page = do
                 \m -> (Map.insert page t m, ())
             setMessage "Page updated"
             redirect $ WikiR page
-        _ -> defaultLayout [whamlet|
-<form method=post>
-    ^{form}
-    <div>
-        <input type=submit>
-|]
+        _ -> defaultLayout
+                [whamlet|
+                    <form method=post>
+                        ^{form}
+                        <div>
+                            <input type=submit>
+                |]
 
 main :: IO ()
 main = do
