@@ -1,12 +1,25 @@
 \chapter{Wiki: разметка, подсайт чата, источник событий}
 \label{}
 
-Этот пример свяжет воедино несколько различных идей. Мы начнём с подсайта чата, позволяющего внедрить виджет чата в любую страницу. Для организации отправки событий клиенту с сервера будем использовать API источника событий (event source) HTML 5.
+Этот пример свяжет воедино несколько различных идей. Мы начнём с подсайта чата,
+позволяющего внедрить виджет чата в любую страницу. Для организации отправки
+событий клиенту с сервера будем использовать API источника событий (event
+source) HTML 5. Вы можете посмотреть полную версию проекта на
+сайте~\footnotehref{https://www.fpcomplete.com/user/snoyberg/yesod/wiki-markdown-chat-subsite-event-source}{FP Haskell Center}.
 
-\includecode{19/Chat.hs}
 
-Этот модуль является независимым и может использоваться в любом приложении. Ниже мы создадим такое приложение-драйвер~--- wiki. Наша wiki получит жёстко заданную домашнюю страницу, а затем и wiki-раздел сайта. Мы будем использовать множество динамических фрагментов, позволяющих строить произвольную иерархию страниц в рамках Wiki.
+\section{Подсайт чата}
+\input{../hs/19/Chat/Data.lhs}
 
-В качестве способа хранения мы просто используем изменяемую ссылку на Map. Для реального приложения нужно заменить её на подходящую базу данных. Содержимое будет храниться и предоставляться как Markdown. Плагин-пустышка yesod-auth предоставит нам способ выполнять (фальшивую) аутентификацию.
+\input{../hs/19/Chat.lhs}
 
-\includecode{19/Wiki.hs}
+\section{Основной сайт}
+\input{../hs/19/Wiki.lhs}
+
+\section{Выводы}
+This example demonstrated creation of a non-trivial subsite. Some important points to
+notice were the usage of typeclasses to express constraints on the master site, how data
+initialization was performed in the +main+ function, and how ++lift++ing allowed us to
+operate in either the subsite or master site context.
+If you’re looking for a way to test out your subsite skills, I’d recommend modifying this
+example so that the Wiki code also lived in its own subsite.

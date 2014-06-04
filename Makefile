@@ -13,6 +13,7 @@ MASTERTEX := Developing\ Web\ Applications\ with\ Haskell\ and\ Yesod.tex
 TEXSRCS := $(wildcard tex/[S012]*.tex)
 TEXSRCS := $(subst $(space),\$(space),$(TEXSRCS))
 TEXSRCS := $(subst .tex\,.tex,$(TEXSRCS))
+LHSSRCS := $(shell find hs -name "*.lhs")
 
 # Здесь имена без пробелов - сойдёт и так
 HSSRCS = $(shell find hs -name "*.hs")
@@ -46,7 +47,7 @@ TEXOPTS += -output-directory=$(abspath $(TEXDIR))
 
 all: $(YESODBOOK)
 
-$(YESODBOOK): tex/$(MASTERTEX) $(TEXSRCS) $(HSSRCS) $(IMAGES)
+$(YESODBOOK): tex/$(MASTERTEX) $(TEXSRCS) $(LHSSRCS) $(HSSRCS) $(IMAGES)
 	rm -f $(YESODBOOK)
 	mkdir -p $(TEXDIR)
 	cd tex && \
