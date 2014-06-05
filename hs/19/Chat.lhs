@@ -53,8 +53,8 @@ class (Yesod master, RenderMessage master FormMessage)
 экземпляр класса~\lstinline'YesodChat'. (Ниже увидим, как сделать это
 требование обязательным.) Тут есть пара интересных моментов:
 \begin{itemize}
-    \item Мы можем добавить ещё ограничений для нашего основного сайта,
-    например: предоставлять экземпляр класса \lstinline'Yesod' или разрешить
+    \item Мы добавили ещё ограничений для нашего основного сайта:
+    предоставлять экземпляр класса \lstinline'Yesod' и разрешить
     рендеринг сообщений форм.  Первое позволит нам использовать
     \lstinline'defaultLayout', а второе~--- стандартные виджеты форм.
 
@@ -65,29 +65,31 @@ class (Yesod master, RenderMessage master FormMessage)
     форму трансформатора~\lstinline'HandlerT'.
 \end{itemize}
 
-Speaking of the +Handler+ type synonym, we're going to want to have something
-similar for our subsite. The question is: what does this monad look like? In a
-subsite situation, we end up with two layers of +HandlerT+ transformers: one
-for the subsite, and one for the master site. We want to have a synonym that
-works for any master site which is an instance of +YesodChat+, so we end up
-with:
-
+Кстати о синониме типа~\lstinline'Handler', нам хотелось бы получить что-нибудь
+подобное для нашего подсайта. Вопрос: что же из себя представляет такая монада?
+В случае подсайта, мы получаем два слоя трансформаторов~\lstinline'HandlerT':
+один для подсайта, другой для основного сайта. Мы хотим получить синоним,
+который работает для любого основного сайта, являющегося экземпляром класса
+типов~\lstinline'YesodChat', что приводит к следующему:
 \begin{code}
 type ChatHandler a =
     forall master . YesodChat master =>
     HandlerT Chat (HandlerT master IO) a
 \end{code}
 
-Now that we have our machinery out of the way, it's time to write our subsite
-handler functions. We had two routes: one for sending messages, and one for
-receiving messages. Let's start with sending. We need to:
+Теперь, когда структура готова, пришло время написать обработчики для нашего
+подсайта.  У нас есть два маршрута: один для отправки сообщений, другой для их
+получения. Начнём с отправки. Нам требуется:
+\begin{itemize}
+    \item Получить имя пользователя отправителя сообщения.
+    \item Выбрать сообщение из входящих параметров. (Мы собираемся использовать
+    параметры GET запроса для упрощения клиентского кода Ajax.)
+    \item Записать сообщение в канал~\lstinline'Chan'.
+\end{itemize}
 
-. Get the username for the person sending the message.
-. Parse the message from the incoming parameters. (Note that we're going to use GET parameters for simplicity of the client-side Ajax code.)
-. Write the message to the +Chan+.
-
-The trickiest bit of all this code is to know when to use +lift+. Let's look at
-the implementation, and then discuss those +lift+ usages:
+Самое главная хитрость в этом коде~-- знать, когда использовать
+функцию~\lstinline'lift'.  Давайте посмотрим на реализацию, а затем обсудим все
+использования функции~\lstinline'lift'.
 
 \begin{code}
 postSendR :: ChatHandler ()
@@ -99,21 +101,25 @@ postSendR = do
         fromText from <> fromText ": " <> fromText body
 \end{code}
 
-+getUserName+ is the function we defined in our +YesodChat+ typeclass earlier.
-If we look at that type signature, we see that it lives in the master site's
-+Handler+ monad. Therefore, we need to +lift+ that call out of the subsite.
+\lstinline'getUserName'~--- эта функция, которую мы определили выше в нашем
+классе типов~\lstinline'YesodChat'. Если мы посмотрим на её сигнатуру, то увидим, что она
+живёт в монаде~\lstinline'Handler' основного сайта. Следовательно, нам нужно
+использовать \lstinline'lift', чтобы <<поднять>> её из подсайта.
 
-The call to +runInputGet+ is a little more subtle. Theoretically, we could run
-this in either the subsite or the master site. However, we use +lift+ here as
-well for one specific reason: message translations. By using the master site,
-we can take advantage of whatever +RenderMessage+ instance the master site
-defines. This also explains why we have a +RenderMessage+ constraint on the
-+YesodChat+ typeclass.
+С вызовом функции~\lstinline'runInputGet' дело обстоит несколько тоньше.
+Теоретически, мы могли бы выполнять эту функция как в монаде подсайта, так и в
+монаде основного сайта.  Но всё же мы используем здесь функцию~\lstinline'lift'
+по одной специфической причине: переводы сообщений. Используя монаду основного
+сайта, мы получаем возможность пользоваться определением экземпляра класса
+типов~\lstinline'RenderMessage' для основного сайта. Это также объясняет, зачем
+нам ограничение \lstinline'RenderMessage' в описании класса
+типов~\lstinline'YesodChat'.
 
-The next call to +getYesod+ is \emph{not} \texttt{lift}ed. The reasoning here is simple:
-we want to get the subsite's foundation type in order to access the message
-channel. If we instead \texttt{lift}ed that call, we'd get the master site's
-foundation type instead, which is not what we want in this case.
+Следующий далее вызов функции~\lstinline'getYesod' \emph{не}
+содержит~\lstinline'lift'.  Объяснение простое: мы хотим получить тип-основание
+нашего подсайта и через него доступ к каналу сообщений. Если мы добавим
+\lstinline'lift', то получим тип-основание для основного сайта. А это не то,
+что мы хотим в данном случае.
 
 The final line puts the new message into the channel. Since this is an +IO+
 action, we use +liftIO+. +ServerEvent+ is part of the +wai-eventsource+
@@ -235,12 +241,12 @@ client-side code wrapped in a Widget:
                     var p = document.createElement("p");
                     p.appendChild(document.createTextNode(msg.data));
                     output.appendChild(p);
-                
+
                     // А теперь прокрутим вниз в обрамляющем div так, чтобы было видно
                     // последнее сообщение.
                     output.scrollTop = output.scrollHeight;
                 };
-                
+
                 // Настроим отправляющую сторону: отправлять сообщение через Ajax всякий раз,
                 // когда пользователь нажимает Enter.
                 var input = document.getElementById(#{toJSON input});
