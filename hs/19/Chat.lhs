@@ -87,7 +87,7 @@ type ChatHandler a =
     \item Записать сообщение в канал~\lstinline'Chan'.
 \end{itemize}
 
-Самое главная хитрость в этом коде~-- знать, когда использовать
+Самое главная хитрость в этом коде~--- знать, когда использовать
 функцию~\lstinline'lift'.  Давайте посмотрим на реализацию, а затем обсудим все
 использования функции~\lstinline'lift'.
 
@@ -121,13 +121,12 @@ postSendR = do
 \lstinline'lift', то получим тип-основание для основного сайта. А это не то,
 что мы хотим в данном случае.
 
-The final line puts the new message into the channel. Since this is an +IO+
-action, we use +liftIO+. +ServerEvent+ is part of the +wai-eventsource+
-package, and is the means by which we're providing server-sent events in this
-example.
+Последняя строка помещает сообщение в канал. Так как это действие ввода/вывода,
+мы используем~\lstinline'liftIO'. Тип~\lstinline'ServerEvent' входит в состав
+пакета~\texttt{wai-eventsource} и является тем средством, с помощью которого
+мы реализуем отправляемые сервером сообщения в нашем примере.
 
-The receiving side is similarly simple:
-
+Получающая сторона столь же проста:
 \begin{code}
 getReceiveR :: ChatHandler ()
 getReceiveR = do
@@ -138,46 +137,51 @@ getReceiveR = do
     sendWaiResponse res
 \end{code}
 
-We use +dupChan+ so that each new connection receives its own copy of newly
-generated messages. This is a standard method in concurrent Haskell of creating
-braodcast channels. The last three lines of our function expose the underlying
-+wai-eventsource+ application as a Yesod handler, by getting the raw WAI
-request, running the application on that request, and then sending the raw WAI
-response.
+Мы используем функцию~\lstinline'dupChan', чтобы каждое соединение получало
+собственную копию вновь созданных сообщений. Это стандартный способ создания
+широковещательных каналов в конкурентных (concurrent) программах на~Haskell.
+Последние три строки нашей функции выставляет низкоуровневое приложение из
+пакета~\texttt{wai-eventsource} как обработчик Yesod: получаем необработанный
+запрос WAI, выполняем приложение с этим запросом и затем отправляем такой же
+необработанный ответ~WAI.
 
-NOTE: Starting with WAI 2.0, instead of using +liftResourceT+, you need to use
-+liftIO+.
+% [Vladimir Zakharov] Код соответствует WAI > 2.0, поэтому инвертировал примечание.
+\begin{remark}
+    При использовании версии WAI < 2.0, в предпоследней строке необходимо
+    заменить вызов~\lstinline'liftIO' на вызов~\lstinline'liftResourceT'.
+\end{remark}
 
-Now that we've defined our handler functions, we can set up our dispatch. In a
-normal application, dispatching is handled by calling +mkYesod+, which creates
-the appropriate +YesodDispatch+ instance. In subsites, things are a little bit
-more complicated, since you'll often want to place constraints on the master
-site. The formula we use is the following:
-
+Теперь, когда мы определили наши функции-обработчики, мы можем заняться
+диспетчеризацией. В обычном приложении, диспетчеризация обеспечивается вызовом
+функции~\lstinline'mkYesod', которая создаёт соответствующий экземпляр
+класса~\lstinline'YesodDispatch'. Для подсайтов всё немного сложнее, так как
+часто вам захочется наложить какие-нибудь ограничения на основной сайт.
+Поэтому мы используем следующий подход:
 \begin{code}
 instance YesodChat master => YesodSubDispatch Chat (HandlerT master IO) where
     yesodSubDispatch = $(mkYesodSubDispatch resourcesChat)
 \end{code}
 
-We're stating that our +Chat+ subsite can live on top of any master site which
-is an instance of +YesodChat+. We then use the +mkYesodSubDispatch+ Template
-Haskell function to generate all of our dispatching logic. While this is a bit
-more difficult to write than +mkYesod+, it provides necessary flexibility, and
-is mostly identical for any subsite you'll write.
+Мы постулируем, что наш подсайт~\lstinline'Chat' может работать с любым
+основным сайтом, который реализует экземпляр класса~\lstinline'YesodChat'.
+Затем мы используем функцию~\lstinline'mkYesodSubDispatch' расширения Template
+Haskell для генерации всей логики диспетчеризации. Хотя это и немного сложнее,
+чем вызов~\lstinline'mkYesod', зато этот код предоставляет требуемый уровень
+гибкости и будет практически идентичным для всех подсайтов, которые вы станете
+делать.
 
 \subsection{Виджет}
+Теперь у нас есть полностью рабочий подсайт чата. Последний элемент, который
+мы хотим добавить в нашу библиотеку чата,~--- это виджет, предоставляющий
+функциональность чата, для встраивания в страницы. Оформив этот код в виде
+виджета, мы сможем включать весь требуемый код HTML, CSS и~Javascript как
+повторно используемый компонент.
 
-We now have a fully working subsite. The final component we want as part of our
-chat library is a widget to be embedded inside a page which will provide chat
-functionality. By creating this as a widget, we can include all of our HTML,
-CSS, and Javascript as a reusable component.
-
-Our widget will need to take in one argument: a function to convert a +Chat+
-subsite URL into a master site URL. The reasoning here is that a application
-developet could place the chat subsite anywhere in the URL structure, and this
-widget needs to be able to generate Javascript which will point at the correct
-URLs. Let's start off our widget:
-
+Наш виджет будет требовать один аргумент: функцию преобразования URL для
+подсайта~\lstinline'Chat' в URL основного сайта. Обоснование следующее:
+разработчик приложения может поместить подсайт чата в любом месте своей
+структуры URL, а виджету требуется генерировать Javascript, который должен
+указывать на корректные URL. Итак, приступим:
 \begin{code}
 chatWidget :: YesodChat master
            => (Route Chat -> Route master)
@@ -185,28 +189,28 @@ chatWidget :: YesodChat master
 chatWidget toMaster = do
 \end{code}
 
-Next, we're going to generate some identifiers to be used by our widget. It's
-always good practice to let Yesod generate unique identifiers for you instead
-of creating them manually to avoid name collissions.
-
+Далее нам нужно сгенерировать несколько идентификаторов, которые будет
+использовать наш виджет. Хорошая практика~--- позволить Yesod
+сгенерировать уникальные идентификаторы, вместо ручного их создания,
+во избежание коллизий с именами.
 \begin{code}
     chat <- newIdent   -- обрамляющий div
     output <- newIdent -- элемент, где отображаются сообщения
     input <- newIdent  -- поле пользовательского ввода
 \end{code}
 
-And next we need to check if the user is logged in, using the +isLoggedIn+
-function in our +YesodChat+ typeclass. Since we're in a +Widget+ and that
-function lives in the +Handler+ monad, we need to use +handlerToWidget+:
-
+И теперь нам нужно проверить, выполнил ли пользователь вход на сайт, используя
+функцию~\lstinline'isLoggedIn' из нашего класса типов~\lstinline'YesodChat'.
+Так как мы находится в монаде~\lstinline'Widget', а функция живёт в
+монаде~\lstinline'Handler', необходимо использовать
+функцию~\lstinline'handlerToWidget'.
 \begin{code}
     ili <- handlerToWidget isLoggedIn  -- проверить, выполнили ли мы вход
 \end{code}
 
-If the user is logged in, we want to display the chat box, style it with some
-CSS, and then make it interactive using some Javascript. This is mostly
-client-side code wrapped in a Widget:
-
+Если пользователь зашёл на сайт, мы хотим отобразить блок чата, добавить ему
+стиля, используя CSS, и сделать интерактивным с помощью Javascript.  Это
+большей частью клиентский код, завёрнутый в~\lstinline'Widget':
 \begin{code}
     if ili
         then do
@@ -264,9 +268,8 @@ client-side code wrapped in a Widget:
             |]
 \end{code}
 
-And finally, if the user isn't logged in, we'll ask them to log in to use the
-chat app.
-
+И, наконец, если пользователь не выполнил вход, мы просим его сделать это,
+чтобы пользоваться чатом.
 \begin{code}
         else do
             -- Пользователь не выполнил вход, выдать об этом сообщение.
