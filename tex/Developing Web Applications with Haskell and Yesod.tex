@@ -1,4 +1,4 @@
-\documentclass[openany]{book}
+\documentclass[openany]{scrbook}
 
 \usepackage{fontspec}
 \defaultfontfeatures{Scale=MatchLowercase, Mapping=tex-text}  % For archaic input (e.g. convert -- to en-dash)
@@ -33,9 +33,9 @@
 \usepackage{fancyhdr}
 \fancyhead{}
 \fancyfoot{}
-\fancyhead[LO]{\rm\small\raggedright\nouppercase\rightmark}
-\fancyhead[RE]{\rm\small\raggedleft\nouppercase\leftmark}
-\fancyhead[RO,LE]{\rm\small\thepage}
+\fancyhead[LO]{\rmfamily\small\raggedright\nouppercase\rightmark}
+\fancyhead[RE]{\rmfamily\small\raggedleft\nouppercase\leftmark}
+\fancyhead[RO,LE]{\rmfamily\small\thepage}
 \pagestyle{fancy}
 
 \usepackage{graphicx}
@@ -117,13 +117,13 @@
 {\begin{Sbox}\begin{minipage}[!h]{.9\linewidth}}%
 {\end{minipage}\end{Sbox}\fbox{\TheSbox}}
 
-% use long spaces to remove overfull a la Word
-\sloppy
-
 % helper for making hyperrefs with footnote
 \newcommand{\footnotehref}[2]{\href{#1}{#2}\footnote{\href{#1}{\texttt{#1}}}}
 
 \begin{document}
+
+\setcounter{tocdepth}{1}
+\tableofcontents
 
 \input "S1. Basics.tex"
 \input "S2. Advanced.tex"
