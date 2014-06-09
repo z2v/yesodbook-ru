@@ -1,4 +1,4 @@
-Deploying your Webapp
+== Deploying your Webapp
 
 I can't speak for others, but I personally prefer programming to system
 administration. But the fact is that, eventually, you need to serve your app
@@ -13,16 +13,58 @@ for everyone. This chapter covers the different options you have for
 deployment, and gives some general recommendations on what you should choose in
 different situations.
 
-Compiling
+NOTE: While the information in this chapter is not Yesod-version-dependent, I
+don't necessarily believe that all of the recommendations given here are
+accurate given more recent developments, such as FP Complete's
+application server, or the availability of Keter. I've left this chapter mostly
+unchanged, but will likely update it again in the coming months. (June 23,
+2013)
+
+=== Compiling
 
 First things first: how do you build your production application? If you're
-using the scaffolded site, it's as simple as cabal build. I also recommend
+using the scaffolded site, it's as simple as +cabal build+. I also recommend
 cleaning beforehand to make sure there is no cached information, so a simple
 combination to build your executable is:
 
+----
 cabal clean && cabal configure && cabal build
+----
 
-Warp
+=== Files to deploy
+
+With a Yesod scaffolded application, there are essentially three sets of files that need
+to be deployed:
+
+. Your executable.
+. The config folder.
+. The static folder.
+
+Everything else, such as Shakespearean templates, gets compiled into the
+executable itself.
+
+There is one caveat, however: the +config/client_session_key.aes+ file. This
+file controls the server side encryption used for securing client side session
+cookies. Yesod will automatically generate a new one of these keys if none is
+present. In practice, this means that, if you do not include this file in
+deployment, all of your users will have to log in again when you redeploy. If
+you follow the advice above and include the +config+ folder, this issue will be
+partially resolved.
+
+The other half of the resolution is to ensure that once you generate a
++config/client_session_key.aes+ file, you keep the same one for all future
+deployments. The simplest way to ensure this is to keep that file in your
+version control. However, if your version control is open source, this will be
+dangerous: anyone with access to your repository will be able to spoof login
+credentials!
+
+The problem described here is essentially one of system administration, not
+programming. Yesod does not provide any built-in approach for securely storing
+client session keys. If you have an open source repository, or do not trust
+everyone who has access to your source code repository, it's vital to figure
+out a safe storage solution for the client session key.
+
+=== Warp
 
 As we have mentioned before, Yesod is built on the Web Application Interface
 (WAI), allowing it to run on any WAI backend. At the time of writing, the
@@ -44,6 +86,7 @@ frontend web servers as Warp (via reverse proxying) or FastCGI.
 So between the two remaining choices, Warp gets a very strong recommendation
 because:
 
+
 * It is significantly faster.
 * Like FastCGI, it can run behind a frontend server like Nginx, using reverse
   HTTP proxy.
@@ -64,17 +107,18 @@ because:
 
 So my final recommendation is: set up Nginx to reverse proxy to Warp.
 
-A number of people in the Yesod community disagree with me here, and
+NOTE: A number of people in the Yesod community disagree with me here, and
 believe that the increased performance and decreased complexity of skipping the
 Nginx step make standalone Warp a better choice. Feel free to follow either
 approach, they are both perfectly valid.
 
-Configuration
+==== Configuration
 
 In general, Nginx will listen on port 80 and your Yesod/Warp app will listen on
 some unprivileged port (lets say 4321). You will then need to provide a
 nginx.conf file, such as:
 
+----
 daemon off; # Don't run nginx in the background, good for monitoring apps
 events {
     worker_connections 4096;
@@ -89,6 +133,7 @@ http {
         }
     }
 }
+----
 
 You can add as many server blocks as you like. A common addition is to ensure
 users always access your pages with the www prefix on the domain name, ensuring
@@ -97,18 +142,21 @@ opposite and always strip the www, just make sure that your choice is reflected
 in both the nginx config and the approot of your site.) In this case, we would
 add the block:
 
+----
 server {
     listen 80;
     server_name myserver.com;
     rewrite ^/(.*) http://www.myserver.com/$1 permanent;
 }
+----
 
 A highly recommended optimization is to serve static files from a separate
 domain name, therefore bypassing the cookie transfer overhead. Assuming that
-our static files are stored in the static folder within our site folder, and
-the site folder is located at /home/michael/sites/mysite, this would look
+our static files are stored in the +static+ folder within our site folder, and
+the site folder is located at +/home/michael/sites/mysite+, this would look
 like:
 
+----
 server {
     listen 80;
     server_name static.myserver.com;
@@ -118,14 +166,16 @@ server {
     # concerns of stale content.
     expires max;
 }
+----
 
 In order for this to work, your site must properly rewrite static URLs to this
 alternate domain name. The scaffolded site is set up to make this fairly simple
-via the Settings.staticRoot function and the definition of
-urlRenderOverride.  However, if you just want to get the benefit of nginx's
+via the +Settings.staticRoot+ function and the definition of
++urlRenderOverride+. However, if you just want to get the benefit of nginx's
 faster static file serving without dealing with separate domain names, you can
 instead modify your original server block like so:
 
+----
 server {
     listen 80; # Incoming port for Nginx
     server_name www.myserver.com;
@@ -137,8 +187,9 @@ server {
         expires max;
     }
 }
+----
 
-Server Process
+==== Server Process
 
 Many people are familiar with an Apache/mod_php or Lighttpd/FastCGI kind of
 setup, where the web server automatically spawns the web application. With
@@ -148,19 +199,21 @@ which will automatically restart your application in case it crashes. There are
 many great options out there, such as angel or daemontools.
 
 To give a concrete example, here is an Upstart config file. The file must be
-placed in /etc/init/mysite.conf:
+placed in +/etc/init/mysite.conf+:
 
+----
 description "My awesome Yesod application"
 start on runlevel [2345];
 stop on runlevel [!2345];
 respawn
 chdir /home/michael/sites/mysite
 exec /home/michael/sites/mysite/dist/build/mysite/mysite
+----
 
-Once this is in place, bringing up your application is as simple as sudo start
-mysite.
+Once this is in place, bringing up your application is as simple as +sudo start
+mysite+.
 
-FastCGI
+=== FastCGI
 
 Some people may prefer using FastCGI for deployment. In this case, you'll need
 to add an extra tool to the mix. FastCGI works by receiving new connection from
@@ -172,6 +225,7 @@ It can be very convenient to use Unix named sockets for this instead of binding
 to a port, especially when hosting multiple applications on a single host. A
 possible script to load up your app could be:
 
+----
 spawn-fcgi \
     -d /home/michael/sites/mysite \
     -s /tmp/mysite.socket \
@@ -179,10 +233,12 @@ spawn-fcgi \
     -M 511 \
     -u michael \
     -- /home/michael/sites/mysite/dist/build/mysite-fastcgi/mysite-fastcgi
+----
 
 You will also need to configure your frontend server to speak to your app over
 FastCGI. This is relatively painless in Nginx:
 
+----
 server {
     listen 80;
     server_name www.myserver.com;
@@ -190,13 +246,15 @@ server {
         fastcgi_pass unix:/tmp/mysite.socket;
     }
 }
+----
 
 That should look pretty familiar from above. The only last trick is that, with
 Nginx, you need to manually specify all of the FastCGI variables. It is
 recommended to store these in a separate file (say, fastcgi.conf) and then add
-include fastcgi.conf; to the end of your http block. The contents of the
++include fastcgi.conf;+ to the end of your http block. The contents of the
 file, to work with WAI, should be:
 
+----
 fastcgi_param  QUERY_STRING       $query_string;
 fastcgi_param  REQUEST_METHOD     $request_method;
 fastcgi_param  CONTENT_TYPE       $content_type;
@@ -209,8 +267,9 @@ fastcgi_param  REMOTE_ADDR        $remote_addr;
 fastcgi_param  SERVER_ADDR        $server_addr;
 fastcgi_param  SERVER_PORT        $server_port;
 fastcgi_param  SERVER_NAME        $server_name;
+----
 
-Desktop
+=== Desktop
 
 Another nifty backend is wai-handler-webkit. This backend combines Warp and
 QtWebkit to create an executable that a user simply double-clicks. This can be
@@ -220,17 +279,18 @@ One of the very nice conveniences of Yesod for this is that your templates are
 all compiled into the executable, and thus do not need to be distributed with
 your application. Static files do, however.
 
-There's actually support for embedding your static files directly in the
+
+NOTE: There's actually support for embedding your static files directly in the
 executable as well, see the yesod-static docs for more details.
 
 A similar approach, without requiring the QtWebkit library, is
 wai-handler-launch, which launches a Warp server and then opens up the user's
 default web browser. There's a little trickery involved here: in order to know
-that the user is still using the site, wai-handler-launch inserts a "ping"
-Javascript snippet to every HTML page it serves. It wai-handler-launch
+that the user is still using the site, +wai-handler-launch+  inserts a "ping"
+Javascript snippet to every HTML page it serves. It +wai-handler-launch+
 doesn't receive a ping for two minutes, it shuts down.
 
-CGI on Apache
+=== CGI on Apache
 
 CGI and FastCGI work almost identically on Apache, so it should be fairly
 straight-forward to port this configuration. You essentially need to accomplish
@@ -242,8 +302,9 @@ two goals:
 Here is a configuration file for serving a blog application, with an executable
 named "bloggy.cgi", living in a subfolder named "blog" of the document root.
 This example was taken from an application living in the path
-/f5/snoyman/public/blog.
++/f5/snoyman/public/blog+.
 
+----
 Options +ExecCGI
 AddHandler cgi-script .cgi
 Options +FollowSymlinks
@@ -253,13 +314,14 @@ RewriteRule ^/f5/snoyman/public/blog$ /blog/ [R=301,S=1]
 RewriteCond $1 !^bloggy.cgi
 RewriteCond $1 !^static/
 RewriteRule ^(.*) bloggy.cgi/$1 [L]
+----
 
 The first RewriteRule is to deal with subfolders. In particular, it redirects a
-request for /blog to /blog/. The first RewriteCond prevents directly
+request for +/blog+ to +/blog/+. The first RewriteCond prevents directly
 requesting the executable, the second allows Apache to serve the static files,
 and the last line does the actual rewriting.
 
-FastCGI on lighttpd
+=== FastCGI on lighttpd
 
 For this example, I've left off some of the basic FastCGI settings like
 mime-types. I also have a more complex file in production that prepends "www."
@@ -270,6 +332,7 @@ Here, "/home/michael/fastcgi" is the fastcgi application. The idea is to
 rewrite all requests to start with "/app", and then serve everything beginning
 with "/app" via the FastCGI executable.
 
+----
 server.port = 3000
 server.document-root = "/home/michael"
 server.modules = ("mod_fastcgi", "mod_rewrite")
@@ -288,13 +351,15 @@ fastcgi.server = (
         "idle-timeout" => 30
     ))
 )
+----
 
-CGI on lighttpd
+=== CGI on lighttpd
 
 This is basically the same as the FastCGI version, but tells lighttpd to run a
 file ending in ".cgi" as a CGI executable. In this case, the file lives at
 "/home/michael/myapp.cgi".
 
+----
 server.port = 3000
 server.document-root = "/home/michael"
 server.modules = ("mod_cgi", "mod_rewrite")
@@ -304,3 +369,4 @@ url.rewrite-once = (
 )
 
 cgi.assign = (".cgi" => "")
+----
