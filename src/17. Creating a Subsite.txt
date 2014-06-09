@@ -1,4 +1,4 @@
-Creating a Subsite
+== Creating a Subsite
 
 How many sites provide authentication systems? Or need to provide CRUD (CRUD)
 management of some objects? Or a blog? Or a wiki?
@@ -15,27 +15,68 @@ classes, it is easy to ensure that the master site provides certain
 capabilities, and to access the default site layout. And with type-safe URLs,
 it's easy to link from the master site to subsites.
 
-Hello World
+=== Hello World
 
-Writing subsites is a little bit tricky, involving a number of different types.
-Let's start off with a simple Hello World subsite:
+Perhaps the trickiest part of writing subsites is getting started.  Let's dive
+in with a simple Hello World subsite. We need to create one module to contain
+our subsite's data types, another for the subsite's dispatch code, and then a
+final module for an application that uses the subsite.
 
-{-# LANGUAGE QuasiQuotes, TypeFamilies, MultiParamTypeClasses #-}
-{-# LANGUAGE TemplateHaskell, FlexibleInstances, OverloadedStrings #-}
-import Yesod
+NOTE: The reason for the breakdown between the data and dispatch code is due to
+something called the GHC stage restriction. This requirement makes smaller
+demos a bit more verbose, but in practice, this splitting up into multiple
+modules is a good practice to adhere to.
+
+[source, haskell]
+----
+-- @HelloSub/Data.hs
+{-# LANGUAGE QuasiQuotes     #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies    #-}
+module HelloSub.Data where
+
+import           Yesod
 
 -- Subsites have foundations just like master sites.
 data HelloSub = HelloSub
 
 -- We have a familiar analogue from mkYesod, with just one extra parameter.
 -- We'll discuss that later.
-mkYesodSub "HelloSub" [] [parseRoutes|
-/ SubRootR GET
+mkYesodSubData "HelloSub" [parseRoutes|
+/ SubHomeR GET
 |]
+----
+
+[source, haskell]
+----
+-- @HelloSub.hs
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+module HelloSub
+    ( module HelloSub.Data
+    , module HelloSub
+    ) where
+
+import           HelloSub.Data
+import           Yesod
 
 -- And we'll spell out the handler type signature.
-getSubRootR :: Yesod master => GHandler HelloSub master RepHtml
-getSubRootR = defaultLayout [whamlet|Welcome to the subsite!|]
+getSubHomeR :: Yesod master => HandlerT HelloSub (HandlerT master IO) Html
+getSubHomeR = lift $ defaultLayout [whamlet|Welcome to the subsite!|]
+
+instance Yesod master => YesodSubDispatch HelloSub (HandlerT master IO) where
+    yesodSubDispatch = $(mkYesodSubDispatch resourcesHelloSub)
+----
+
+[source, haskell]
+----
+{-# LANGUAGE QuasiQuotes     #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies    #-}
+import           HelloSub
+import           Yesod
 
 -- And let's create a master site that calls it.
 data Master = Master
@@ -43,54 +84,57 @@ data Master = Master
     }
 
 mkYesod "Master" [parseRoutes|
-/ RootR GET
+/ HomeR GET
 /subsite SubsiteR HelloSub getHelloSub
 |]
 
 instance Yesod Master
 
 -- Spelling out type signature again.
-getRootR :: GHandler sub Master RepHtml -- could also replace sub with Master
-getRootR = defaultLayout
+getHomeR :: HandlerT Master IO Html
+getHomeR = defaultLayout
     [whamlet|
         <h1>Welcome to the homepage
         <p>
             Feel free to visit the #
-            <a href=@{SubsiteR SubRootR}>subsite
+            <a href=@{SubsiteR SubHomeR}>subsite
             \ as well.
     |]
 
-main = warpDebug 3000 $ Master HelloSub
+main = warp 3000 $ Master HelloSub
+---- 
 
-This very simple example actually shows most of the complications involved in
+This simple example actually shows most of the complications involved in
 creating a subsite. Like a normal Yesod application, everything in a subsite is
-centered around a foundation datatype, HelloSub in our case. We then use
-mkYesodSub, in much the same way that we use mkYesod, to create the route
-datatype and the dispatch/render functions. (We'll come back to that extra
-parameter in a second.)
+centered around a foundation datatype, +HelloSub+ in our case. We then use
++mkYesodSubData+ to generate our subsite route data type and associated parse
+and render functions.
 
-What's interesting is the type signature of getSubRootR. Up until now, we have
-tried to ignore the GHandler datatype, or if we need to acknowledge its
-existence, pretend like the first two type arguments are always the same. Now
-we get to finally acknowledge the truth about this funny datatype.
+On the dispatch side, we start off by defining our handler function for the +SubHomeR+ route. You should pay special attention to the type signature on this function:
 
-A handler function always has two foundation types associated with it: the
-subsite and the master site. When you write a normal application, those two
-datatypes are the same. However, when you are working in a subsite, they will
-necessarily be different. So the type signature for getSubRootR uses HelloSub
-for the first argument and master for the second.
+[source, haskell]
+----
+getSubHomeR :: Yesod master
+            => HandlerT HelloSub (HandlerT master IO) Html
+----
 
-The defaultLayout function is part of the Yesod typeclass. Therefore, in
-order to call it, the master type argument must be an instance of Yesod.
+This is the heart and soul of what a subsite is all about. All of our actions
+live in this layered monad, where we have our subsite wrapping around our main
+site. Given this monadic layering, it should come as no surprise that we end up
+calling +lift+. In this case, our subsite is using the master site's
++defaultLayout+ function to render a widget.
+
+The +defaultLayout+ function is part of the Yesod typeclass. Therefore, in
+order to call it, the +master+ type argument must be an instance of +Yesod+.
 The advantage of this approach is that any modifications to the master site's
-defaultLayout method will automatically be reflected in subsites.
++defaultLayout+ method will automatically be reflected in subsites.
 
 When we embed a subsite in our master site route definition, we need to specify
 four pieces of information: the route to use as the base of the subsite (in
-this case, /subsite), the constructor for the subsite routes (SubsiteR),
-the subsite foundation data type (HelloSub) and a function that takes a
-master foundation value and returns a subsite foundation value (getHelloSub).
+this case, +/subsite+), the constructor for the subsite routes (+SubsiteR+),
+the subsite foundation data type (+HelloSub+) and a function that takes a
+master foundation value and returns a subsite foundation value (+getHelloSub+).
 
-In the definition of getRootR, we can see how the route constructor gets used.
-In a sense, SubsiteR promotes any subsite route to a master site route,
+In the definition of getHomeR, we can see how the route constructor gets used.
+In a sense, +SubsiteR+ promotes any subsite route to a master site route,
 making it possible to safely link to it from any master site template.
