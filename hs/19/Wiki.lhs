@@ -1,11 +1,3 @@
-\subsection{Данные}
-
-Now we can proceed with writing our main application. This application will
-include the chat subsite and a wiki. The first thing we need to consider is how
-to store the wiki contents. Normally, we'd want to put this in some kind of a
-Persistent database. For simplicity, we'll just use an in-memory
-representation. Each Wiki page is indicated by a list of names, and the contents of each page is going to be a piece of +Text+. So our full foundation datatype is:
-
 \ignore{
 \begin{code}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -26,6 +18,13 @@ import           Yesod.Auth.Dummy        (authDummy)
 \end{code}
 }
 
+\subsection{Данные}
+Теперь мы можем перейти к написанию основного приложения. Это приложение будет
+включать подсайт чата и вики. Первое, с чем мы должны определиться,~--- как
+хранить содержимое вики. Обычно для этого используют какое-нибудь постоянное
+хранилище данных. Мы для простоты будем всё хранить в памяти. Каждая страница
+вики идентифицируется списком имён, для содержимого ограничимся текстом. В итоге,
+наш тип-основание примет вид:
 \begin{code}
 data App = App
     { getChat     :: Chat
@@ -33,32 +32,29 @@ data App = App
     }
 \end{code}
 
-Next we want to set up our routes:
-
+Теперь опишем наши маршруты:
 \begin{code}
 mkYesod "App" [parseRoutes|
-/            HomeR GET      -- the homepage
-/wiki/*Texts WikiR GET POST -- note the multipiece for the wiki hierarchy
+/            HomeR GET             -- домашняя страница
+/wiki/*Texts WikiR GET POST        -- обратите внимание на компонент для иерархии вики
 
-/chat        ChatR Chat getChat    -- the chat subsite
-/auth        AuthR Auth getAuth    -- the auth subsite
+/chat        ChatR Chat getChat    -- подсайт чата
+/auth        AuthR Auth getAuth    -- подсайт авторизации
 |]
 \end{code}
 
-\subsection{Экземляры классов типов}
-
-We need to make two modifications to the default +Yesod+ instance. Firstly, we
-want to provide an implementation of +authRoute+, so that our chat subsite
-widget can provide a proper link to a login page. Secondly, we'll provide a
-override to the +defaultLayout+. Besides providing login/logout links, this
-function will add in the chat widget on every page.
-
+\subsection{Экземпляры классов типов} Нам потребуется внести два изменения в
+экземпляр по умолчанию для класса~\lstinline'Yesod'.  Во-первых, мы хотим
+добавить реализацию функции~\lstinline'authRoute', чтобы наш чат мог корректно
+отобразить ссылку для входа на сайт. Во-вторых, мы переопределим
+функцию~\lstinline'defaultLayout'.  Помимо ссылок для входа на сайт и выхода с
+него, наша функция будет добавлять виджет чата на каждую страницу.
 \begin{code}
 instance Yesod App where
-    authRoute _ = Just $ AuthR LoginR -- get a working login link
+    authRoute _ = Just $ AuthR LoginR -- получаем рабочую ссылку для входа
 
-    -- Our custom defaultLayout will add the chat widget to every page.
-    -- We'll also add login and logout links to the top.
+    -- Наша функция defaultLayout будет добавлять виджет чата на каждую
+    -- страницу. Также вверху страницы добавляем ссылки для входа/выхода
     defaultLayout widget = do
         pc <- widgetToPageContent $ do
             widget
@@ -75,23 +71,22 @@ instance Yesod App where
                         $maybe msg <- mmsg
                             <div .message>#{msg}
                         <nav>
-                            <a href=@{AuthR LoginR}>Login
+                            <a href=@{AuthR LoginR}>Войти
                             \ | #
-                            <a href=@{AuthR LogoutR}>Logout
+                            <a href=@{AuthR LogoutR}>Выйти
                         ^{pageBody pc}
             |]
 \end{code}
 
-Since we're using the chat subsite, we have to provide an instance of
-+YesodChat+.
-
+Так как мы используем подсайт чата, мы должны определить экземпляр
+класса~\lstinline'YesodChat'.
 \begin{code}
 instance YesodChat App where
     getUserName = do
         muid <- maybeAuthId
         case muid of
             Nothing -> do
-                setMessage "Not logged in"
+                setMessage "Не вошли на сайт"
                 redirect $ AuthR LoginR
             Just uid -> return uid
     isLoggedIn = do
@@ -99,68 +94,66 @@ instance YesodChat App where
         return $ maybe False (const True) ma
 \end{code}
 
-Our +YesodAuth+ and +RenderMessage+ instances, as well as the homepage handler,
-are rather bland:
-
+Экземпляры классов~\lstinline'YesodAuth' и~\lstinline'RenderMessage', так же
+как и обработчик домашней страницы, в целом очевидны:
 \begin{code}
--- Fairly standard YesodAuth instance. We'll use the dummy plugin so that you
--- can create any name you want, and store the login name as the AuthId.
+-- Относительно стандартный экземпляр YesodAuth. Будем использовать фиктивный
+-- плагин авторизации, так что вы сможете использовать любое имя по желанию,
+-- которое будет сохранено как AuthId.
 instance YesodAuth App where
     type AuthId App = Text
     authPlugins _ = [authDummy]
     loginDest _ = HomeR
     logoutDest _ = HomeR
     getAuthId = return . Just . credsIdent
-    authHttpManager = error "authHttpManager" -- not used by authDummy
+    authHttpManager = error "authHttpManager" -- authDummy не использует
     maybeAuthId = lookupSession "_ID"
 
 instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
--- Nothing special here, just giving a link to the root of the wiki.
+-- Ничего особенного, просто даём ссылку на корень вики
 getHomeR :: Handler Html
 getHomeR = defaultLayout
     [whamlet|
-        <p>Welcome to the Wiki!
+        <p>Добро пожаловать на Вики!
         <p>
-            <a href=@{wikiRoot}>Wiki root
+            <a href=@{wikiRoot}>Начало
     |]
   where
     wikiRoot = WikiR []
 \end{code}
 
 \subsection{Обработчики вики}
-
-Now it's time to write our wiki handlers: a GET for displaying a page, and a
-POST for updating a page. We'll also define a +wikiForm+ function to be used on
-both handlers:
-
+Теперь самое время написать обработчики запросов для вики: GET для показа
+страницы и POST для обновления. Также определим
+функцию~\lstinline'wikiForm' для использования в обоих обработчиках.
 \begin{code}
--- A form for getting wiki content
+-- Форма для получения содержимого вики
 wikiForm :: Maybe Textarea -> Html -> MForm Handler (FormResult Textarea, Widget)
-wikiForm mtext = renderDivs $ areq textareaField "Page body" mtext
+wikiForm mtext = renderDivs $ areq textareaField "Текст страницы" mtext
 
--- Show a wiki page and an edit form
+-- Показываем страницу вики и форму для редактирования
 getWikiR :: [Text] -> Handler Html
 getWikiR page = do
-    -- Get the reference to the contents map
+    -- Получаем ссылку на хранилище содержимого
     icontent <- fmap wikiContent getYesod
 
-    -- And read the map from inside the reference
+    -- Читаем содержимое по ссылке And read the map from inside the reference
     content <- liftIO $ I.readIORef icontent
 
-    -- Lookup the contents of the current page, if available
+    -- Ищем содержимое текущей страницы, если имеется
     let mtext = Map.lookup page content
 
-    -- Generate a form with the current contents as the default value.
-    -- Note that we use the Textarea wrapper to get a <textarea>.
+    -- Создаём форму с текущим содержимым в виде исходного значения
+    -- Заметьте, мы используем обёртку Textarea для получения тега <textarea>
     (form, _) <- generateFormPost $ wikiForm $ fmap Textarea mtext
     defaultLayout $ do
         case mtext of
-            -- We're treating the input as markdown. The markdown package
-            -- automatically handles XSS protection for us.
+            -- Считаем, что ввод в формате markdown. В пакете markdown
+            -- реализован механизм защиты от XSS
             Just text -> toWidget $ markdown def $ TL.fromStrict text
-            Nothing -> [whamlet|<p>Page does not yet exist|]
+            Nothing -> [whamlet|<p>Страница ещё не существует|]
         [whamlet|
             <h2>Edit page
             <form method=post>
@@ -169,7 +162,7 @@ getWikiR page = do
                     <input type=submit>
         |]
 
--- Get a submitted wiki page and updated the contents.
+-- Получаем отправленную страницу и обновлённое содержимое
 postWikiR :: [Text] -> Handler Html
 postWikiR page = do
     icontent <- fmap wikiContent getYesod
@@ -180,7 +173,7 @@ postWikiR page = do
         FormSuccess (Textarea t) -> do
             liftIO $ I.atomicModifyIORef icontent $
                 \m -> (Map.insert page t m, ())
-            setMessage "Page updated"
+            setMessage "Страница обновлена"
             redirect $ WikiR page
         _ -> defaultLayout
                 [whamlet|
@@ -193,22 +186,23 @@ postWikiR page = do
 
 \subsection{Запуск}
 
-Finally, we're ready to run our application. Unlike many of our previous
-examples in this book, we need to perform some real initialization in the
-+main+ function. The +Chat+ subsite requires an empty +Chan+ to be created, and
-we need to create a mutable variable to hold the wiki contents. Once we have
-those values, we can create an +App+ value and pass it to the +warp+ function.
-
+Наконец, мы готовы к запуску нашего приложения. В отличие от большинства
+предыдущих примеров в этой книги, теперь нам надо выполнить настоящую
+инициализацию в функции~\lstinline'main'. Для подсайта~\lstinline'Chat'
+требуется созданный пустой канал~\lstinline'Chan', и ещё требуется изменяемая
+переменная (mutable variable) для хранения содержимого вики. Как только они у
+нас есть, мы создаём значение типа~\lstinline'App' и передаём его
+функции~\lstinline'warp'.
 \begin{code}
 main :: IO ()
 main = do
-    -- Create our server event channel
+    -- Создаём канал событий сервера
     chan <- newChan
 
-    -- Initially have a blank database of wiki pages
+    -- Изначально пустая база данных для страниц вики
     icontent <- I.newIORef Map.empty
 
-    -- Run our app
+    -- Запуска наше приложение
     warpEnv App
         { getChat = Chat chan
         , wikiContent = icontent

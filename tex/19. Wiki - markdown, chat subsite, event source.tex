@@ -17,9 +17,12 @@ source) HTML 5. Вы можете посмотреть полную версию
 \input{../hs/19/Wiki.lhs}
 
 \section{Выводы}
-This example demonstrated creation of a non-trivial subsite. Some important points to
-notice were the usage of typeclasses to express constraints on the master site, how data
-initialization was performed in the +main+ function, and how ++lift++ing allowed us to
-operate in either the subsite or master site context.
-If you’re looking for a way to test out your subsite skills, I’d recommend modifying this
-example so that the Wiki code also lived in its own subsite.
+Этот пример продемонстрировал создание нетривиального подсайта. Некоторые
+важные изученные моменты: использование классов типов для выражения
+ограничений, накладываемых на основной сайт; способ выполнения инициализации в
+функции~\lstinline'main'; использование функции~\lstinline'lift', позволяющей
+нам работать в контексте как подсайта, так и основного сайта.
+
+Если вы ищете способ, как проверить свои навыки создания подсайтов, я бы
+порекомендовал вам изменить пример и переместить код вики в собственный
+подсайт.
