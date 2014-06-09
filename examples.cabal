@@ -366,12 +366,13 @@ executable 16-i18n
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
--- executable 17-hellosub
---   default-language:    Haskell2010
---   hs-source-dirs:      hs
---   main-is:             17/hellosub.hs
---   build-depends:       base >=4.6 && <4.7
---                      , yesod
+executable 17-hellosub
+  default-language:    Haskell2010
+  hs-source-dirs:      hs/17
+  main-is:             Main.hs
+  other-modules:       HelloSub, HelloSub.Data
+  build-depends:       base >=4.6 && <4.7
+                     , yesod
 
 executable 18-blog
   default-language:    Haskell2010
