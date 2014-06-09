@@ -1,14 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
-import Network.HTTP.Conduit
-    ( http, parseUrl, withManager, RequestBody (RequestBodyLBS)
-    , requestBody, method, Response (..)
-    )
-import Data.Aeson (Value (Object, String))
-import Data.Aeson.Parser (json)
-import Data.Conduit (($$+-))
-import Data.Conduit.Attoparsec (sinkParser)
-import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (encode, (.=), object)
+import           Control.Monad.IO.Class  (liftIO)
+import           Data.Aeson              (Value (Object, String))
+import           Data.Aeson              (encode, object, (.=))
+import           Data.Aeson.Parser       (json)
+import           Data.Conduit            (($$+-))
+import           Data.Conduit.Attoparsec (sinkParser)
+import           Network.HTTP.Conduit    (RequestBody (RequestBodyLBS),
+                                          Response (..), http, method, parseUrl,
+                                          requestBody, withManager)
 
 main :: IO ()
 main = withManager $ \manager -> do
