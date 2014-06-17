@@ -103,7 +103,7 @@ data Blog = Blog
 mkMessage "Blog" "hs/18/messages-blog" "en"
 \end{code}
 
-Содержимое нашего файла <<en>>:
+Содержимое нашего файла \texttt{blog-messages/en.msg}:
 
 \lstinputlisting[language=]{../hs/18/messages-blog/en.msg}
 
