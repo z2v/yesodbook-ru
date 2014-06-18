@@ -1,5 +1,5 @@
 \chapter{Полнотекстовый поиск с использованием Sphinx}\label{chap:sphinx}
-\footnotehref{http://sphinxsearch.com/}{Sphinx}~--- это сервер полнотекстового поиска, благодаря которому реализован поиск на многих сайтах, включая сайт самого Yesod. Код, необходимый для интеграции Sphinx и Yesod довольно краток, но, в то же время, он затрагивает несколько непростых моментов, а потому является прекрасной иллюстрацией того, как использовать некоторые детали внутреннего устройства Yesod.
+\footnotehref{http://sphinxsearch.com/}{Sphinx}~--- это сервер полнотекстового поиска, благодаря которому реализован поиск на многих сайтах. Код, необходимый для интеграции Sphinx и Yesod довольно краток, но, в то же время, он затрагивает несколько непростых моментов, а потому является прекрасной иллюстрацией того, как использовать некоторые детали внутреннего устройства Yesod.
 
 По существу нам предстоит реализовать три вещи:
 \begin{itemize}
@@ -7,6 +7,8 @@
   \item Доступ из Yesod к результатам поиска Sphinx. На самом деле, благодаря пакету \footnotehref{http://hackage.haskell.org/package/sphinx}{sphinx}, это довольно просто.
   \item Предоставление содержимого документов серверу Sphinx. Вот где происходят интересные вещи! Вы узнаете, как напрямую передавать контент из базы данных напрямую в XML, который затем передаётся клиенту.
 \end{itemize}
+
+Полный код примера можно посмотреть в~\footnotehref{https://www.fpcomplete.com/user/snoyberg/yesod/case-study-sphinx}{FP Haskell Center}.
 
 \section{Установка Sphinx}
 В отличие от большинства других примеров, здесь для начала нам потребуется настроить и запустить сервер Sphinx. Я не собираюсь затрагивать все особенности Sphinx, отчасти, потому что они не относятся к делу, но в основном~--- потому что я далеко не эксперт в Sphinx.
@@ -32,6 +34,12 @@ index searcher
     docinfo = extern
     charset_type = utf-8
 }
+
+searchd
+{
+    listen   = 9312
+    pid_file = /var/run/sphinxsearch/searchd.pid
+}
 \end{lstlisting}
 
 Чтобы построить индекс, необходимо запустить \lstinline!indexer searcher!. Очевидно, это не будет работать, пока мы не запустим наше приложение. В рабочей версии сайта, эту команду следует запускать периодически с помощью crontab, чтобы индекс регулярно обновлялся.
@@ -39,16 +47,18 @@ index searcher
 \section{Базовая настройка Yesod}
 Создадим новое Yesod-приложение. Нам понадобится одна таблица в базе данных для хранения документов, которые будут состоять из заголовка и текста. Эту таблицу мы будем хранить в SQLite. Создадим маршруты для поиска, добавления и просмотра документов, а также для генерации xmlpipe-файла для Sphinx.
 \begin{lstlisting}
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persist|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Doc
     title Text
     content Textarea
 |]
 
-data Searcher = Searcher ConnectionPool
+data Searcher = Searcher
+    { connPool :: ConnectionPool
+    }
 
 mkYesod "Searcher" [parseRoutes|
-/ RootR GET
+/ HomeR GET
 /doc/#DocId DocR GET
 /add-doc AddDocR POST
 /search SearchR GET
@@ -58,52 +68,57 @@ mkYesod "Searcher" [parseRoutes|
 instance Yesod Searcher
 
 instance YesodPersist Searcher where
-    type YesodPersistBackend Searcher = SqlPersist
+    type YesodPersistBackend Searcher = SqlPersistT
 
     runDB action = do
         Searcher pool <- getYesod
         runSqlPool action pool
 
+instance YesodPersistRunner Searcher where -- see below
+    getDBRunner = defaultGetDBRunner connPool
+
 instance RenderMessage Searcher FormMessage where
     renderMessage _ _ = defaultFormMessage
 \end{lstlisting}
 
-Надеюсь, всё это должно быть уже знакомым на данный момент. Далее мы определим две формы~--- одну для создания документа и одну для поиска:
+Надеюсь, всё это должно быть уже знакомым на данный момент. Новое только одно~--- определение экземпляра класса типов~\lstinline'YesodPersistRunner'. Этот тип классов необходим для создания потоковых ответов от базы данных. Реализация по умолчания (\lstinline'defaultGetDBRunner') подходит почти всегда.
+
+Далее мы определим две формы~--- одну для создания документа и одну для поиска:
 \begin{lstlisting}
-addDocForm :: Html -> MForm Searcher Searcher (FormResult Doc, Widget)
+addDocForm :: Html -> MForm Handler (FormResult Doc, Widget)
 addDocForm = renderTable $ Doc
     <$> areq textField "Title" Nothing
     <*> areq textareaField "Contents" Nothing
 
-searchForm :: Html -> MForm Searcher Searcher (FormResult Text, Widget)
+searchForm :: Html -> MForm Handler (FormResult Text, Widget)
 searchForm = renderDivs $ areq (searchField True) "Query" Nothing
 \end{lstlisting}%$
 
 Передача параметра~\lstinline'True' в функцию~\lstinline'searchField' обеспечивает автоматическую установку фокуса на поле ввода при загрузке страницы. Наконец, объявляем обработчики для главной страницы (на ней отображаются формы добавления и поиска документов), а также для отображения и добавления документа:
 \begin{lstlisting}
-getRootR :: Handler RepHtml
-getRootR = do
+getHomeR :: Handler Html
+getHomeR = do
     docCount <- runDB $ count ([] :: [Filter Doc])
     ((_, docWidget), _) <- runFormPost addDocForm
     ((_, searchWidget), _) <- runFormGet searchForm
     let docs = if docCount == 1
                 then "There is currently 1 document."
-                else "There are currently " ++ show docCount ++
-                       " documents."
-    defaultLayout [whamlet|
-<p>Welcome to the search application. #{docs}
-<form method=post action=@{AddDocR}>
-    <table>
-        ^{docWidget}
-        <tr>
-            <td colspan=3>
-                <input type=submit value="Add document">
-<form method=get action=@{SearchR}>
-    ^{searchWidget}
-    <input type=submit value=Search>
-|]
+                else "There are currently " ++ show docCount ++ " documents."
+    defaultLayout
+        [whamlet|
+            <p>Welcome to the search application. #{docs}
+            <form method=post action=@{AddDocR}>
+                <table>
+                    ^{docWidget}
+                    <tr>
+                        <td colspan=3>
+                            <input type=submit value="Add document">
+            <form method=get action=@{SearchR}>
+                ^{searchWidget}
+                <input type=submit value=Search>
+        |]
 
-postAddDocR :: Handler RepHtml
+postAddDocR :: Handler Html
 postAddDocR = do
     ((res, docWidget), _) <- runFormPost addDocForm
     case res of
@@ -111,23 +126,24 @@ postAddDocR = do
             docid <- runDB $ insert doc
             setMessage "Document added"
             redirect $ DocR docid
-        _ -> defaultLayout [whamlet|
-<form method=post action=@{AddDocR}>
-    <table>
-        ^{docWidget}
-        <tr>
-            <td colspan=3>
-                <input type=submit value="Add document">
-|]
+        _ -> defaultLayout
+            [whamlet|
+                <form method=post action=@{AddDocR}>
+                    <table>
+                        ^{docWidget}
+                        <tr>
+                            <td colspan=3>
+                                <input type=submit value="Add document">
+            |]
 
-getDocR :: DocId -> Handler RepHtml
+getDocR :: DocId -> Handler Html
 getDocR docid = do
     doc <- runDB $ get404 docid
-    defaultLayout $
+    defaultLayout
         [whamlet|
-<h1>#{docTitle doc}
-<div .content>#{docContent doc}
-|]
+            <h1>#{docTitle doc}
+            <div .content>#{docContent doc}
+        |]
 \end{lstlisting}%$
 
 \section{Поиск}
@@ -140,18 +156,18 @@ getDocR docid = do
     \end{center}
 \end{figure}
 
-Давайте начнём с определения типа данных Result:
+Давайте начнём с определения типа данных \lstinline'Result':
 \begin{lstlisting}
 data Result = Result
-    { resultId :: DocId
-    , resultTitle :: Text
+    { resultId      :: DocId
+    , resultTitle   :: Text
     , resultExcerpt :: Html
     }
 \end{lstlisting}
 
 Теперь взглянем на обработчик запроса поиска: % не поисковый запрос, ибо так переводится search term
 \begin{lstlisting}
-getSearchR :: Handler RepHtml
+getSearchR :: Handler Html
 getSearchR = do
     ((formRes, searchWidget), _) <- runFormGet searchForm
     searchResults <-
@@ -159,42 +175,41 @@ getSearchR = do
             FormSuccess qstring -> getResults qstring
             _ -> return []
     defaultLayout $ do
-        toWidget [lucius|
-.excerpt {
-    color: green; font-style: italic
-}
-.match {
-    background-color: yellow;
-}
-|]
+        toWidget
+            [lucius|
+                .excerpt {
+                    color: green; font-style: italic
+                }
+                .match {
+                    background-color: yellow;
+                }
+            |]
         [whamlet|
-<form method=get action=@{SearchR}>
-    ^{searchWidget}
-    <input type=submit value=Search>
-$if not $ null searchResults
-    <h1>Results
-    $forall result <- searchResults
-        <div .result>
-            <a href=@{DocR $ resultId result}>#{resultTitle result}
-            <div .excerpt>#{resultExcerpt result}
-|]
+            <form method=get action=@{SearchR}>
+                ^{searchWidget}
+                <input type=submit value=Search>
+            $if not $ null searchResults
+                <h1>Results
+                $forall result <- searchResults
+                    <div .result>
+                        <a href=@{DocR $ resultId result}>#{resultTitle result}
+                        <div .excerpt>#{resultExcerpt result}
+        |]
 \end{lstlisting}%$
 
 Ничего волшебного здесь не происходит: мы просто полагаемся на~\lstinline'searchForm', объявленную выше, и ещё необъявленную~\lstinline'getResults'. Эта функция просто принимает строку с поисковым запросом и возвращает список результатов. Здесь мы впервые взаимодействуем с API сервера Sphinx. Мы будем использовать две функции:~\lstinline'query' будет возвращать список совпадений, а \lstinline'buildExcerpts'~--- выделенные отрывки. Сначала разберём функцию~\lstinline!getResults!:
 \begin{lstlisting}
 getResults :: Text -> Handler [Result]
 getResults qstring = do
-    sphinxRes' <- liftIO $ S.query config "searcher" (unpack qstring)
+    sphinxRes' <- liftIO $ S.query config "searcher" $ T.unpack qstring
     case sphinxRes' of
         ST.Ok sphinxRes -> do
-            let docids = map (Key . PersistInt64 . ST.documentId) $
-                           ST.matches sphinxRes
+            let docids = map (Key . PersistInt64 . ST.documentId) $ ST.matches sphinxRes
             fmap catMaybes $ runDB $ forM docids $ \docid -> do
                 mdoc <- get docid
                 case mdoc of
                     Nothing -> return Nothing
-                    Just doc -> liftIO $ Just <$>
-                                  getResult docid doc qstring
+                    Just doc -> liftIO $ Just <$> getResult docid doc qstring
         _ -> error $ show sphinxRes'
   where
     config = S.defaultConfig
@@ -203,13 +218,13 @@ getResults qstring = do
         }
 \end{lstlisting}%$
 
-Функция~\lstinline'query' принимает три аргумента: параметры конфигурации, строку с именем индекса, по которому будет производиться поиск, и поисковый запрос. Функция возвращает список идентификаторов документов, содержащих искомую строку. Здесь есть небольшая хитрость, связанная с тем, что возвращаемые идентификаторы имеют тип~\lstinline'Int64', в то время как нам нужен~\lstinline'DocId'. Благодаря тому, что SQL-бэкенды \lstinline'Persistent' используют конструктор~\lstinline'PersistInt64' для идентификаторов, мы сможем получить требуемые значения, просто обернув их соответствующим образом.
+Функция~\lstinline'query' принимает три аргумента: параметры конфигурации, строку с именем индекса, по которому будет производиться поиск (<<searcher>> в нашем случае), и поисковый запрос. Функция возвращает список идентификаторов документов, содержащих искомую строку. Здесь есть небольшая хитрость, связанная с тем, что возвращаемые идентификаторы имеют тип~\lstinline'Int64', в то время как нам нужен~\lstinline'DocId'. Благодаря тому, что SQL-бэкенды \lstinline'Persistent' используют конструктор~\lstinline'PersistInt64' для идентификаторов, мы сможем получить требуемые значения, просто обернув их соответствующим образом.
 
 \begin{remark}
 Если вы работаете с бэкендом, использующим нечисловые идентификаторы, например MongoDB, вам придётся разработать какой-нибудь более изощрённый способ.
 \end{remark}
 
-Затем мы проходим в цикле по этим идентификаторам, получая список~\lstinline'[Maybe Result]', и используем функцию~\lstinline'catMaybes' для преобразования этого списка в~\lstinline'[Result]'. В where-клозе мы определяем локальные настройки, которые замещают номер порта, используемый по умолчанию, а также задают режим поиска, в котором возвращаются все документы, содержащие хотя бы одно слово из поискового запроса.
+Затем мы проходим в цикле по этим идентификаторам, получая список~\lstinline'[Maybe Result]', и используем функцию~\lstinline'catMaybes' для преобразования этого списка в~\lstinline'[Result]'. В where-клозе мы определяем локальные настройки, которые замещают номер порта, используемый по умолчанию, а также задают режим поиска, в котором возвращаются все документы, содержащие \emph{любое} слово из поискового запроса.
 
 Наконец, взглянем на функцию~\lstinline'getResult':
 \begin{lstlisting}
@@ -219,10 +234,10 @@ getResult docid doc qstring = do
         excerptConfig
         [T.unpack $ escape $ docContent doc]
         "searcher"
-        (unpack qstring)
+        (T.unpack qstring)
     let excerpt =
             case excerpt' of
-                ST.Ok bss -> preEscapedToMarkup $ decodeUtf8With ignore $ L.concat bss
+                ST.Ok bss -> preEscapedToHtml $ decodeUtf8 $ mconcat bss
                 _ -> ""
     return Result
         { resultId = docid
@@ -244,17 +259,12 @@ escape =
 
 Функция~\lstinline'buildExcerpts' принимает четыре аргумента: параметры конфигурации, содержимое документа, строку с именем индекса и поисковый запрос. Обратите внимание на экранирование специальных символов в документе. Sphinx его не производит, поэтому нам приходится заниматься этим самим.
 
-Результат поиска, который мы получаем от Sphinx, представляет собой список
-ленивых~\lstinline'ByteString'. Но мы, само собой разумеется, предпочли бы получить~\lstinline'Html'. Поэтому мы конкатенируем элементы списка в одну ленивую~\lstinline'ByteString', декодируем её в ленивый текст (игнорируя некорректные последовательности символов UTF-8), а затем используем функцию~\lstinline'preEscapedToMarkup' для того, чтобы тэги, используемые для выделения найденных совпадений, не экранировались. Вот пример полученного в итоге HTML-кода:
+Результат поиска, который мы получаем от Sphinx, представляет собой список элементов типа~\lstinline'Text'. Но мы, само собой разумеется, предпочли бы получить~\lstinline'Html'. Поэтому мы конкатенируем элементы списка в одну строку~\lstinline'Text' и затем используем функцию~\lstinline'preEscapedToHtml' для того, чтобы тэги, используемые для выделения найденных совпадений, не экранировались. Вот пример полученного в итоге HTML-кода:
 \begin{lstlisting}[language=HTML]
-&#8230; Departments. The President shall have <span
-class='match'>Power</span> to fill up all Vacancies
-&#8230; people. Amendment 11 The Judicial <span
-class='match'>power</span> of the United States shall
-&#8230; jurisdiction. 2. Congress shall have <span
-class='match'>power</span> to enforce this article by
-&#8230; 5. The Congress shall have <span
-class='match'>power</span> to enforce, by appropriate legislation
+&#8230; Departments.  The President shall have <span class='match'>Power</span> to fill up all Vacancies
+&#8230;  people. Amendment 11 The Judicial <span class='match'>power</span> of the United States shall
+&#8230; jurisdiction. 2. Congress shall have <span class='match'>power</span> to enforce this article by
+&#8230; 5. The Congress shall have <span class='match'>power</span> to enforce, by appropriate legislation
 &#8230;
 \end{lstlisting}
 
@@ -262,22 +272,21 @@ class='match'>power</span> to enforce, by appropriate legislation
 Самое интересное мы приберегли напоследок. Для большинства обработчиков в Yesod рекомендуемый подход заключается в загрузке данных из базы в оперативную память и генерации вывода, основанного на этих данных. Так проще, но намного важнее то, что такой подход более устойчив к ошибкам. Если возникнет проблема во время загрузки данных из базы, пользователь получит должный код ответа 500.
 
 \begin{remark}
-Что я имею ввиду, говоря <<должный код ответа 500>>? Если вы начнёте передавать данные клиенту и в середине процесса наткнётесь на исключение, у вас не будет возможности изменить код ответа. Пользователь получит ответ с кодом 200, просто передача данных прервётся посередине. Помимо того, что частично сгенерированная страница сама по себе сбивает с толку, такое поведение ещё и не соответствует спецификации протокола HTTP.
+Что я имею ввиду, говоря <<должный код ответа 500>>? Если вы начнёте передавать поток данных клиенту и в середине процесса наткнётесь на исключение, у вас не будет возможности изменить код ответа. Пользователь получит ответ с кодом 200, просто передача данных прервётся посередине. Помимо того, что частично сгенерированная страница сама по себе сбивает с толку, такое поведение ещё и не соответствует спецификации протокола HTTP.
 \end{remark}
 
-Генерация xmlpipe-вывода является прекрасным примером, где следует использовать альтернативный подход. У нас может быть огромное количество документов (код сайта yesodweb.com оперирует десятками тысяч документов), а документы могут иметь размер порядка нескольких сотен килобайт. Если мы не воспользуемся поточным подходом, это может привести к большому времени ответа и использованию большого объёма оперативной памяти.
+Генерация xmlpipe-вывода является прекрасным примером, где следует использовать альтернативный подход. У нас может быть огромное количество документов, а документы могут иметь размер порядка нескольких сотен килобайт. Если мы не воспользуемся поточным подходом, это может привести к большому времени ответа и использованию большого объёма оперативной памяти.
 
-Так каким именно образом мы можем генерировать ответ в виде потока?
-Как мы узнаем из \hyperref[chap:web_application_interface]{главы, посвящённой WAI}, у нас есть конструктор~\lstinline!ResponseSource!, который использует поток элементов типа~\lstinline!Builder! из библиотеки~\lstinline'blaze-builder'. На стороне Yesod, вместо того, чтобы генерировать ответ, как обычно, мы можем послать WAI-ответ напрямую с помощью функции~\lstinline'sendWaiResponse'. Таким образом имеется по крайней мере две части этой головоломки.
+Так каким именно образом мы можем генерировать ответ в виде потока? Yesod предоставляет вспомогательную функцию на этот случай: \lstinline'ResponseSourceDB'. Эта функция принимает два аргумента: тип содержимого и кондуит~\lstinline'Source', генерирующий поток~\lstinline'Builder'ов. Yesod берёт на себя всю рутину: получение соединения с БД из пула, запуск транзакции и организации потока данных к пользователю.
 
 Теперь нам известно, что из неких XML-данных требуется создать поток~\lstinline!Builder!'ов. К счастью, пакет \footnotehref{http://hackage.haskell.org/package/xml-conduit}{\lstinline'xml-conduit'} предоставляет интерфейс непосредственно для этого. Вообще, пакет \texttt{xml-conduit} предоставляет высокоуровневый интерфейс для работы с документами целиком, однако в нашем случае понадобится низкоуровневый интерфейс~\lstinline'Event', дабы обеспечить минимальное использование памяти. Вот функция, которая нам нужна:
 \begin{lstlisting}
-renderBuilder :: Resource m => RenderSettings -> Conduit Event m Builder b
+renderBuilder :: Monad m => RenderSettings -> Conduit Event m Builder
 \end{lstlisting}
 
-В переводе на русский язык это означает, что \lstinline'renderBuilder' принимает некие настройки (мы воспользуемся настройками по умолчанию), и преобразует поток~\lstinline!Event!'ов в поток~\lstinline!Builder!'ов. Выглядит неплохо. Всё, что нам теперь нужно~--- это поток~\lstinline!Event!'ов.
+В переводе на русский язык это означает, что \lstinline'renderBuilder' принимает некие настройки (мы воспользуемся настройками по умолчанию) и преобразует поток~\lstinline!Event!'ов в поток~\lstinline!Builder!'ов. Выглядит неплохо. Всё, что нам теперь нужно~--- это поток~\lstinline!Event!'ов.
 
-Кстати говоря, а как должен выглядеть наш XML-документ? Он довольно прост, имеется родительский элемент~\lstinline'sphinx:docset', элемент~\lstinline'sphinx:schema', содержащий одиночный элемент~\lstinline'sphinx:field' (который определяет элемент с содержимым документа), а затем по одному элементу~\lstinline'sphinx:document' для каждого документа в базе данных. Эти элементы будут содержать атрибут~\lstinline'id' и дочерний элемент~\lstinline'content'.
+Кстати говоря, а как должен выглядеть наш XML-документ? Он довольно прост, имеется родительский элемент~\lstinline'sphinx:docset', элемент~\lstinline'sphinx:schema', содержащий одиночный элемент~\lstinline'sphinx:field' (который определяет элемент с содержимым документа), а затем по одному элементу~\lstinline'sphinx:document' для каждого документа в базе данных. Эти элементы будут содержать атрибут~\lstinline'id' и дочерний элемент~\lstinline'content'. Вот пример такого документа:
 \begin{lstlisting}[language=XML,caption=Пример xmlpipe-документа]
 <sphinx:docset xmlns:sphinx="http://sphinxsearch.com/">
     <sphinx:schema>
@@ -333,43 +342,31 @@ entityToEvents (Entity docid doc) =
 
 Мы открываем элемент~\lstinline'document' с атрибутом~\lstinline'id', затем открываем элемент~\lstinline'content', вставляем содержимое документа, после чего закрываем оба элемента. Для преобразования~\lstinline!DocId! в значение типа~\lstinline!Text! мы используем функцию~\lstinline!toPathPiece!. Теперь нам нужно как-то преобразовать поток сущностей в поток событий. Для этого воспользуемся функцией~\lstinline!concatMap! из модуля~\lstinline!Data.Conduit.List!: \lstinline`CL.concatMap entityToEvents`.
 
-Но чего мы \emph{действительно} хотим, так это создать поток этих событий непосредственно из базы данных. На протяжении большей части книги, мы использовали функцию~\lstinline!selectList!, однако Persistent также предоставляет (более мощную) функцию~\lstinline!selectSourceConn!. С её помощью мы получаем в итоге следующую функцию:
+Но чего мы \emph{действительно} хотим, так это создать поток этих событий непосредственно из базы данных. На протяжении большей части книги, мы использовали функцию~\lstinline!selectList!, однако Persistent также предоставляет (более мощную) функцию~\lstinline!selectSource!. С её помощью мы получаем в итоге следующую функцию:
 \begin{lstlisting}
-docSource :: Connection -> C.Source (C.ResourceT IO) X.Event
-docSource conn = selectSourceConn conn [] [] C.$= CL.concatMap entityToEvents
+docSource :: Source (YesodDB Searcher) X.Event
+docSource = selectSource [] [] $= CL.concatMap entityToEvents
 \end{lstlisting}%$
 
-Оператор~\lstinline'$=' соединяет источник с каналом, возвращая новый источник. Теперь, когда у нас есть источник~\lstinline!Event!'ов, всё, что нам нужно~--- это окружить его событиями начала и конца документа. Благодаря тому, что Source является экземпляром класса~\lstinline!Monoid!, это проще простого:
+Оператор~\lstinline'$=' соединяет источник с каналом, возвращая новый источник. Теперь, когда у нас есть источник~\lstinline!Event!'ов, всё, что нам нужно~--- это окружить его событиями начала и конца документа. Благодаря тому, что Source является экземпляром класса~\lstinline!Monad!, это проще простого:
 \begin{lstlisting}
-fullDocSource :: Connection -> C.Source (C.ResourceT IO) X.Event
-fullDocSource conn = mconcat
-    [ CL.sourceList startEvents
-    , docSource conn
-    , CL.sourceList endEvents
-    ]
+fullDocSource :: Source (YesodDB Searcher) X.Event
+fullDocSource = do
+    mapM_ yield startEvents
+    docSource
+    mapM_ yield endEvents
 \end{lstlisting}
 
-Мы почти закончили, осталось только применить всё это в функции~\lstinline!getXmlpipeR!. Нам необходимо установить соединение с базой данных. Обычно соединения с БД берутся и автоматически возвращаются с помощью функции~\lstinline!runDB!. В нашем случае требуется получить соединение и иметь к нему доступ до тех пор, пока тело ответа не будет передано полностью. Для этого воспользуемся функцией~\lstinline!takeResource!, которая регистрирует действие по очистке в монаде~\lstinline!ResourceT!.
-
-\begin{remark}
-Все WAI-приложения живут в трансформаторе монады~\lstinline!ResourceT!. Вы можете получить больше информации о \lstinline!ResourceT! в~\hyperref[chap:conduit]{приложении, посвящённом потокам}.
-\end{remark}
-
-По умолчанию ресурс не возвращается в пул. Это связано с правильной обработкой ошибок, что, впрочем, не относится к нашему случаю. Поэтому мы должны принудительно вернуть соединение в пул:
+Мы почти закончили, осталось только применить всё это в функции~\lstinline!getXmlpipeR!. Для этого мы воспользуемся функцией~\lstinline'respondSourceDB', упомянутой выше. Последняя необходимая уловка~--- преобразовать поток~\lstinline'Event'ов в поток~\lstinline'Chunk Builder'. Преобразование в поток~\lstinline'Builder' выполняется функцией~\lstinline'renderBuilder', после чего каждый~\lstinline'Builder' оборачивается в отдельный~\lstinline'Chunk':
 \begin{lstlisting}
-getXmlpipeR :: Handler RepXml
-getXmlpipeR = do
-    Searcher pool <- getYesod
-    let headers = [("Content-Type", "text/xml")]
-    managedConn <- lift $ takeResource pool
-    let conn = mrValue managedConn
-    lift $ mrReuse managedConn True
-    let source = fullDocSource conn C.$= renderBuilder def
-    sendWaiResponse $ ResponseSource status200 headers source
+getXmlpipeR :: Handler TypedContent
+getXmlpipeR =
+    respondSourceDB "text/xml"
+ $  fullDocSource
+ $= renderBuilder def
+ $= CL.map Chunk
 \end{lstlisting}
 
-Пул соединений получается из базовой переменной, после чего отправляется WAI-ответ. Мы используем конструктор~\lstinline!ResponseSource!, передавая ему код ответа, а также заголовки и тело ответа.
-
-\section{Весь код}
+\section{Полный код примера}
 
 \includecode{21/source.hs}

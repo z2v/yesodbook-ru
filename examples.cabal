@@ -434,25 +434,26 @@ executable 20-server
                      , wai
                      , warp
 
--- executable 21-sphinx
---   default-language:    Haskell2010
---   hs-source-dirs:      hs
---   main-is:             21/source.hs
---   build-depends:       base >=4.6 && <4.7
---                      , blaze-markup
---                      , bytestring
---                      , conduit
---                      , http-types
---                      , monad-logger
---                      , persistent
---                      , persistent-sqlite
---                      , pool-conduit
---                      , sphinx
---                      , text
---                      , wai
---                      , xml-conduit
---                      , xml-types
---                      , yesod
+executable 21-sphinx
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             21/source.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-markup
+                     , blaze-html
+                     , bytestring
+                     , conduit
+                     , http-types
+                     , monad-logger
+                     , persistent
+                     , persistent-sqlite
+                     , pool-conduit
+                     , sphinx
+                     , text
+                     , wai
+                     , xml-conduit
+                     , xml-types
+                     , yesod
 
 executable 24-hello-world
   default-language:    Haskell2010
