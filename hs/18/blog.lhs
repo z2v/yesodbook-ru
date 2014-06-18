@@ -100,12 +100,12 @@ data Blog = Blog
 умолчанию.
 
 \begin{code}
-mkMessage "Blog" "hs/18/messages-blog" "en"
+mkMessage "Blog" "hs/18/blog-messages" "en"
 \end{code}
 
 Содержимое нашего файла \texttt{blog-messages/en.msg}:
 
-\lstinputlisting[language=]{../hs/18/messages-blog/en.msg}
+\lstinputlisting[language=]{../hs/18/blog-messages/en.msg}
 
 А теперь настроим таблицу маршрутизации. У нас будет четыре записи: домашняя
 страница, страница со списком записей (\lstinline!BlogR!), страница отдельной

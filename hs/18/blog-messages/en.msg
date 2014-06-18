@@ -1,4 +1,3 @@
--- @blog-messages/en.msg
 NotAnAdmin: You must be an administrator to access this page.
 
 WelcomeHomepage: Welcome to the homepage
