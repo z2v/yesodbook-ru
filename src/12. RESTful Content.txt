@@ -1,60 +1,68 @@
-RESTful Content
+== RESTful Content
 
 One of the stories from the early days of the web is how search engines wiped
 out entire websites. When dynamic web sites were still a new concept,
-developers didn't appreciate the difference between a GET and POST request.
-As a result, they created pages- accessed with the GET method- that would
+developers didn't appreciate the difference between a +GET+ and +POST+ request.
+As a result, they created pages- accessed with the +GET+ method- that would
 delete pages. When search engines started crawling these sites, they could wipe
 out all the content.
 
 If these web developers had followed the HTTP spec properly, this would not
-have happened. A GET request is supposed to cause no side effects (you know,
+have happened. A +GET+ request is supposed to cause no side effects (you know,
 like wiping out a site). Recently, there has been a move in web development to
 properly embrace Representational State Transfer, also known as REST. This
 chapter describes the RESTful features in Yesod and how you can use them to
 create more robust web applications.
 
-Request methods
+=== Request methods
 
 In many web frameworks, you write one handler function per resource. In Yesod,
 the default is to have a separate handler function for each request method. The
 two most common request methods you will deal with in creating web sites are
-GET and POST. These are the most well-supported methods in HTML, since they are
-the only ones supported by web forms. However, when creating RESTful APIs, the
-other methods are very useful.
++GET+ and +POST+. These are the most well-supported methods in HTML, since they
+are the only ones supported by web forms. However, when creating RESTful APIs,
+the other methods are very useful.
 
 Technically speaking, you can create whichever request methods you like, but it
 is strongly recommended to stick to the ones spelled out in the HTTP spec. The
 most common of these are:
 
-GET Read-only requests. Assuming no other changes occur on the server,
-calling a GET request multiple times should result in the same response,
++GET+:: Read-only requests. Assuming no other changes occur on the server,
+calling a +GET+ request multiple times should result in the same response,
 barring such things as "current time" or randomly assigned results.
 
-POST A general mutating request. A POST request should never be submitted
++POST+:: A general mutating request. A +POST+ request should never be submitted
 twice by the user. A common example of this would be to transfer funds from one
 bank account to another.
 
-PUT Create a new resource on the server, or replace an existing one. This
-method is safe to be called multiple times.
++PUT+:: Create a new resource on the server, or replace an existing one. This
+method _is_ safe to be called multiple times.
 
-DELETE Just like it sounds: wipe out a resource on the server. Calling
++DELETE+:: Just like it sounds: wipe out a resource on the server. Calling
 multiple times should be OK.
 
-To a certain extent, this fits in very well with Haskell philosophy: a GET
+To a certain extent, this fits in very well with Haskell philosophy: a +GET+
 request is similar to a pure function, which cannot have side effects. In
-practice, your GET functions will probably perform IO, such as reading
+practice, your +GET+ functions will probably perform +IO+, such as reading
 information from a database, logging user actions, and so on.
 
 See the routing and handlers chapter chapter for more information on the syntax
 of defining handler functions for each request method.
 
-Representations
+=== Representations
 
 Suppose we have a Haskell datatype and value:
+
+[source, haskell]
+----
 data Person = Person { name :: String, age :: Int }
 michael = Person "Michael" 25
+----
+
 We could represent that data as HTML:
+
+[source, html]
+----
 <table>
     <tr>
         <th>Name</th>
@@ -65,180 +73,434 @@ We could represent that data as HTML:
         <td>25</td>
     </tr>
 </table>
+----
+
 or we could represent it as JSON:
+
+[source, json]
+----
 {"name":"Michael","age":25}
+----
+
 or as XML:
+
+[source, xml]
+----
 <person>
     <name>Michael</name>
     <age>25</age>
 </person>
+----
 
 Often times, web applications will use a different URL to get each of these
-representations; perhaps /person/michael.html, /person/michael.json, etc. Yesod
-follows the RESTful principle of a single URL for each resource. So in Yesod,
-all of these would be accessed from /person/michael.
+representations; perhaps +/person/michael.html+, +/person/michael.json+, etc.
+Yesod follows the RESTful principle of a single URL for each resource. So in
+Yesod, all of these would be accessed from +/person/michael+.
 
-Then the question becomes how do we determine which representation to serve.
-The answer is the HTTP Accept header: it gives a prioritized list of content
-types the client is expecting. Yesod will automatically determine which
-representation to serve based upon this header.
-Let's make that last sentence
+Then the question becomes how do we determine _which_ representation to serve.
+The answer is the HTTP +Accept+ header: it gives a prioritized list of content
+types the client is expecting. Yesod provides a pair of functions to abstract
+away the details of parsing that header directly, and instead allows you to
+talk at a much higher level of representations.  Let's make that last sentence
 a bit more concrete with some code:
 
-type ChooseRep = [ContentType] -> IO (ContentType, Content)
-class HasReps a where
-    chooseRep :: a -> ChooseRep
+[source, haskell]
+----
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
+import           Data.Text (Text)
+import           Yesod
 
-The chooseRep function takes two arguments: the value we are getting
-representations for, and a list of content types that the client will accept.
-We determine this by reading the Accept request header. chooseRep returns a
-tuple containing the content type of our response and the actual content.
+data App = App
 
-This typeclass is the core of Yesod's RESTful approach to representations.
-Every handler function must return an instance of HasReps. When Yesod generates
-the dispatch function, it automatically applies chooseRep to each handler,
-essentially giving all functions the type Handler ChooseRep. After running the
-Handler and obtaining the ChooseRep result, it is applied to the list of
-content types parsed from the Accept header.
-
-Yesod provides a number of instances of HasReps out of the box. When we use
-defaultLayout, for example, the return type is RepHtml, which looks like:
-
-newtype RepHtml = RepHtml Content
-instance HasReps RepHtml where
-    chooseRep (RepHtml content) _ = return ("text/html", content)
-
-Notice that we ignore entirely the list of expected content types. A number of
-the built in representations (RepHtml, RepPlain, RepJson, RepXml) in fact only
-support a single representation, and therefore what the client requests in the
-Accept header is irrelevant.
-
-RepHtmlJson
-
-An example to the contrary is RepHtmlJson, which provides either an HTML or
-JSON representation. This instance helps greatly in programming AJAX
-applications that degrade nicely. Here is an example that returns either HTML
-or JSON data, depending on what the client wants.
-
-{-# LANGUAGE QuasiQuotes, TypeFamilies, OverloadedStrings #-}
-{-# LANGUAGE MultiParamTypeClasses, TemplateHaskell #-}
-import Yesod
-data R = R
-mkYesod "R" [parseRoutes|
-/ RootR GET
-/#String NameR GET
-|]
-instance Yesod R
-
-getRootR = defaultLayout $ do
-    setTitle "Homepage"
-    addScriptRemote "http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"
-    toWidget [julius|
-$(function(){
-    $("#ajax a").click(function(){
-        jQuery.getJSON($(this).attr("href"), function(o){
-            $("div").text(o.name);
-        });
-        return false;
-    });
-});
-|]
-    let names = words "Larry Moe Curly"
-    [whamlet|
-<h2>AJAX Version
-<div #results>
-    AJAX results will be placed here when you click #
-    the names below.
-<ul #ajax>
-    $forall name <- names
-        <li>
-            <a href=@{NameR name}>#{name}
-
-<h2>HTML Version
-<p>
-    Clicking the names below will redirect the page #
-    to an HTML version.
-<ul #html>
-    $forall name <- names
-        <li>
-            <a href=@{NameR name}>#{name}
-
+mkYesod "App" [parseRoutes|
+/ HomeR GET
 |]
 
-getNameR name = do
-    let widget = do
-            setTitle $ toHtml name
-            [whamlet|Looks like you have Javascript off. Name: #{name}|]
-    let json = object ["name" .= name]
-    defaultLayoutJson widget json
+instance Yesod App
 
-main = warpDebug 4000 R
-
-Our getRootR handler creates a page with three links and some Javascript which
-intercept clicks on the links and performs asynchronous requests. If the user
-has Javascript enabled, clicking on the link will cause a request to be sent
-with an Accept header of application/json. In that case, getNameR will return
-the JSON representation instead.
-
-If the user disables Javascript, clicking on the link will send the user to the
-appropriate URL. A web browser places priority on an HTML representation of the
-data, and therefore the page defined by the widget will be returned.
-
-We can of course extend this to work with XML, Atom feeds, or even binary
-representations of the data. A fun exercise could be writing a web application
-that serves data simply using the default Show instances of datatypes, and then
-writing a web client that parses the results using the default Read instances.
-
-You might be concerned about efficiency here. Doesn't this approach mean we
-have to generate both an HTML and JSON response for each request? Thanks to
-laziness, that's not the case. In getNameR, neither widget nor json will be
-evaluated until the appropriate response type has been selected, and therefore
-only one of them will ever be run.
-
-News Feeds
-
-A great, practical example of multiple representations if the yesod-newsfeed
-package. There are two major formats for news feeds on the web: RSS and Atom.
-They contain almost exactly the same information, but are just packaged up
-differently.
-
-The yesod-newsfeed package defines a Feed datatype which contains information
-like title, description, and last updated time. It then provides two separate
-sets of functions for displaying this data: one for RSS, one for Atom. They
-each define their own representation datatypes:
-
-newtype RepAtom = RepAtom Content
-instance HasReps RepAtom where
-    chooseRep (RepAtom c) _ = return (typeAtom, c)
-newtype RepRss = RepRss Content
-instance HasReps RepRss where
-    chooseRep (RepRss c) _ = return (typeRss, c)
-But there's a third module which defines another datatype:
-data RepAtomRss = RepAtomRss RepAtom RepRss
-instance HasReps RepAtomRss where
-    chooseRep (RepAtomRss (RepAtom a) (RepRss r)) = chooseRep
-        [ (typeAtom, a)
-        , (typeRss, r)
+getHomeR :: Handler TypedContent
+getHomeR = selectRep $ do
+    provideRep $ return
+        [shamlet|
+            <p>Hello, my name is #{name} and I am #{age} years old.
+        |]
+    provideRep $ return $ object
+        [ "name" .= name
+        , "age" .= age
         ]
-This datatype will automatically serve whichever representation the client
-prefers, defaulting to Atom. If a client connects that only understands RSS,
-assuming it provides the correct HTTP headers, Yesod will provide RSS output.
+  where
+    name = "Michael" :: Text
+    age = 28 :: Int
 
+main :: IO ()
+main = warp 3000 App
+----
 
-Other request headers
+The +selectRep+ function says ``I'm about to give you some possible
+representations''. Each +provideRep+ call provides an alternate representation.
+Yesod uses the Haskell types to determine the mime type for each
+representation. Since +shamlet+ (a.k.a. simple Hamlet) produces an +Html+
+value, Yesod can determine that the relevant mime type is +text/html+.
+Similarly, +object+ generates a JSON value, which implies the mime type
++application/json+. +TypedContent+ is a data type provided by Yesod for some
+raw content with an attached mime type. We'll cover it in more detail in a
+little bit.
+
+To test this out, start up the server and then try running the following
+different +curl+ commands:
+
+[source, shell]
+----
+curl http://localhost:3000 --header "accept: application/json"
+curl http://localhost:3000 --header "accept: text/html"
+curl http://localhost:3000
+----
+
+Notice how the response changes based on the accept header value. Also, when
+you leave off the header, the HTML response is displayed by default. The rule
+here is that if there is no accept header, the first representation is
+displayed. If an accept header is present, but we have no matches, then a 406
+"not acceptable" response is returned.
+
+By default, Yesod provides a convenience middleware that lets you set the
+accept header via a query string parameter. This can make it easier to test
+from your browser. To try this out, you can visit
+link:http://localhost:3000/?_accept=application/json[http://localhost:3000/?_accept=application/json].
+
+Notice that we ignore entirely the list of expected content types. A number of the built in representations (+RepHtml+, +RepPlain+, +RepJson+, +RepXml+) in fact only support a single representation, and therefore what the client requests in the +Accept+ header is irrelevant.
+
+==== JSON conveniences
+
+Since JSON is such a commonly used data format in web applications today, we
+have some built-in helper functions for providing JSON representations. These
+are built off of the wonderful +aeson+ library, so let's start off with a quick
+explanation of how that library works.
+
++aeson+ has a core datatype, +Value+, which represents any valid JSON value. It
+also provides two typeclasses- +ToJSON+ and ++FromJSON++- to automate
+marshaling to and from JSON values, respectively. For our purposes, we're
+currently interested in +ToJSON+. Let's look at a quick example of creating a
++ToJSON+ instance for our ever-recurring +Person+ data type examples.
+
+[source, haskell]
+----
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
+import           Data.Aeson
+import qualified Data.ByteString.Lazy.Char8 as L
+import           Data.Text                  (Text)
+
+data Person = Person
+    { name :: Text
+    , age  :: Int
+    }
+
+instance ToJSON Person where
+    toJSON Person {..} = object
+        [ "name" .= name
+        , "age"  .= age
+        ]
+
+main :: IO ()
+main = L.putStrLn $ encode $ Person "Michael" 28
+----
+
+I won't go into further detail on +aeson+, as
+link:https://www.fpcomplete.com/haddocks/aeson[the Haddock documentation]
+already provides a great introduction to the library. What I've described so
+far is enough to understand our convenience functions.
+
+Let's suppose that you have such a +Person+ datatype, with a corresponding
+value, and you'd like to use it as the representation for your current page.
+For that, you can use the +returnJson+ function.
+
+[source, haskell]
+----
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
+import           Data.Text (Text)
+import           Yesod
+
+data Person = Person
+    { name :: Text
+    , age  :: Int
+    }
+
+instance ToJSON Person where
+    toJSON Person {..} = object
+        [ "name" .= name
+        , "age"  .= age
+        ]
+
+data App = App
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET
+|]
+
+instance Yesod App
+
+getHomeR :: Handler Value
+getHomeR = returnJson $ Person "Michael" 28
+
+main :: IO ()
+main = warp 3000 App
+----
+
++returnJson+ is actually a trivial function; it is implemented as +return .
+toJSON+. However, it makes things just a bit more convenient. Similarly, if you
+would like to provide a JSON value as a representation inside a +selectRep+,
+you can use +provideJson+.
+
+[source, haskell]
+----
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
+import           Data.Text (Text)
+import           Yesod
+
+data Person = Person
+    { name :: Text
+    , age  :: Int
+    }
+
+instance ToJSON Person where
+    toJSON Person {..} = object
+        [ "name" .= name
+        , "age"  .= age
+        ]
+
+data App = App
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET
+|]
+
+instance Yesod App
+
+getHomeR :: Handler TypedContent
+getHomeR = selectRep $ do
+    provideRep $ return
+        [shamlet|
+            <p>Hello, my name is #{name} and I am #{age} years old.
+        |]
+    provideJson person
+  where
+    person@Person {..} = Person "Michael" 28
+
+main :: IO ()
+main = warp 3000 App
+----
+
++provideJson+ is similarly trivial, in this case +provideRep . returnJson+.
+
+==== New datatypes
+
+Let's say I've come up with some new data format based on using Haskell's
++Show+ instance; I'll call it ``Haskell Show'', and give it a mime type of
++text/haskell-show+. And let's say that I decide to include this representation
+from my web app. How do I do it? For a first attempt, let's use the
++TypedContent+ datatype directly.
+
+[source, haskell]
+----
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
+import           Data.Text (Text)
+import           Yesod
+
+data Person = Person
+    { name :: Text
+    , age  :: Int
+    }
+    deriving Show
+
+data App = App
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET
+|]
+
+instance Yesod App
+
+mimeType :: ContentType
+mimeType = "text/haskell-show"
+
+getHomeR :: Handler TypedContent
+getHomeR =
+    return $ TypedContent mimeType $ toContent $ show person
+  where
+    person = Person "Michael" 28
+
+main :: IO ()
+main = warp 3000 App
+----
+
+There are a few important things to note here.
+
+* We've used the +toContent+ function. This is a typeclass function that can
+  convert a number of data types to raw data ready to be sent over the wire. In
+  this case, we've used the instance for +String+, which uses UTF8 encoding.
+  Other common data types with instances are +Text+, +ByteString+, +Html+, and
+  aeson's +Value+.
+
+* We're using the +TypedContent+ constructor directly. It takes two arguments:
+  a mime type, and the raw content. Note that +ContentType+ is simply a type
+  alias for a strict +ByteString+.
+
+That's all well and good, but it bothers me that the type signature for
++getHomeR+ is so uninformative. Also, the implementation of +getHomeR+ looks
+pretty boilerplate. I'd rather just have a datatype representing "Haskell Show"
+data, and provide some simple means of creating such values. Let's try this on
+for size:
+
+[source, haskell]
+----
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE QuasiQuotes               #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
+import           Data.Text (Text)
+import           Yesod
+
+data Person = Person
+    { name :: Text
+    , age  :: Int
+    }
+    deriving Show
+
+data App = App
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET
+|]
+
+instance Yesod App
+
+mimeType :: ContentType
+mimeType = "text/haskell-show"
+
+data HaskellShow = forall a. Show a => HaskellShow a
+
+instance ToContent HaskellShow where
+    toContent (HaskellShow x) = toContent $ show x
+instance ToTypedContent HaskellShow where
+    toTypedContent = TypedContent mimeType . toContent
+
+getHomeR :: Handler HaskellShow
+getHomeR =
+    return $ HaskellShow person
+  where
+    person = Person "Michael" 28
+
+main :: IO ()
+main = warp 3000 App
+----
+
+The magic here lies in two typeclasses. As we mentioned before, +ToContent+
+tells how to convert a value into a raw response. In our case, we would like to
++show+ the original value to get a +String+, and then convert that +String+
+into the raw content. Often times, instances of +ToContent+ will build on each
+other in this way.
+
++ToTypedContent+ is used internally by Yesod, and is called on the result of
+all handler functions. As you can see, the implementation is fairly trivial,
+simply stating the mime type and then calling out to +toContent+.
+
+Finally, let's make this a bit more complicated, and get this to play well with
++selectRep+.
+
+[source, haskell]
+----
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE QuasiQuotes               #-}
+{-# LANGUAGE RecordWildCards           #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
+import           Data.Text (Text)
+import           Yesod
+
+data Person = Person
+    { name :: Text
+    , age  :: Int
+    }
+    deriving Show
+
+instance ToJSON Person where
+    toJSON Person {..} = object
+        [ "name" .= name
+        , "age"  .= age
+        ]
+
+data App = App
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET
+|]
+
+instance Yesod App
+
+mimeType :: ContentType
+mimeType = "text/haskell-show"
+
+data HaskellShow = forall a. Show a => HaskellShow a
+
+instance ToContent HaskellShow where
+    toContent (HaskellShow x) = toContent $ show x
+instance ToTypedContent HaskellShow where
+    toTypedContent = TypedContent mimeType . toContent
+instance HasContentType HaskellShow where
+    getContentType _ = mimeType
+
+getHomeR :: Handler TypedContent
+getHomeR = selectRep $ do
+    provideRep $ return $ HaskellShow person
+    provideJson person
+  where
+    person = Person "Michael" 28
+
+main :: IO ()
+main = warp 3000 App
+----
+
+The important addition here is the +HasContentType+ instance. This may seem
+redundant, but it serves an important role. We need to be able to determine the
+mime type of a possible representation _before creating that representation_.
++ToTypedContent+ only works on a concrete value, and therefore can't be used
+before creating the value. +getContentType+ instead takes a proxy value,
+indicating the type without providing anything concrete.
+
+NOTE: If you want to provide a representation for a value that doesn't have a
++HasContentType+ instance, you can use the +provideRepType+ function, which
+requires you to explicitly state the mime type present.
+
+=== Other request headers
 
 There are a great deal of other request headers available. Some of them only
 affect the transfer of data between the server and client, and should not
-affect the application at all. For example, Accept-Encoding informs the server
-which compression schemes the client understands, and Host informs the server
-which virtual host to serve up.
+affect the application at all. For example, +Accept-Encoding+ informs the
+server which compression schemes the client understands, and +Host+ informs the
+server which virtual host to serve up.
 
-Other headers do affect the application, but are automatically read by Yesod.
-For example, the Accept-Language header specifies which human language
+Other headers _do_ affect the application, but are automatically read by Yesod.
+For example, the +Accept-Language+ header specifies which human language
 (English, Spanish, German, Swiss-German) the client prefers. See the i18n
 chapter for details on how this header is used.
 
-Stateless
+=== Stateless
 
 I've saved this section for the last, not because it is less important, but
 rather because there are no specific features in Yesod to enforce this.
@@ -269,14 +531,17 @@ The proper RESTful approach to this is to have one resource for all of the
 Yesod issues and a separate one for all the Hamlet issues. In Yesod, this is
 easily done with a route definition like:
 
+[source, routes]
+----
 /                    ProjectsR      GET
 /projects/#ProjectID ProjectIssuesR GET
 /issues/#IssueID     IssueR         GET
+----
 
 Be nice to your users: proper stateless architecture means that basic features
 like bookmarks, permalinks and the back/forward button will always work.
 
-Summary
+=== Summary
 
 Yesod adheres to the following tenets of REST:
 
@@ -289,6 +554,6 @@ Yesod adheres to the following tenets of REST:
 * Inspect request headers to determine extra information about what the client wants.
 
 This makes it easy to use Yesod not just for building websites, but for
-building APIs. In fact, using techniques such as RepHtmlJson, you
+building APIs. In fact, using techniques such as +selectRep+/+provideRep+, you
 can serve both a user-friendly, HTML page and a machine-friendly, JSON page
 from the same URL.
