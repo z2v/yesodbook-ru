@@ -1,56 +1,64 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes, GADTs,
-             TemplateHaskell, MultiParamTypeClasses, FlexibleContexts #-}
-import Yesod
-import Yesod.Auth
-import Yesod.Auth.Email
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Data.Text (Text)
-import Network.Mail.Mime
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Control.Monad            (join)
+import           Control.Monad.Logger (runNoLoggingT)
+import           Data.Maybe               (isJust)
+import           Data.Text                (Text)
 import qualified Data.Text.Lazy.Encoding
-import Text.Shakespeare.Text (stext)
-import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
-import Text.Hamlet (shamlet)
-import Data.Maybe (isJust)
-import Control.Monad (join)
-import Control.Monad.Logger (runStderrLoggingT)
+import           Data.Typeable            (Typeable)
+import           Database.Persist.Sqlite
+import           Database.Persist.TH
+import           Network.Mail.Mime
+import           Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import           Text.Hamlet              (shamlet)
+import           Text.Shakespeare.Text    (stext)
+import           Yesod
+import           Yesod.Auth
+import           Yesod.Auth.Email
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
+share [mkPersist sqlSettings { mpsGeneric = False }, mkMigrate "migrateAll"] [persistLowerCase|
 User
     email Text
     password Text Maybe -- Пароль может быть ещё не задан
     verkey Text Maybe -- Используется для сброса пароля
     verified Bool
     UniqueUser email
+    deriving Typeable
 |]
 
-data MyEmailApp = MyEmailApp Connection
+data App = App Connection
 
-mkYesod "MyEmailApp" [parseRoutes|
-/ RootR GET
+mkYesod "App" [parseRoutes|
+/ HomeR GET
 /auth AuthR Auth getAuth
 |]
 
-instance Yesod MyEmailApp where
+instance Yesod App where
     -- Электронные письма будут содержать ссылки, так что убедитесь, что включили approot,
     -- чтобы ссылки были правильными!
     approot = ApprootStatic "http://localhost:3000"
 
-instance RenderMessage MyEmailApp FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
 -- Установка Persistent
-instance YesodPersist MyEmailApp where
-    type YesodPersistBackend MyEmailApp = SqlPersist
+instance YesodPersist App where
+    type YesodPersistBackend App = SqlPersistT
     runDB f = do
-        MyEmailApp conn <- getYesod
+        App conn <- getYesod
         runSqlConn f conn
 
-instance YesodAuth MyEmailApp where
-    type AuthId MyEmailApp = UserId
+instance YesodAuth App where
+    type AuthId App = UserId
 
-    loginDest _ = RootR
-    logoutDest _ = RootR
+    loginDest _ = HomeR
+    logoutDest _ = HomeR
     authPlugins _ = [authEmail]
 
     -- Необходимо найти UserId по заданному адресу электронной почты.
@@ -64,8 +72,10 @@ instance YesodAuth MyEmailApp where
     authHttpManager = error "Email doesn't need an HTTP manager"
 
 -- Здесь весь код работающий с электронной почтой
-instance YesodAuthEmail MyEmailApp where
-    type AuthEmailId MyEmailApp = UserId
+instance YesodAuthEmail App where
+    type AuthEmailId App = UserId
+
+    afterPasswordRoute _ = HomeR
 
     addUnverified email verkey =
         runDB $ insert $ User email Nothing (Just verkey) False
@@ -83,25 +93,27 @@ instance YesodAuthEmail MyEmailApp where
             { partType = "text/plain; charset=utf-8"
             , partEncoding = None
             , partFilename = Nothing
-            , partContent = Data.Text.Lazy.Encoding.encodeUtf8 [stext|
-Please confirm your email address by clicking on the link below.
+            , partContent = Data.Text.Lazy.Encoding.encodeUtf8
+            [stext|
+                Пожалуйста, подтвердите свой адрес, нажав на ссылку ниже.
 
-\#{verurl}
+                #{verurl}
 
-Thank you
-|]
+                Спасибо
+                |]
             , partHeaders = []
             }
         htmlPart = Part
             { partType = "text/html; charset=utf-8"
             , partEncoding = None
             , partFilename = Nothing
-            , partContent = renderHtml [shamlet|
-<p>Please confirm your email address by clicking on the link below.
-<p>
-    <a href=#{verurl}>#{verurl}
-<p>Thank you
-|]
+            , partContent = renderHtml
+                [shamlet|
+                    <p>Пожалуйста, подтвердите свой адрес, нажав на ссылку ниже.
+                    <p>
+                        <a href=#{verurl}>#{verurl}
+                    <p>Спасибо
+                |]
             , partHeaders = []
             }
     getVerifyKey = runDB . fmap (join . fmap userVerkey) . get
@@ -124,23 +136,25 @@ Thank you
                 , emailCredsAuthId = Just uid
                 , emailCredsStatus = isJust $ userPassword u
                 , emailCredsVerkey = userVerkey u
+                , emailCredsEmail = email
                 }
     getEmail = runDB . fmap (fmap userEmail) . get
 
-getRootR :: Handler RepHtml
-getRootR = do
+getHomeR :: Handler Html
+getHomeR = do
     maid <- maybeAuthId
-    defaultLayout [whamlet|
-<p>Your current auth ID: #{show maid}
-$maybe _ <- maid
-    <p>
-        <a href=@{AuthR LogoutR}>Logout
-$nothing
-    <p>
-        <a href=@{AuthR LoginR}>Go to the login page
-|]
+    defaultLayout
+        [whamlet|
+            <p>Ваш текущий идентификатор: #{show maid}
+            $maybe _ <- maid
+                <p>
+                    <a href=@{AuthR LogoutR}>Выйти
+            $nothing
+                <p>
+                    <a href=@{AuthR LoginR}>Перейти на страницу входа
+        |]
 
 main :: IO ()
 main = withSqliteConn "email.db3" $ \conn -> do
-    runStderrLoggingT $ runSqlConn (runMigration migrateAll) conn
-    warpDebug 3000 $ MyEmailApp conn
+    runNoLoggingT $ runSqlConn (runMigration migrateAll) conn
+    warp 3000 $ App conn
