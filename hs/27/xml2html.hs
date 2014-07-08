@@ -1,10 +1,10 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
-import Text.Blaze.Html (toHtml)
-import Text.Blaze.Html.Renderer.String (renderHtml)
-import Text.XML
-import Text.Hamlet.XML
-import Text.XML.Xml2Html ()
-import Data.Map (empty)
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+import           Data.Map                        (empty)
+import           Text.Blaze.Html                 (toHtml)
+import           Text.Blaze.Html.Renderer.String (renderHtml)
+import           Text.Hamlet.XML
+import           Text.XML
 
 main :: IO ()
 main = putStr $ renderHtml $ toHtml $ Document (Prologue [] Nothing []) root []

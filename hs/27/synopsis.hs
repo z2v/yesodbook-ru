@@ -1,9 +1,9 @@
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-import Prelude hiding (readFile, writeFile)
-import Text.XML
-import Text.Hamlet.XML
-import qualified Data.Map as M
+{-# LANGUAGE QuasiQuotes #-}
+import qualified Data.Map        as M
+import           Prelude         hiding (readFile, writeFile)
+import           Text.Hamlet.XML
+import           Text.XML
 
 main :: IO ()
 main = do
@@ -21,17 +21,18 @@ main = do
 
 -- Мы преобразуем <document> в документ XHTML
 transform :: Element -> Element
-transform (Element _name attrs children) = Element "html" M.empty [xml|
-<head>
-    <title>
-        $maybe title <- M.lookup "title" attrs
-            \#{title}
-        $nothing
-            Untitled Document
-<body>
-    $forall child <- children
-        ^{goNode child}
-|]
+transform (Element _name attrs children) = Element "html" M.empty
+    [xml|
+        <head>
+            <title>
+                $maybe title <- M.lookup "title" attrs
+                    \#{title}
+                $nothing
+                    Untitled Document
+        <body>
+            $forall child <- children
+                ^{goNode child}
+    |]
 
 goNode :: Node -> [Node]
 goNode (NodeElement e) = [NodeElement $ goElem e]

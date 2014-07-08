@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-import Text.XML
-import Prelude hiding (writeFile)
-import Data.Map (empty)
+import           Data.Map (empty)
+import           Prelude  hiding (writeFile)
+import           Text.XML
 
 main :: IO ()
 main =

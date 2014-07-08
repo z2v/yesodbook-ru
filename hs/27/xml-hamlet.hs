@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
-import Text.XML
-import Text.Hamlet.XML
-import Prelude hiding (writeFile)
-import Data.Map (empty)
+{-# LANGUAGE QuasiQuotes       #-}
+import           Data.Map        (empty)
+import           Prelude         hiding (writeFile)
+import           Text.Hamlet.XML
+import           Text.XML
 
 main :: IO ()
 main =
