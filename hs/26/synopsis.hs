@@ -7,6 +7,7 @@ import Data.Conduit.Binary (sinkFile)
 
 import qualified Data.ByteString.Lazy as L
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Resource (runResourceT)
 
 main :: IO ()
 main = do
@@ -21,7 +22,7 @@ main = do
         -- Нам нужен Manager, который отслеживает открытые соединения.
         -- simpleHttp создаёт нового менеджера соединений при каждом
         -- запуске (т.е. соединения никогда не используются повторно)
-        manager <- liftIO $ newManager def
+        manager <- liftIO $ newManager conduitManagerSettings
 
         -- Более эффективная версия запроса с simpleHttp выше.
         -- Сначала разбираем URL в запрос
