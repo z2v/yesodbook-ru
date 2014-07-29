@@ -1,12 +1,15 @@
-{-# LANGUAGE TypeFamilies, QuasiQuotes, MultiParamTypeClasses, TemplateHaskell, OverloadedStrings #-}
-
-import Yesod
-import Network.HTTP.Types (encodePath)
-import Blaze.ByteString.Builder.Char.Utf8 (fromText)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import Control.Arrow ((***))
-import Data.Monoid (mappend)
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Blaze.ByteString.Builder.Char.Utf8 (fromText)
+import           Control.Arrow                      ((***))
+import           Data.Monoid                        (mappend)
+import qualified Data.Text                          as T
+import qualified Data.Text.Encoding                 as TE
+import           Network.HTTP.Types                 (encodePath)
+import           Yesod
 
 data Slash = Slash
 
@@ -35,13 +38,17 @@ instance Yesod Slash where
         -- удаляем пустые компоненты пути.
         | otherwise = Left $ filter (not . T.null) s
 
-getRootR = defaultLayout [whamlet|
-<p>
-    <a href=@{RootR}>RootR
-<p>
-    <a href=@{FooR}>FooR
-|]
+getRootR :: Handler Html
+getRootR = defaultLayout
+    [whamlet|
+        <p>
+            <a href=@{RootR}>RootR
+        <p>
+            <a href=@{FooR}>FooR
+    |]
 
+getFooR :: Handler Html
 getFooR = getRootR
 
-main = warpDebug 3000 Slash
+main :: IO ()
+main = warp 3000 Slash

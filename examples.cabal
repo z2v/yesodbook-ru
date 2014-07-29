@@ -116,6 +116,21 @@ executable 06-slashes
                      , text
                      , yesod
 
+executable 06-getmessage
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             06/getmessage.hs
+  build-depends:       base >=4.6 && <4.7
+                     , time
+                     , yesod
+
+executable 06-errorpage
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             06/errorpage.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod
+
 executable 08-input-forms
   default-language:    Haskell2010
   hs-source-dirs:      hs
