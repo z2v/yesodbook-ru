@@ -1,48 +1,51 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell,
-             QuasiQuotes, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Yesod
 
-import Yesod
+data App = App
 
-data Messages = Messages
-
-mkYesod "Messages" [parseRoutes|
-/ RootR GET
+mkYesod "App" [parseRoutes|
+/            HomeR       GET
 /set-message SetMessageR POST
 |]
 
-instance Yesod Messages where
+instance Yesod App where
     defaultLayout widget = do
         pc <- widgetToPageContent widget
         mmsg <- getMessage
-        hamletToRepHtml [hamlet|
-$doctype 5
-<html>
-    <head>
-        <title>#{pageTitle pc}
-        ^{pageHead pc}
-    <body>
-        $maybe msg <- mmsg
-            <p>Your message was: #{msg}
-        ^{pageBody pc}
-|]
+        giveUrlRenderer
+            [hamlet|
+                $doctype 5
+                <html>
+                    <head>
+                        <title>#{pageTitle pc}
+                        ^{pageHead pc}
+                    <body>
+                        $maybe msg <- mmsg
+                            <p>Ваше сообщение: #{msg}
+                        ^{pageBody pc}
+            |]
 
-instance RenderMessage Messages FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
-getRootR :: Handler RepHtml
-getRootR = defaultLayout [whamlet|
-<form method=post action=@{SetMessageR}>
-    My message is: #
-    <input type=text name=message>
-    <input type=submit>
-|]
+getHomeR :: Handler Html
+getHomeR = defaultLayout
+    [whamlet|
+        <form method=post action=@{SetMessageR}>
+            Моё сообщение: #
+            <input type=text name=message>
+            <button>Поехали
+    |]
 
 postSetMessageR :: Handler ()
 postSetMessageR = do
     msg <- runInputPost $ ireq textField "message"
     setMessage $ toHtml msg
-    redirect RootR
+    redirect HomeR
 
 main :: IO ()
-main = warpDebug 3000 Messages
-
+main = warp 3000 App

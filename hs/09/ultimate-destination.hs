@@ -1,36 +1,43 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell,
-             QuasiQuotes, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Yesod
 
-import Yesod
+data App = App
 
-data UltDest = UltDest
-
-mkYesod "UltDest" [parseRoutes|
-/ RootR GET
-/setname SetNameR GET POST
+mkYesod "App" [parseRoutes|
+/         HomeR     GET
+/setname  SetNameR  GET POST
 /sayhello SayHelloR GET
 |]
 
-instance Yesod UltDest
+instance Yesod App
 
-instance RenderMessage UltDest FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
-getRootR = defaultLayout [whamlet|
-<p>
-    <a href=@{SetNameR}>Set your name
-<p>
-    <a href=@{SayHelloR}>Say hello
-|]
+getHomeR :: Handler Html
+getHomeR = defaultLayout
+    [whamlet|
+        <p>
+            <a href=@{SetNameR}>Set your name
+        <p>
+            <a href=@{SayHelloR}>Say hello
+    |]
+
 
 -- Отобразить форму для ввода имени
-getSetNameR = defaultLayout [whamlet|
-<form method=post>
-    My name is #
-    <input type=text name=name>
-    . #
-    <input type=submit value="Set name">
-|]
+getSetNameR :: Handler Html
+getSetNameR = defaultLayout
+    [whamlet|
+        <form method=post>
+            My name is #
+            <input type=text name=name>
+            . #
+            <input type=submit value="Set name">
+    |]
 
 -- Достать указанное пользователем имя
 postSetNameR :: Handler ()
@@ -41,8 +48,9 @@ postSetNameR = do
 
     -- После того как мы получили имя, перенаправить в пункт назначения.
     -- Если пункт назначения не задан, по умолчанию направляем на домашнюю страницу
-    redirectUltDest RootR
+    redirectUltDest HomeR
 
+getSayHelloR :: Handler Html
 getSayHelloR = do
     -- Ищем значение имени установленное в сессии
     mname <- lookupSession "name"
@@ -54,9 +62,7 @@ getSayHelloR = do
             setUltDestCurrent
             setMessage "Please tell me your name"
             redirect SetNameR
-        Just name -> defaultLayout [whamlet|
-<p>Welcome #{name}
-|]
+        Just name -> defaultLayout [whamlet|<p>Welcome #{name}|]
 
 main :: IO ()
-main = warpDebug 3000 UltDest
+main = warp 3000 App
