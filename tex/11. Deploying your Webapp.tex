@@ -171,7 +171,7 @@ server {
     listen 80;
     server_name static.myserver.com;
     root /home/michael/sites/mysite/static;
-    # Так как yesod-static добавляет хэш содержимого к строке запроса,
+    # Так как yesod-static добавляет хеш содержимого к строке запроса,
     # мы можем свободно выставлять дату истечения срока действия на далёкое будущее
     # без опасений получить устаревшее содержимое.
     expires max;
