@@ -565,12 +565,10 @@ XPath, который позволяет вам обращаться к элем
         экранироваться. % В XHTML или HTML?
 \end{itemize}
 
-И вот здесь в игру вступает пакет~xml2html. Он предоставляет
-экземпляры класса~\lstinline!ToHtml! для типов \lstinline!Node!,
-\lstinline!Document! и~\lstinline!Element!. Для их использования просто
-импортируйте модуль~\lstinline!Text.XML.Xml2Html!\footnote{Экземпляры
-класса~\lstinline!ToHtml! перенесены в сам пакет~xml-conduit.
-Текст требует доработки.}.
+К счастью, пакет xml-conduit предоставляет экземпляры класса~\lstinline!ToHtml!
+для типов \lstinline!Node!, \lstinline!Document! и~\lstinline!Element!, которые
+учитывают эти противоречия. Поэтому, просто используя~\lstinline'toHtml', мы
+можем получить корректный результат.
 
 \includecode{27/xml2html.hs}
 
