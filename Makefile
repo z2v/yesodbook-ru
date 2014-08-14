@@ -65,8 +65,9 @@ dirs:
 	@mkdir -p $(BINDIR)
 
 # Успешная сборка примеров требует наличия следующих пакетов:
+YESOD_VERSION = $(shell grep '^version:' examples.cabal | egrep -o '[0-9\.]+$$')
 HACKAGES = \
-	yesod-platform \
+	"yesod-platform==$(YESOD_VERSION)" \
 	persistent-sqlite \
 	sphinx \
 	wai-eventsource \
