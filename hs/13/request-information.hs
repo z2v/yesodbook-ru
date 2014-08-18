@@ -1,13 +1,16 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies, TemplateHaskell,
-             QuasiQuotes, MultiParamTypeClasses, GADTs #-}
-import Yesod
-import Data.Text (Text)
-import Data.List (sortBy)
-import Data.Ord (comparing)
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Data.List (sortBy)
+import           Data.Ord  (comparing)
+import           Data.Text (Text)
+import           Yesod
 
 data Person = Person
     { personName :: Text
-    , personAge :: Int
+    , personAge  :: Int
     }
 
 people :: [Person]
@@ -18,43 +21,44 @@ people =
     , Person "Gavriella" 1
     ]
 
-data People = People
+data App = App
 
-mkYesod "People" [parseRoutes|
-/ RootR GET
+mkYesod "App" [parseRoutes|
+/ HomeR GET
 |]
 
-instance Yesod People
+instance Yesod App
 
-instance RenderMessage People FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
 
-getRootR :: Handler RepHtml
-getRootR = defaultLayout [whamlet|
-<p>
-    <a href="?sort=name">Сортировать по имени
-    \ | #
-    <a href="?sort=age">Сортировать по возрасту
-    \ | #
-    <a href="?">Без сортировки
-^{showPeople}
-|]
+getHomeR :: Handler Html
+getHomeR = defaultLayout
+    [whamlet|
+        <p>
+            <a href="?sort=name">Сортировать по имени
+            |
+            <a href="?sort=age">Сортировать по возрасту
+            |
+            <a href="?">Без сортировки
+        ^{showPeople}
+    |]
 
 showPeople :: Widget
 showPeople = do
-    msort <- lift $ runInputGet $ iopt textField "sort"
+    msort <- runInputGet $ iopt textField "sort"
     let people' =
             case msort of
                 Just "name" -> sortBy (comparing personName) people
                 Just "age"  -> sortBy (comparing personAge)  people
                 _           -> people
     [whamlet|
-<dl>
-    $forall person <- people'
-        <dt>#{personName person}
-        <dd>#{show $ personAge person}
-|]
+        <dl>
+            $forall person <- people'
+                <dt>#{personName person}
+                <dd>#{show $ personAge person}
+    |]
 
 main :: IO ()
-main = warpDebug 3000 People
+main = warp 3000 App
