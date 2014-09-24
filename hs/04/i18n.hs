@@ -1,6 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-
 import Data.Text (Text)
 import qualified Data.Text as T
 import Text.Hamlet (HtmlUrlI18n, ihamlet)
@@ -24,14 +23,14 @@ renderRussian (Apples i) = T.concat ["Вы купили ", T.pack $ show i, if i
 
 template :: Int -> HtmlUrlI18n Msg MyRoute
 template count = [ihamlet|
-                 $doctype 5
-                 <html>
-                     <head>
-                             <title>i18n
-                                 <body>
-                                         <h1>_{Hello}
-                                                 <p>_{Apples count}
-                                                 |]
+$doctype 5
+<html>
+    <head>
+        <title>i18n
+    <body>
+        <h1>_{Hello}
+        <p>_{Apples count}
+|]
 
 main :: IO ()
 main = putStrLn $ renderHtml
