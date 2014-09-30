@@ -173,6 +173,24 @@ executable 06-errorpage
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
+executable 08-synopsis
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             08/synopsis.hs
+  build-depends:       base >=4.6 && <4.7
+                     , time
+                     , text
+                     , yesod-form
+                     , yesod
+
+executable 08-monadic-forms
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             08/monadic-forms.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , yesod
+
 executable 08-input-forms
   default-language:    Haskell2010
   hs-source-dirs:      hs
@@ -181,23 +199,14 @@ executable 08-input-forms
                      , text
                      , yesod
 
--- executable 08-monadic-forms
---   default-language:    Haskell2010
---   hs-source-dirs:      hs
---   main-is:             08/monadic-forms.hs
---   build-depends:       base >=4.6 && <4.7
---                      , text
---                      , yesod
-
--- executable 08-synopsis
---   default-language:    Haskell2010
---   hs-source-dirs:      hs
---   main-is:             08/synopsis.hs
---   build-depends:       base >=4.6 && <4.7
---                      , time
---                      , text
---                      , yesod-form
---                      , yesod
+executable 08-nonuser-values
+  default-language:    Haskell2010
+  hs-source-dirs:      hs
+  main-is:             08/nonuser-values.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , time
+                     , yesod
 
 executable 09-session-example
   default-language:    Haskell2010

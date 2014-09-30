@@ -1,55 +1,63 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies, QuasiQuotes,
-             TemplateHaskell, MultiParamTypeClasses #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+import           Control.Applicative
+import           Data.Text           (Text)
+import           Yesod
 
-import Yesod
-import Control.Applicative
-import Data.Text (Text)
+data App = App
 
-data MFormExample = MFormExample
-
-mkYesod "MFormExample" [parseRoutes|
-/ RootR GET
+mkYesod "App" [parseRoutes|
+/ HomeR GET
 |]
 
-instance Yesod MFormExample
+instance Yesod App
 
-instance RenderMessage MFormExample FormMessage where
+instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
-data Person = Person { personName :: Text, personAge :: Int }
+data Person = Person
+    { personName :: Text
+    , personAge  :: Int
+    }
     deriving Show
 
-personForm :: Html -> MForm MFormExample MFormExample (FormResult Person, Widget)
+personForm :: Html -> MForm Handler (FormResult Person, Widget)
 personForm extra = do
     (nameRes, nameView) <- mreq textField "Это не используется" Nothing
     (ageRes, ageView) <- mreq intField "И это тоже" Nothing
     let personRes = Person <$> nameRes <*> ageRes
     let widget = do
-            toWidget [lucius|
-##{fvId ageView} {
-    width: 3em;
-}
-|]
+            toWidget
+                [lucius|
+                    ##{fvId ageView} {
+                        width: 3em;
+                    }
+                |]
             [whamlet|
-#{extra}
-<p>
-    Привет, меня зовут #
-    ^{fvInput nameView}
-    \ и мне #
-    ^{fvInput ageView}
-    \ лет. #
-    <input type=submit value="Представиться">
-|]
+                #{extra}
+                <p>
+                    Привет, меня зовут #
+                    ^{fvInput nameView}
+                    \ и мне #
+                    ^{fvInput ageView}
+                    \ лет. #
+                    <input type=submit value="Представиться">
+            |]
     return (personRes, widget)
 
-getRootR :: Handler RepHtml
-getRootR = do
+getHomeR :: Handler Html
+getHomeR = do
     ((res, widget), enctype) <- runFormGet personForm
-    defaultLayout [whamlet|
-<p>Результат: #{show res}
-<form enctype=#{enctype}>
-    ^{widget}
-|]
+    defaultLayout
+        [whamlet|
+            <p>Результат: #{show res}
+            <form enctype=#{enctype}>
+                ^{widget}
+        |]
 
 main :: IO ()
-main = warpDebug 3000 MFormExample
+main = warp 3000 App
+
