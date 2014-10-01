@@ -77,63 +77,57 @@ Haskell Compiler (GHC)~--- стандартный компилятор Haskell, 
 кода, он также может автоматически скачивать и устанавливать зависимости из
 Hackage, репозитория пакетов Haskell.
 
-Тем, кто работает в среде Windows или Mac, настоятельно рекомендуется скачать
-\footnotehref{http://hackage.haskell.org/platform/}{Haskell Platform}. Многие
-дистрибутивы Linux содержат Haskell Platform в своих репозиториях. Например, в
-дистрибутивах, основанных на Debian, стоит начать с выполнения команды
-\texttt{apt-get install haskell-platform}. Если в вашем дистрибутиве Haskell
-Platform недоступна, вы можете установить её вручную, следуя инструкциям на
-официальном сайте.
+На сайте Yesod находится актуальное
+\footnotehref{http://www.yesodweb.com/page/quickstart}[краткое руководство],
+включающее информацию об установке и настройке различных инструментов.
+Настоятельно рекомендуется следовать написанным там инструкциям.
 
-Ещё один важный инструмент, который вам нужно будет обновить~--- это
-\texttt{alex}. Haskell Platform включает версию 2, но используемой Yesod
-программе минификации JavaScript, hjsmin, требуется версия 3. Не забудьте
-выполнить \texttt{cabal install alex} после установки Haskell Platform, иначе
-получите сообщения об ошибках при установке пакета language-javascript.
-
-\begin{remark}
-Некоторым нравится жить на острие прогресса и устанавливать последнюю версию
-GHC до того, как она станет доступна в Haskell Platform. Мы стараемся
-поддерживать совместимость Yesod со всеми современными версиями GHC, но
-официально мы поддерживаем только Haskell Platform. Если вы всё-таки решили
-пойти по пути ручной установки GHC, то имейте в виду:
-
+Если вы решите устанавливать всё самостоятельно, убедитесь, что избежали
+известных проблем:
 \begin{itemize}
-  \item Вам нужно будет установить некоторые дополнительные инструменты, в
-      частности, \texttt{alex} и \texttt{happy}.
-  \item Убедитесь, что установлены все
-      \footnotehref{http://www.vex.net/~trebla/haskell/haskell-platform.xhtml}{требуемые
-          C-библиотеки}. В дистрибутивах, основанных на Debian, это можно
-      сделать, выполнив команду:\\
- \texttt{apt-get install libedit-dev libbsd-dev libgmp3-dev zlib1g-dev freeglut3-dev}.
-\end{itemize}
-\end{remark}
+    \item Некоторые инструменты для Javascript, поставляемые с Yesod, требуют
+        присутствия программ \texttt{alex} и~\texttt{happy}. Их можно
+        установить, выполнив \texttt{cabal install alex happy}.
 
-Независимо от способа установки инструментов вам нужно добавить путь к каталогу
-\texttt{bin} Cabal в переменную окружения \texttt{PATH}. В Mac и Linux это
-будет \texttt{\$HOME/.cabal/bin}, а в Windows~---
-\texttt{\%APPDATA\%\textbackslash{}cabal\textbackslash{}bin}.
+    \item Cabal устанавливает исполняемые файлы в отдельную папку для текущего
+        пользователя, которая должна быть добавлена в переменную~\texttt{PATH}.
+        Конкретное расположение этой папки зависит от используемой ОС.
+        Пожалуйста, убедитесь, что добавили
+        \footnotehref{https://github.com/fpco/stackage/wiki/Preparing-your-system-to-use-Stackage\#set-path-to-include-cabals-bin-directory}%
+        {правильную папку}.
 
-У программы \texttt{cabal} есть множество доступных опций, но для начала
-ознакомьтесь с этими командами:
+    \item Для Windows установка пакета~\texttt{network} из исходников
+        затруднительна, так как он требует POSIX-совместимой оболочки.
+        Установка \footnotehref{http://hackage.haskell.org/platform}{Haskell Platform}
+        позволяет обойти эту проблему.
 
-\begin{itemize}
-  \item \texttt{cabal update} скачивает актуальный список пакетов с Hackage.
-  \item \texttt{cabal install yesod-platform} устанавливает Yesod и все его
-      зависимости.
-  \item \texttt{cabal install yesod-bin} устанавливает утилиту командной
-      строки~\texttt{yesod}.
+    \item В Mac OS X доступны несколько препроцессоров языка C: один для Clang,
+        другой для gcc. Многие библиотеки Haskell зависит от препроцессора для
+        GCC. Опять же, Haskell Platform устанавливает корректные настройки.
+
+    \item Некоторые дистрибутивы Linux, в частности Ubuntu, обычно включают
+        устаревшие версии GHC и Haskell Platform. Эти версии могут более не
+        поддерживаться текущей версией Yesod. Пожалуйста, проверьте минимально
+        требуемые версии в кратком руководстве.
+
+    \item Убедитесь, что у вас установлены все необходимые системные
+        библиотеки. Обычно решение зависимостей автоматически выполняется при
+        установке Haskell Platform, но может потребовать дополнительной работы
+        для дистрибутивов Linux. Если вы получаете сообщения об отсутствующих
+        библиотеках, обычно достаточно выполнить \texttt{apt-get install} или
+        \texttt{yum install} для указанных библиотек.
 \end{itemize}
 
-Для получения самой актуальной информации об установке последней версии Yesod,
-пожалуйста, пользуйтесь
-\footnotehref{http://www.yesodweb.com/page/quickstart}{кратким руководством}.
+После корректной настройки инструментария, вам потребуется установить ряд
+библиотек Haskell. Для большей части книги достаточно выполнения следующей
+команды, устанавливающей все необходимые библиотеки:
+\begin{lstlisting}[language=]
+cabal update && cabal install yesod yesod-bin persistent-sqlite yesod-static
+\end{lstlisting}
 
-\begin{remark}
-    Возможно, вы захотите выполнить изолированную установку своего Yesod
-    проекта, используя соответствующую возможность \texttt{cabal}, запустив
-    команду~\texttt{cabal~sandbox~init}.
-\end{remark}
+Опять же, пожалуйста, обращайтесь к
+\footnotehref{http://www.yesodweb.com/page/quickstart}{краткому руководству}
+за самой актуальной и корректной информацией.
 
 \section{Указания компилятору}
 
