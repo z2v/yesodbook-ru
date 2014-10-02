@@ -4,6 +4,6 @@ import Network.Wai.Handler.Warp (run)
 import Network.Wai.Middleware.Gzip (gzip, def)
 import Network.HTTP.Types (status200)
 
-application _ = return $ responseLBS status200 [("Content-Type", "text/plain")] "Hello World"
+application _ respond = respond $ responseLBS status200 [("Content-Type", "text/plain")] "Hello World"
 
 main = run 3000 $ gzip def application
