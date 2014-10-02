@@ -132,9 +132,7 @@ getReceiveR :: ChatHandler ()
 getReceiveR = do
     Chat chan0 <- getYesod
     chan <- liftIO $ dupChan chan0
-    req <- waiRequest
-    res <- liftIO $ eventSourceAppChan chan req
-    sendWaiResponse res
+    sendWaiApplication $ eventSourceAppChan chan
 \end{code}
 
 Мы используем функцию~\lstinline'dupChan', чтобы каждое соединение получало
@@ -143,7 +141,8 @@ getReceiveR = do
 Последние три строки нашей функции выставляет низкоуровневое приложение из
 пакета~\texttt{wai-eventsource} как обработчик Yesod: получаем необработанный
 запрос WAI, выполняем приложение с этим запросом и затем отправляем такой же
-необработанный ответ~WAI.
+необработанный ответ~WAI.\marginpar{Текст ожидает обновления: вместо
+    трёх строк, теперь одна, и WAI версии 3.0}.
 
 % [Vladimir Zakharov] Код соответствует WAI > 2.0, поэтому инвертировал примечание.
 \begin{remark}
