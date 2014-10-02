@@ -1,5 +1,5 @@
 name:                yesodbook-ru-examples
-version:             1.2.11
+version:             1.2.6.1
 synopsis:            Examples for Russian translation of the Yesod book (http://www.yesodweb.com/book-1.1/)
 homepage:            https://bitbucket.org/darkus/Yesod
 author:              
@@ -516,22 +516,22 @@ executable 18-blog
                      , yesod-auth
                      , yesod-form
 
-executable 19-wiki
-  default-language:    Haskell2010
-  hs-source-dirs:      hs/19
-  main-is:             Wiki.lhs
-  other-modules:       Chat, Chat.Data
-  build-depends:       base >=4.6 && <4.7
-                     , aeson
-                     , blaze-builder
-                     , containers
-                     , markdown
-                     , template-haskell
-                     , text
-                     , wai-eventsource
-                     , warp
-                     , yesod
-                     , yesod-auth
+-- executable 19-wiki
+--   default-language:    Haskell2010
+--   hs-source-dirs:      hs/19
+--   main-is:             Wiki.lhs
+--   other-modules:       Chat, Chat.Data
+--   build-depends:       base >=4.6 && <4.7
+--                      , aeson
+--                      , blaze-builder
+--                      , containers
+--                      , markdown
+--                      , template-haskell
+--                      , text
+--                      , wai-extra
+--                      , warp
+--                      , yesod
+--                      , yesod-auth
 
 executable 20-client
   default-language:    Haskell2010
@@ -545,21 +545,21 @@ executable 20-client
                      , http-conduit
                      , transformers
 
-executable 20-server
-  default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             20/server.hs
-  build-depends:       base >=4.6 && <4.7
-                     , aeson
-                     , attoparsec-conduit
-                     , bytestring
-                     , conduit
-                     , conduit-extra
-                     , http-types
-                     , lifted-base
-                     , transformers
-                     , wai
-                     , warp
+-- executable 20-server
+--   default-language:    Haskell2010
+--   hs-source-dirs:      hs
+--   main-is:             20/server.hs
+--   build-depends:       base >=4.6 && <4.7
+--                      , aeson
+--                      , attoparsec-conduit
+--                      , bytestring
+--                      , conduit
+--                      , conduit-extra
+--                      , http-types
+--                      , lifted-base
+--                      , transformers
+--                      , wai
+--                      , warp
 
 executable 21-sphinx
   default-language:    Haskell2010
@@ -588,7 +588,6 @@ executable 24-hello-world
   main-is:             24/hello-world.hs
   build-depends:       base >=4.6 && <4.7
                      , http-types
-                     , conduit-extra
                      , wai
                      , warp
 

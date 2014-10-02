@@ -67,10 +67,10 @@ dirs:
 # Успешная сборка примеров требует наличия следующих пакетов:
 YESOD_VERSION = $(shell grep '^version:' examples.cabal | egrep -o '[0-9\.]+$$')
 HACKAGES = \
-	"yesod-platform==$(YESOD_VERSION)" \
+	"yesod==$(YESOD_VERSION)" \
 	persistent-sqlite \
 	sphinx \
-	wai-eventsource \
+	wai-extra \
 	markdown \
 	pool-conduit \
 	xml2html \
