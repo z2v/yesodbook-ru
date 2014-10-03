@@ -291,38 +291,8 @@ getHomeR = do
 Как же нам получить такой экземпляр? Первый вариант~--- просто использовать
 трансформатор монад~\lstinline'CRandT' при вызове функции~\lstinline'getBytes'.
 Полный вид такого решения был бы таким:
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings, QuasiQuotes, TemplateHaskell, TypeFamilies #-}
-import Yesod
-import Crypto.Random (SystemRandom, newGenIO)
-import Control.Monad.CryptoRandom
-import Data.ByteString.Base16 (encode)
-import Data.Text.Encoding (decodeUtf8)
 
-data App = App
-
-mkYesod "App" [parseRoutes|
-/ HomeR GET
-|]
-
-instance Yesod App
-
-getHomeR :: Handler Html
-getHomeR = do
-    gen <- liftIO newGenIO
-    eres <- evalCRandT (getBytes 16) (gen :: SystemRandom)
-    randomBS <-
-        case eres of
-            Left e -> error $ show (e :: GenError)
-            Right gen -> return gen
-    defaultLayout
-        [whamlet|
-            <p>Here's some random data: #{decodeUtf8 $ encode randomBS}
-        |]
-
-main :: IO ()
-main = warp 3000 App
-\end{lstlisting}
+\includecode{13/random.hs}
 
 Заметьте, что всё, что мы делаем,~--- это наслаиваем
 трансформатор~\lstinline'CRandT' \textbf{поверх}
@@ -346,76 +316,8 @@ main = warp 3000 App
 можем пойти ещё на шаг дальше и использовать этот трюк, чтобы сделать нашу
 монаду~\lstinline'Handler' экземпляром класса~\lstinline'MonadCRandom'!
 Давайте посмотрим на код, которой, на самом деле, немного сложноват:
-\begin{lstlisting}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
-import           Control.Monad              (join)
-import           Control.Monad.Catch        (catch, throwM)
-import           Control.Monad.CryptoRandom
-import           Control.Monad.Error.Class  (MonadError (..))
-import           Crypto.Random              (SystemRandom, newGenIO)
-import           Data.ByteString.Base16     (encode)
-import           Data.IORef
-import           Data.Text.Encoding         (decodeUtf8)
-import           Yesod
 
-data App = App
-    { randGen :: IORef SystemRandom
-    }
-
-mkYesod "App" [parseRoutes|
-/ HomeR GET
-|]
-
-instance Yesod App
-
-getHomeR :: Handler Html
-getHomeR = do
-    randomBS <- getBytes 16
-    defaultLayout
-        [whamlet|
-            <p>Here's some random data: #{decodeUtf8 $ encode randomBS}
-        |]
-
-instance MonadError GenError Handler where
-    throwError = throwM
-    catchError = catch
-instance MonadCRandom GenError Handler where
-    getCRandom  = wrap crandom
-    {-# INLINE getCRandom #-}
-    getBytes i = wrap (genBytes i)
-    {-# INLINE getBytes #-}
-    getBytesWithEntropy i e = wrap (genBytesWithEntropy i e)
-    {-# INLINE getBytesWithEntropy #-}
-    doReseed bs = do
-        genRef <- fmap randGen getYesod
-        join $ liftIO $ atomicModifyIORef genRef $ \gen ->
-            case reseed bs gen of
-                Left e -> (gen, throwM e)
-                Right gen' -> (gen', return ())
-    {-# INLINE doReseed #-}
-
-wrap :: (SystemRandom -> Either GenError (a, SystemRandom)) -> Handler a
-wrap f = do
-    genRef <- fmap randGen getYesod
-    join $ liftIO $ atomicModifyIORef genRef $ \gen ->
-        case f gen of
-            Left e -> (gen, throwM e)
-            Right (x, gen') -> (gen', return x)
-
-main :: IO ()
-main = do
-    gen <- newGenIO
-    genRef <- newIORef gen
-    warp 3000 App
-        { randGen = genRef
-        }
-\end{lstlisting}
+\includecode{13/random-instance.hs}
 
 Фактически, он сводится к нескольким разным концепциям:
 \begin{itemize}

@@ -72,6 +72,7 @@ HACKAGES = \
 	sphinx \
 	wai-extra \
 	markdown \
+	monadcryptorandom \
 	pool-conduit \
 	xml2html \
 	xml-hamlet

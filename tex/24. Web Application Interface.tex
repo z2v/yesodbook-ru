@@ -179,33 +179,10 @@ HTTP на дуплексное соединение, и проксировани
 \section{Распределение ресурсов}
 Давайте сделаем наш пример поинтереснее, и попробуем выделить ресурсы для
 нашего ответа. Мы создадим значение~\lstinline'MVar' в нашей
-функции~\lstinline'main' для отслеживания количества запросов, и будем
+функции~\lstinline'main' для отслеживания количества запросов и будем
 захватывать это значение при отправке каждого ответа.
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import           Blaze.ByteString.Builder           (fromByteString)
-import           Blaze.ByteString.Builder.Char.Utf8 (fromShow)
-import           Control.Concurrent.MVar
-import           Data.Monoid                        ((<>))
-import           Network.HTTP.Types                 (status200)
-import           Network.Wai
-import           Network.Wai.Handler.Warp           (run)
 
-application countRef _ respond = do
-    modifyMVar countRef $ \count -> do
-        let count' = count + 1
-            msg = fromByteString "You are visitor number: " <>
-                  fromShow count'
-        responseReceived <- respond $ responseBuilder
-            status200
-            [("Content-Type", "text/plain")]
-            msg
-        return (count', responseReceived)
-
-main = do
-    visitorCount <- newMVar 0
-    run 3000 $ application visitorCount
-\end{lstlisting}
+\includecode{24/alloc.hs}
 
 Вот где наш интерфейс с продолжением показывает себя во всей красе. Мы можем
 использовать стандартную функцию~\lstinline'modifyMVar' для захвата блокировки
@@ -224,23 +201,8 @@ main = do
 
 \section{Потоковый ответ}
 Давайте ещё протестируем наш потоковый интерфейс:
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-import           Blaze.ByteString.Builder (fromByteString)
-import           Control.Concurrent       (threadDelay)
-import           Network.HTTP.Types       (status200)
-import           Network.Wai
-import           Network.Wai.Handler.Warp (run)
 
-application _ respond = respond $ responseStream status200 [("Content-Type", "text/plain")]
-    $ \send flush -> do
-        send $ fromByteString "Starting the response...\n"
-        flush
-        threadDelay 1000000
-        send $ fromByteString "All done!\n"
-
-main = run 3000 application
-\end{lstlisting}
+\includecode{24/stream.hs}
 
 Мы используем \lstinline'responseStream' и наш третий аргумент~--- это функция,
 которая принимает наши функции <<отправить строителя>> и <<сбросить буфер>>.

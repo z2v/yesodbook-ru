@@ -109,32 +109,7 @@
 из примеров использования~--- получение точного контроля размещения
 тегов~\texttt{<script>}.
 
-\begin{lstlisting}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeFamilies      #-}
-import           Yesod
-
-data App = App
-
-mkYesod "App" [parseRoutes|
-/      HomeR  GET
-|]
-
-instance Yesod App where
-
-getHomeR :: Handler Html
-getHomeR = defaultLayout $ do
-    setTitle "toWidgetHead and toWidgetBody"
-    toWidgetBody
-        [hamlet|<script src=/included-in-body.js>|]
-    toWidgetHead
-        [hamlet|<script src=/included-in-head.js>|]
-
-main :: IO ()
-main = warp 3001 App
-\end{lstlisting}
+\includecode{05/script.hs}
 
 Обратите внимание: хотя вызов функции~\lstinline'ToWidgetHead' сделан после
 вызова функции~\lstinline'toWidgetBody', второй тег~\texttt{<script>} в
