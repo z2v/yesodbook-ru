@@ -260,6 +260,189 @@ type Widget  = WidgetT  App (HandlerT App (ResourceT IO))
 \lstinline'HandlerT' и~\lstinline'WidgetT' в модуле
 \lstinline'Yesod.Core.Types'.
 
+\section{Добавление нового трансформатора монад}
+Однажды вы захотите добавить свой трансформатор монад как часть вашего
+приложения. Для примера давайте рассмотрим пакет
+\footnotehref{http://hackage.haskell.org/package/monadcryptorandom}%
+{monadcryptorandom}, который определяет класс типов~\lstinline'MonadCRandom'
+для монад, которые позволяют генерировать криптографически устойчивые случайные
+значения, и конкретный экземпляр этого класса~\lstinline'CRandT'. Вы хотели бы
+написать некий код, который создаёт случайную строку байтов, например:
+\begin{lstlisting}
+import Control.Monad.CryptoRandom
+import Data.ByteString.Base16 (encode)
+import Data.Text.Encoding (decodeUtf8)
+
+getHomeR = do
+    randomBS <- getBytes 128
+    defaultLayout
+        [whamlet|
+            <p>Here's some random data: #{decodeUtf8 $ encode randomBS}
+        |]
+\end{lstlisting}
+
+Однако, такой код приведёт к сообщению в ошибке, в котором будут такие строки:
+\begin{lstlisting}[language=]
+    No instance for (MonadCRandom e0 (HandlerT App IO))
+      arising from a use of ‘getBytes’
+    In a stmt of a 'do' block: randomBS <- getBytes 128
+\end{lstlisting}
+
+Как же нам получить такой экземпляр? Первый вариант~--- просто использовать
+трансформатор монад~\lstinline'CRandT' при вызове функции~\lstinline'getBytes'.
+Полный вид такого решения был бы таким:
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, TemplateHaskell, TypeFamilies #-}
+import Yesod
+import Crypto.Random (SystemRandom, newGenIO)
+import Control.Monad.CryptoRandom
+import Data.ByteString.Base16 (encode)
+import Data.Text.Encoding (decodeUtf8)
+
+data App = App
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET
+|]
+
+instance Yesod App
+
+getHomeR :: Handler Html
+getHomeR = do
+    gen <- liftIO newGenIO
+    eres <- evalCRandT (getBytes 16) (gen :: SystemRandom)
+    randomBS <-
+        case eres of
+            Left e -> error $ show (e :: GenError)
+            Right gen -> return gen
+    defaultLayout
+        [whamlet|
+            <p>Here's some random data: #{decodeUtf8 $ encode randomBS}
+        |]
+
+main :: IO ()
+main = warp 3000 App
+\end{lstlisting}
+
+Заметьте, что всё, что мы делаем,~--- это наслаиваем
+трансформатор~\lstinline'CRandT' \textbf{поверх}
+трансформатора~\lstinline'HandlerT'. По-другому работать не будет: Yesod самому
+безусловно пришлось бы разворачивать трансформатор~\lstinline'CRandT', но он не
+знает, как это делать. Обратите внимание: точно такой же подход мы использовали
+для Persistent: его трансформатор находится поверх~\lstinline'HandlerT'.
+
+Но у этого подхода есть два недостатка:
+\begin{enumerate}
+    \item Он требует погружения в другую монаду каждый раз, когда вы захотите
+        поработать со случайными значениями.
+
+    \item Он неэффективен: вам требуется каждый раз создавать начальное
+        случайное значение (random seed) при входе в эту монаду.
+\end{enumerate}
+
+Второй недостаток можно обойти, сохраняя начальное случайное значение в
+основном типе данных в изменяемой ссылке наподобие~\lstinline'IORef', и затем
+атомарно выбирать при каждом входе в трансформатор~\lstinline'CRandT'. Но мы
+можем пойти ещё на шаг дальше и использовать этот трюк, чтобы сделать нашу
+монаду~\lstinline'Handler' экземпляром класса~\lstinline'MonadCRandom'!
+Давайте посмотрим на код, которой, на самом деле, немного сложноват:
+\begin{lstlisting}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TemplateHaskell       #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+import           Control.Monad              (join)
+import           Control.Monad.Catch        (catch, throwM)
+import           Control.Monad.CryptoRandom
+import           Control.Monad.Error.Class  (MonadError (..))
+import           Crypto.Random              (SystemRandom, newGenIO)
+import           Data.ByteString.Base16     (encode)
+import           Data.IORef
+import           Data.Text.Encoding         (decodeUtf8)
+import           Yesod
+
+data App = App
+    { randGen :: IORef SystemRandom
+    }
+
+mkYesod "App" [parseRoutes|
+/ HomeR GET
+|]
+
+instance Yesod App
+
+getHomeR :: Handler Html
+getHomeR = do
+    randomBS <- getBytes 16
+    defaultLayout
+        [whamlet|
+            <p>Here's some random data: #{decodeUtf8 $ encode randomBS}
+        |]
+
+instance MonadError GenError Handler where
+    throwError = throwM
+    catchError = catch
+instance MonadCRandom GenError Handler where
+    getCRandom  = wrap crandom
+    {-# INLINE getCRandom #-}
+    getBytes i = wrap (genBytes i)
+    {-# INLINE getBytes #-}
+    getBytesWithEntropy i e = wrap (genBytesWithEntropy i e)
+    {-# INLINE getBytesWithEntropy #-}
+    doReseed bs = do
+        genRef <- fmap randGen getYesod
+        join $ liftIO $ atomicModifyIORef genRef $ \gen ->
+            case reseed bs gen of
+                Left e -> (gen, throwM e)
+                Right gen' -> (gen', return ())
+    {-# INLINE doReseed #-}
+
+wrap :: (SystemRandom -> Either GenError (a, SystemRandom)) -> Handler a
+wrap f = do
+    genRef <- fmap randGen getYesod
+    join $ liftIO $ atomicModifyIORef genRef $ \gen ->
+        case f gen of
+            Left e -> (gen, throwM e)
+            Right (x, gen') -> (gen', return x)
+
+main :: IO ()
+main = do
+    gen <- newGenIO
+    genRef <- newIORef gen
+    warp 3000 App
+        { randGen = genRef
+        }
+\end{lstlisting}
+
+Фактически, он сводится к нескольким разным концепциям:
+\begin{itemize}
+    \item Мы изменяем тип данных \lstinline'App', добавив в него поле
+        для~\lstinline'IORef SystemRandom'.
+
+    \item Аналогично, мы меняем функцию~\lstinline'main', добавив
+        создание~\lstinline'IORef SystemRandom'.
+
+    \item Наша функция~\lstinline'getHomeR' становится намного проще: мы теперь
+        можем вызывать~\lstinline'getBytes' без манипуляций с трансформаторами.
+
+    \item Однако, мы \textbf{получаем} некоторую сложность в требуемом
+        экземпляре для~\lstinline'MonadCRandom'. Эта книга про Yesod, а не про
+        \texttt{monadcryptorandom}, поэтому я не собираюсь погружаться в детали
+        этого экземпляра, но я советую пристально его рассмотреть и, если вам
+        интересно, сравнить его с экземпляром для~\lstinline'CRandT'.
+\end{itemize}
+
+Надеюсь, смог чётко продемонстрировать важный момент: мощь
+трансформатора~\lstinline'HandlerT'. Просто предоставив вам читаемое окружение,
+вам дана возможность воссоздать трансформатор~\lstinline'StateT', используя
+изменяемые ссылки. На самом деле, если вы полагаетесь на базовую
+монаду~\lstinline'IO' для обработки ошибок выполнения, вы можете реализовать
+большинство случаев использования \lstinline'ReaderT', \lstinline'WriterT',
+\lstinline'StateT' и~\lstinline'ErrorT', использую эту абстракцию.
+
 \section{Выводы}
 Если вы полностью пропустили эту главу, вы всё равно сможете с большой пользой
 использовать Yesod. Преимущество понимания как взаимодействуют монады
