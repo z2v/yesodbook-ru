@@ -1,12 +1,16 @@
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies, OverloadedStrings #-}
-{-# LANGUAGE GADTs, FlexibleContexts #-}
+{-# LANGUAGE EmptyDataDecls    #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
+import           Control.Monad.IO.Class  (liftIO)
+import           Database.Persist
+import           Database.Persist.Sqlite
+import           Database.Persist.TH
 
-import Database.Persist
-import Database.Persist.Sqlite
-import Database.Persist.TH
-import Control.Monad.IO.Class (liftIO)
-
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Person
     name String
     age Int Maybe
@@ -35,4 +39,3 @@ main = runSqlite ":memory:" $ do
 
     delete janeId
     deleteWhere [BlogPostAuthorId ==. johnId]
-

@@ -69,6 +69,7 @@ YESOD_VERSION = $(shell grep '^version:' examples.cabal | egrep -o '[0-9\.]+$$')
 HACKAGES = \
 	"yesod==$(YESOD_VERSION)" \
 	persistent-sqlite \
+	persistent-postgresql \
 	sphinx \
 	wai-extra \
 	markdown \

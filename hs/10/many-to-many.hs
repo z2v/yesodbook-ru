@@ -1,11 +1,11 @@
-{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, OverloadedStrings, GADTs, FlexibleContexts #-}
-
+{-# LANGUAGE QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell,
+             OverloadedStrings, GADTs, FlexibleContexts #-}
 import Database.Persist
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Data.Time
 
-share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistUpperCase|
+share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Person
     name String
 Store
@@ -16,6 +16,7 @@ PersonStore
     UniquePersonStore personId storeId
 |]
 
+main :: IO ()
 main = runSqlite ":memory:" $ do
     runMigration migrateAll
 
@@ -31,3 +32,6 @@ main = runSqlite ":memory:" $ do
 
     insert $ PersonStore michael target
     insert $ PersonStore michael sevenEleven
+
+    return ()
+
