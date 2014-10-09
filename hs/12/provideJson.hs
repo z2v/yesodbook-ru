@@ -29,7 +29,7 @@ getHomeR :: Handler TypedContent
 getHomeR = selectRep $ do
     provideRep $ return
         [shamlet|
-            <p>Hello, my name is #{name} and I am #{age} years old.
+            <p>Привет, меня зовут #{name} и мне #{age} лет.
         |]
     provideJson person
   where
