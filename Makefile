@@ -71,6 +71,7 @@ HACKAGES = \
 	persistent-sqlite \
 	persistent-postgresql \
 	sphinx \
+	wai-conduit \
 	wai-extra \
 	markdown \
 	monadcryptorandom \
