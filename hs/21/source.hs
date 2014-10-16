@@ -124,12 +124,12 @@ getResult :: DocId -> Doc -> Text -> IO Result
 getResult docid doc qstring = do
     excerpt' <- S.buildExcerpts
         excerptConfig
-        [T.unpack $ escape $ docContent doc]
+        [escape $ docContent doc]
         "searcher"
-        (T.unpack qstring)
+        qstring
     let excerpt =
             case excerpt' of
-                ST.Ok bss -> preEscapedToHtml $ decodeUtf8 $ mconcat bss
+                ST.Ok texts -> preEscapedToHtml $ mconcat texts
                 _ -> ""
     return Result
         { resultId = docid
@@ -150,7 +150,7 @@ escape =
 
 getResults :: Text -> Handler [Result]
 getResults qstring = do
-    sphinxRes' <- liftIO $ S.query config "searcher" $ T.unpack qstring
+    sphinxRes' <- liftIO $ S.query config "searcher" $ qstring
     case sphinxRes' of
         ST.Ok sphinxRes -> do
             let docids = map (Key . PersistInt64 . ST.documentId) $ ST.matches sphinxRes
