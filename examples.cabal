@@ -31,10 +31,10 @@ executable routes
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
-executable 04-i18n
+executable i18n
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/i18n.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             i18n.hs
   build-depends:       base >=4.6 && <4.7
                      , blaze-html
                      , hamlet
@@ -42,20 +42,20 @@ executable 04-i18n
                      , text
                      , yesod
 
-executable 04-quasiquoter
+executable quasiquoter
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/quasiquoter.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             quasiquoter.hs
   build-depends:       base >=4.6 && <4.7
                      , blaze-html
                      , hamlet
                      , shakespeare
                      , text
 
-executable 04-query-string
+executable query-string
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/query-string.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             query-string.hs
   build-depends:       base >=4.6 && <4.7
                      , blaze-builder
                      , blaze-html
@@ -64,28 +64,28 @@ executable 04-query-string
                      , http-types
                      , text
 
-executable 04-shakespeare-text
+executable shakespeare-text
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/shakespeare-text.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             shakespeare-text.hs
   build-depends:       base >=4.6 && <4.7
                      , shakespeare
                      , text
 
-executable 04-url-interpolation
+executable url-interpolation
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/url-interpolation.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             url-interpolation.hs
   build-depends:       base >=4.6 && <4.7
                      , blaze-html
                      , hamlet
                      , shakespeare
                      , text
 
-executable 04-url-interpolation-query
+executable url-interpolation-query
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/url-interpolation-query.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             url-interpolation-query.hs
   build-depends:       base >=4.6 && <4.7
                      , blaze-builder
                      , blaze-html
@@ -94,19 +94,19 @@ executable 04-url-interpolation-query
                      , shakespeare
                      , text
 
-executable 04-mixin
+executable mixin
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/mixin.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             mixin.hs
   build-depends:       base >=4.6 && <4.7
                      , shakespeare
                      , text
 
 
-executable 04-var-interpolation
+executable var-interpolation
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             04/var-interpolation.hs
+  hs-source-dirs:      tex/shakespearean-templates
+  main-is:             var-interpolation.hs
   build-depends:       base >=4.6 && <4.7
                      , blaze-html
                      , hamlet
