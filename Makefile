@@ -10,7 +10,7 @@ MASTERTEX := Developing\ Web\ Applications\ with\ Haskell\ and\ Yesod.tex
 # Имена исходных файлов TeX содержат пробелы. Поэтому для корректной работы make
 # сначала экранируем все пробелы без разбора, а затем снимаем экранирование
 # с полезных пробелов между файлами
-TEXSRCS := $(wildcard tex/[S012]*.tex)
+TEXSRCS := $(shell find tex -type f -name "*tex")
 TEXSRCS := $(subst $(space),\$(space),$(TEXSRCS))
 TEXSRCS := $(subst .tex\,.tex,$(TEXSRCS))
 LHSSRCS := $(shell find hs -name "*.lhs")
