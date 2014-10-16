@@ -167,7 +167,7 @@ approot из конфигурационного файла при запуске
 URL, в то же время позволяя основному сайту иметь изменённые URL. В качестве
 простого примера давайте посмотрим, как мы можем указать Yesod, что нужно
 всегда добавлять косую черту в конце URL:
-\includecode{06/slashes.hs}
+\sourcecode{yesod-typeclass}{slashes.hs}
 
 Во-первых, давайте посмотрим на нашу реализацию \lstinline!joinPath!. Она почти
 полностью скопирована из реализации по умолчанию в Yesod с одним изменением: мы
@@ -234,7 +234,7 @@ URL, в то же время позволяя основному сайту им
 появилось второй раз). Рекомендуется размещать результат \lstinline!getMessage!
 в \lstinline!defaultLayout!. Например:
 
-\includecode{06/getmessage.hs}
+\sourcecode{yesod-typeclass}{getmessage.hs}
 
 Мы рассмотрим \lstinline!getMessage!/\lstinline!setMessage! более детально,
 когда будем обсуждать \hyperref[chap:sessions]{сессии}.
@@ -247,7 +247,7 @@ URL, в то же время позволяя основному сайту им
 страниц ошибок. Но иногда вам потребуется пойти чуть дальше. Для этого вам
 нужно переопределить метод \lstinline!errorHandler!:
 
-\includecode{06/errorpage.hs}
+\sourcecode{yesod-typeclass}{errorpage.hs}
 
 Здесь мы указываем нестандартную страницу для ошибки 404. Также мы можем
 использовать \lstinline!defaultErrorHandler!, если не хотим писать

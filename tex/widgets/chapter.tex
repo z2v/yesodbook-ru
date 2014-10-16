@@ -18,7 +18,7 @@
 обеспечивают клей, который позволяет работать им вместе как единое целое.
 
 \section{Краткий обзор}
-\includecode{05/synopsis.hs}
+\sourcecode{widgets}{widgets-synopsis.hs}
 Этот код порождает следующий HTML (отступы добавлены):
 \begin{lstlisting}[language=HTML]
 <!DOCTYPE html>
@@ -109,7 +109,7 @@
 из примеров использования~--- получение точного контроля размещения
 тегов~\texttt{<script>}.
 
-\includecode{05/script.hs}
+\sourcecode{widgets}{script.hs}
 
 Обратите внимание: хотя вызов функции~\lstinline'ToWidgetHead' сделан после
 вызова функции~\lstinline'toWidgetBody', второй тег~\texttt{<script>} в
@@ -335,7 +335,7 @@ data PageContent url = PageContent
 наряду с нашим макетом сайта, и мы используем \lstinline'giveUrlRenderer' для
 преобразования Hamlet в настоящий HTML, готовый к показу пользователю.
 Следующий листинг демонстрирует этот процесс.
-\includecode{05/example.hs}
+\sourcecode{widgets}{example.hs}
 
 Это всё очень хорошо, но есть один момент, который беспокоит меня: тег style.
 Есть несколько проблем с ним:
@@ -354,7 +354,7 @@ data PageContent url = PageContent
 Для решения этой проблемы у нас есть ещё один трюк в запасе: мы в последний
 момент перед вызовом \lstinline'widgetToPageContent' скорректируем сам виджет.
 На самом деле, это очень легко сделать: мы просто опять используем do-нотацию.
-\includecode{05/style.hs}
+\sourcecode{widgets}{style.hs}
 
 \section{Использование функций-обработчиков}
 Мы пока ещё особо не рассматривали функциональность обработчиков, но когда

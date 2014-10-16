@@ -112,31 +112,56 @@ executable var-interpolation
                      , hamlet
                      , shakespeare
 
-executable 05-synopsis
+executable widgets-synopsis
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             05/synopsis.hs
+  hs-source-dirs:      tex/widgets
+  main-is:             widgets-synopsis.hs
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
-executable 05-example
+executable example
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             05/example.hs
+  hs-source-dirs:      tex/widgets
+  main-is:             example.hs
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
-executable 05-style
+executable style
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             05/style.hs
+  hs-source-dirs:      tex/widgets
+  main-is:             style.hs
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
-executable 05-script
+executable script
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             05/script.hs
+  hs-source-dirs:      tex/widgets
+  main-is:             script.hs
+  build-depends:       base >=4.6 && <4.7
+                     , yesod
+
+executable slashes
+  default-language:    Haskell2010
+  hs-source-dirs:      tex/yesod-typeclass
+  main-is:             slashes.hs
+  build-depends:       base >=4.6 && <4.7
+                     , blaze-builder
+                     , http-types
+                     , text
+                     , yesod
+
+executable getmessage
+  default-language:    Haskell2010
+  hs-source-dirs:      tex/yesod-typeclass
+  main-is:             getmessage.hs
+  build-depends:       base >=4.6 && <4.7
+                     , time
+                     , yesod
+
+executable errorpage
+  default-language:    Haskell2010
+  hs-source-dirs:      tex/yesod-typeclass
+  main-is:             errorpage.hs
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
@@ -164,31 +189,6 @@ executable 07-urls
                      , text
                      , yesod
                      , yesod-auth
-
-executable 06-slashes
-  default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             06/slashes.hs
-  build-depends:       base >=4.6 && <4.7
-                     , blaze-builder
-                     , http-types
-                     , text
-                     , yesod
-
-executable 06-getmessage
-  default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             06/getmessage.hs
-  build-depends:       base >=4.6 && <4.7
-                     , time
-                     , yesod
-
-executable 06-errorpage
-  default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             06/errorpage.hs
-  build-depends:       base >=4.6 && <4.7
-                     , yesod
 
 executable 08-synopsis
   default-language:    Haskell2010
