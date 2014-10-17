@@ -1,4 +1,3 @@
--- @HelloSub/Data.hs
 {-# LANGUAGE QuasiQuotes     #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies    #-}
