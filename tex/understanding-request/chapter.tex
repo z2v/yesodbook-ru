@@ -242,7 +242,7 @@ Template Haskell. Этот код отвечает за обработку не�
 и в процессе прольём свет на работу \lstinline'YesodDispatch' и
 \lstinline'YesodSubDispatch'. Начнём с вполне типичного приложения Yesod.
 
-\includecode{17a/app.hs}
+\sourcecode{understanding-request}{app.hs}
 
 Для полноты мы показали весь код, но сейчас давайте сосредоточимся только на
 блоках кода Template Haskell:
@@ -430,11 +430,11 @@ instance YesodDispatch App where
 \begin{lstlisting}
             _ -> yesodRunner (notFound >> return ()) env Nothing req
 \end{lstlisting}
-            
+
 \subsection{Полный код}
 Ниже представлен весь код примера, использующий подход без Template Haskell.
 
-\includecode{17a/no-th-example.hs}
+\sourcecode{understanding-request}{no-th-example.hs}
 
 \subsection{Выводы}
 Yesod даёт разработчику абстрагироваться от некоторой части черновой работы.

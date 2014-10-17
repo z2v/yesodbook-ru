@@ -545,9 +545,9 @@ executable hellosub
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
-executable 17a-app
+executable app
   default-language:    Haskell2010
-  hs-source-dirs:      hs/17a
+  hs-source-dirs:      tex/understanding-request
   main-is:             app.hs
   build-depends:       base >=4.6 && <4.7
                      , bytestring
@@ -555,9 +555,9 @@ executable 17a-app
                      , yesod
                      , wai
 
-executable 17a-no-th-example
+executable no-th-example
   default-language:    Haskell2010
-  hs-source-dirs:      hs/17a
+  hs-source-dirs:      tex/understanding-request
   main-is:             no-th-example.hs
   build-depends:       base >=4.6 && <4.7
                      , bytestring
