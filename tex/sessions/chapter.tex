@@ -106,7 +106,7 @@ instance Yesod App where
 \lstinline'setSession' задаёт значение для ключа, а \lstinline'deleteSession'
 очищает значение для ключа.
 
-\includecode{09/session-example.hs}
+\sourcecode{sessions}{session-example.hs}
 
 \section{Сообщения}
 
@@ -126,7 +126,7 @@ Yesod предоставляет пару функций для реализац
 необходимости помнить о добавлении вызова \lstinline'getMessage' в каждом
 обработчике.
 
-\includecode{09/messages.hs}
+\sourcecode{sessions}{messages.hs}
 
 \begin{figure}[tbh]
   \centering
@@ -187,7 +187,7 @@ Yesod предоставляет пару функций для реализац
 имя ещё не было установлено, пользователь будет перенаправлен на страницу ввода
 имени, с пунктом назначения, установленным в возврат к текущей странице.
 
-\includecode{09/ultimate-destination.hs}
+\sourcecode{sessions}{ultimate-destination.hs}
 
 \section{Выводы}
 
