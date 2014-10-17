@@ -726,70 +726,70 @@ executable response-head
                      , http-conduit
                      , transformers
 
-executable 27-synopsis
+executable xml-synopsis
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/synopsis.hs
+  hs-source-dirs:      tex/xml
+  main-is:             xml-synopsis.hs
   build-depends:       base >=4.6 && <4.7
                      , containers
                      , xml-conduit
                      , xml-hamlet
 
-executable 27-cursor
+executable cursor
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/cursor.hs
+  hs-source-dirs:      tex/xml
+  main-is:             cursor.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , xml-conduit
 
-executable 27-cursor-operator
+executable cursor-operator
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/cursor-operator.hs
+  hs-source-dirs:      tex/xml
+  main-is:             cursor-operator.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , xml-conduit
 
-executable 27-cursor-h1
+executable cursor-h1
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/cursor-h1.hs
+  hs-source-dirs:      tex/xml
+  main-is:             cursor-h1.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , xml-conduit
 
-executable 27-xml
+executable xml
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/xml.hs
+  hs-source-dirs:      tex/xml
+  main-is:             xml.hs
   build-depends:       base >=4.6 && <4.7
                      , containers
                      , xml-conduit
 
-executable 27-xml-hamlet
+executable xml-hamlet
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/xml-hamlet.hs
+  hs-source-dirs:      tex/xml
+  main-is:             xml-hamlet.hs
   build-depends:       base >=4.6 && <4.7
                      , containers
                      , xml-conduit
                      , xml-hamlet
 
-executable 27-xml-hamlet-vars
+executable xml-hamlet-vars
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/xml-hamlet-vars.hs
+  hs-source-dirs:      tex/xml
+  main-is:             xml-hamlet-vars.hs
   build-depends:       base >=4.6 && <4.7
                      , containers
                      , text
                      , xml-conduit
                      , xml-hamlet
 
-executable 27-xml2html
+executable xml2html
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             27/xml2html.hs
+  hs-source-dirs:      tex/xml
+  main-is:             xml2html.hs
   build-depends:       base >=4.6 && <4.7
                      , blaze-html
                      , containers
