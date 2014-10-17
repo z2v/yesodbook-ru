@@ -448,10 +448,10 @@ executable haskell-show3
                      , text
                      , yesod
 
-executable 13-navbar
+executable navbar
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             13/navbar.hs
+  hs-source-dirs:      tex/yesods-monads
+  main-is:             navbar.hs
   build-depends:       base >=4.6 && <4.7
                      , monad-logger
                      , persistent-sqlite
@@ -459,18 +459,18 @@ executable 13-navbar
                      , time
                      , yesod
 
-executable 13-request-information
+executable request-information
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             13/request-information.hs
+  hs-source-dirs:      tex/yesods-monads
+  main-is:             request-information.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , yesod
 
-executable 13-random
+executable random
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             13/random.hs
+  hs-source-dirs:      tex/yesods-monads
+  main-is:             random.hs
   build-depends:       base >=4.6 && <4.7
                      , base16-bytestring
                      , crypto-api
@@ -478,10 +478,10 @@ executable 13-random
                      , text
                      , yesod
 
-executable 13-random-instance
+executable random-instance
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             13/random-instance.hs
+  hs-source-dirs:      tex/yesods-monads
+  main-is:             random-instance.hs
   build-depends:       base >=4.6 && <4.7
                      , base16-bytestring
                      , crypto-api

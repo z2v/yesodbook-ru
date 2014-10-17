@@ -150,7 +150,7 @@ CSS и Javascript. Но на самом деле, \lstinline'Widget' может 
 может использоваться в любом обработчике по нашему желанию, без необходимости
 передавать содержимое базы данных.
 
-\includecode{13/navbar.hs}
+\sourcecode{yesods-monads}{navbar.hs}
 
 В частности, обратите внимание на функцию \lstinline'existingLinks'. Заметьте,
 всё, что нужно сделать,~--- это применить \lstinline'handlerToWidget . runDB' к
@@ -169,7 +169,7 @@ CSS и Javascript. Но на самом деле, \lstinline'Widget' может 
 примере ниже мы определяем порядок сортировки списка на основе значения
 параметра GET-запроса.
 
-\includecode{13/request-information.hs}
+\sourcecode{yesods-monads}{request-information.hs}
 
 Обратите внимание, что в этом случае нам даже не пришлось использовать
 функцию~\lstinline'handlerToWidget'. Дело в том, что ряд функций, поставляемых
@@ -292,7 +292,7 @@ getHomeR = do
 трансформатор монад~\lstinline'CRandT' при вызове функции~\lstinline'getBytes'.
 Полный вид такого решения был бы таким:
 
-\includecode{13/random.hs}
+\sourcecode{yesods-monads}{random.hs}
 
 Заметьте, что всё, что мы делаем,~--- это наслаиваем
 трансформатор~\lstinline'CRandT' \textbf{поверх}
@@ -317,7 +317,7 @@ getHomeR = do
 монаду~\lstinline'Handler' экземпляром класса~\lstinline'MonadCRandom'!
 Давайте посмотрим на код, которой, на самом деле, немного сложноват:
 
-\includecode{13/random-instance.hs}
+\sourcecode{yesods-monads}{random-instance.hs}
 
 Фактически, он сводится к нескольким разным концепциям:
 \begin{itemize}
