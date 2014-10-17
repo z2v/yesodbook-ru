@@ -75,7 +75,7 @@ URL, чтобы создать простую и декларативную си
 
 Давайте сразу рассмотрим пример с аутентификацией.
 
-\includecode{14/authentication.hs}
+\sourcecode{authentication-and-authorization}{authentication.hs}
 
 Начнём с объявлений маршрутов. Сперва объявляем наш стандартный маршрут
 \lstinline'HomeR', а затем определяем подсайт для аутентификации. Помните, что
@@ -225,7 +225,7 @@ URL, чтобы создать простую и декларативную си
 Давайте посмотрим на сайт, предоставляющий аутентификацию по адресу электронной
 почты и паролю и хранящий пароли в Persistent базе данных SQLite.
 
-\includecode{14/email-authentication.hs}
+\sourcecode{authentication-and-authorization}{email-authentication.hs}
 
 \section{Авторизация}
 
@@ -235,7 +235,7 @@ URL, чтобы создать простую и декларативную си
 всего лишь добавить методы \lstinline'authRoute' и \lstinline'isAuthorized' в
 ваш экземпляр класса типов \lstinline'Yesod'. Давайте рассмотрим пример:
 
-\includecode{14/authorization.hs}
+\sourcecode{authentication-and-authorization}{authorization.hs}
 
 \lstinline'authRoute' должен быть вашей страницей входа, почти всегда это будет
 \lstinline'AuthR LoginR'. Функция \lstinline'isAuthorized' имеет два параметра:
