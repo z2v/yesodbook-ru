@@ -10,14 +10,14 @@ MASTERTEX := Developing\ Web\ Applications\ with\ Haskell\ and\ Yesod.tex
 # Имена исходных файлов TeX содержат пробелы. Поэтому для корректной работы make
 # сначала экранируем все пробелы без разбора, а затем снимаем экранирование
 # с полезных пробелов между файлами
-TEXSRCS := $(shell find tex -type f -name "*tex")
+TEXSRCS := $(shell find tex -type f -name "*.tex")
 TEXSRCS := $(subst $(space),\$(space),$(TEXSRCS))
 TEXSRCS := $(subst .tex\,.tex,$(TEXSRCS))
-LHSSRCS := $(shell find hs -name "*.lhs")
 
 # Здесь имена без пробелов - сойдёт и так
-HSSRCS = $(shell find hs -name "*.hs")
-IMAGES := $(wildcard img/*.png)
+LHSSRCS := $(shell find tex -name "*.lhs")
+HSSRCS = $(shell find tex -name "*.hs")
+IMAGES := $(shell find tex -name "*.png")
 
 #-
 # Итоговый файл
