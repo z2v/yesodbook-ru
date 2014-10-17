@@ -10,7 +10,7 @@
 всех, кто хочет выполнять HTTP запросы.
 
 \section{Конспект}
-\includecode{26/synopsis.hs}
+\sourcecode{http-conduit}{http-conduit-synopsis.hs}
 
 \section{Основные положения}
 Самый простой способ выполнения запроса в http--conduit~--- использовать
@@ -50,7 +50,7 @@
 использовать другую монаду, если, например, хотите проверять пользовательский
 ввод.
 
-\includecode{26/response-body.hs}
+\sourcecode{http-conduit}{response-body.hs}
 
 Тип~\lstinline!Request! абстрактный, так что http--conduit может добавлять
 новые настройки в будущем, не нарушая API (см.
@@ -60,7 +60,7 @@
 программы, которая отправляет \texttt{HEAD} запросы и печатает заголовки
 ответа, могла бы выглядеть так:
 
-\includecode{26/response-head.hs}
+\sourcecode{http-conduit}{response-head.hs}
 
 API предоставляет целый ряд различных настроек. Вот те, на которые стоит
 обратить внимание:
