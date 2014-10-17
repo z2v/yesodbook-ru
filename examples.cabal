@@ -391,59 +391,59 @@ executable postgre
                      , time
                      , transformers
 
-executable 12-selectRep
+executable selectRep
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             12/selectRep.hs
+  hs-source-dirs:      tex/restful-content
+  main-is:             selectRep.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , yesod
 
-executable 12-personJson
+executable personJson
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             12/personJson.hs
+  hs-source-dirs:      tex/restful-content
+  main-is:             personJson.hs
   build-depends:       base >=4.6 && <4.7
                      , aeson
                      , bytestring
                      , text
 
-executable 12-returnJson
+executable returnJson
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             12/returnJson.hs
+  hs-source-dirs:      tex/restful-content
+  main-is:             returnJson.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , yesod
 
-executable 12-provideJson
+executable provideJson
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             12/provideJson.hs
+  hs-source-dirs:      tex/restful-content
+  main-is:             provideJson.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , yesod
 
-executable 12-haskell-show
+executable haskell-show
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             12/haskell-show.hs
+  hs-source-dirs:      tex/restful-content
+  main-is:             haskell-show.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , yesod
 
-executable 12-haskell-show2
+executable haskell-show2
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             12/haskell-show2.hs
+  hs-source-dirs:      tex/restful-content
+  main-is:             haskell-show2.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , yesod
 
-executable 12-haskell-show3
+executable haskell-show3
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             12/haskell-show3.hs
+  hs-source-dirs:      tex/restful-content
+  main-is:             haskell-show3.hs
   build-depends:       base >=4.6 && <4.7
                      , text
                      , yesod
