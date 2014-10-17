@@ -8,7 +8,7 @@ import           Yesod
 
 data App = App
 
-mkMessage "App" "hs/16/messages" "en"
+mkMessage "App" "tex/internationalization/messages" "en"
 
 plural :: Int -> String -> String -> String -> String
 plural 1 x _ _ = x

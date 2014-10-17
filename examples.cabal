@@ -530,10 +530,10 @@ executable authorization
                      , yesod
                      , yesod-auth
 
-executable 16-i18n
+executable i18n-synopsis
   default-language:    Haskell2010
-  hs-source-dirs:      hs
-  main-is:             16/i18n-synopsis.hs
+  hs-source-dirs:      tex/internationalization
+  main-is:             i18n-synopsis.hs
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
