@@ -664,6 +664,14 @@ executable visitor-counter
   build-depends:       base >=4.6 && <4.7
                      , yesod
 
+executable environment-variables
+  default-language:    Haskell2010
+  hs-source-dirs:      tex/environment-variables
+  main-is:             environment-variables.hs
+  build-depends:       base >=4.6 && <4.7
+                     , text
+                     , yesod
+
 executable wai-hello-world
   default-language:    Haskell2010
   hs-source-dirs:      tex/web-application-interface
