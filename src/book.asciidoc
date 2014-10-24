@@ -48,8 +48,6 @@ include::creating-a-subsite.asciidoc[]
 
 include::understanding-request.asciidoc[]
 
-include::sql-joins.asciidoc[]
-
 include::yesod-for-haskellers.asciidoc[]
 
 [[I_part_d1e8222]]
@@ -79,6 +77,8 @@ include::route-attributes.asciidoc[]
 
 
 include::monad-control.asciidoc[]
+
+include::conduits.asciidoc[]
 
 include::web-application-interface.asciidoc[]
 

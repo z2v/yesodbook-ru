@@ -39,14 +39,16 @@ will focus on the scaffoldings for one of the database backends. There will be
 minor differences for the simple backend.
 
 After creating your files, the scaffolder will print a message about getting
-started. You should follow those instruction to ensure a reliable installation.
-In particular, the commands provided will ensure that any missing dependencies are built and installed.
-Even if you've installed the +yesod+ package, you most likely do not yet
+started. The suggested command runs _cabal sandbox init_. This will ensure
+that your packages are installed only to your project directory,
+avoiding conflicts with other projects.
+Note that you really do need to use the _cabal install --only-dependencies_
+command. Most likely, you do not yet
 have all the dependencies in place needed by your site. For example, none of
 the database backends, nor the Javascript minifier (hjsmin) are installed when
 installing the +yesod+ package.
 
-Finally, to launch your development site, you would use +yesod devel+.
+Finally, to launch your development site, you would use _yesod devel_.
 This site will automatically rebuild and reload whenever
 you change your code.
 
@@ -58,25 +60,25 @@ well.
 
 ==== Cabal file
 
-Whether directly using +cabal+, or indirectly using +yesod devel+, building
+Whether directly using _cabal_, or indirectly using _yesod devel_, building
 your code will always go through the cabal file. If you open the file, you'll
 see that there are both library and executable blocks. If the +library-only+
-flag is turned on, then the executable block is not built.  This is how +yesod
-devel+ calls your app. Otherwise, the executable is built.
+flag is turned on, then the executable block is not built.  This is how _yesod
+devel_ calls your app. Otherwise, the executable is built.
 
-The +library-only+ flag should only be used by +yesod devel+; you should never
-be explicitly passing it into +cabal+. There is an additional flag, +dev+, that
+The +library-only+ flag should only be used by _yesod devel_; you should never
+be explicitly passing it into _cabal_. There is an additional flag, +dev+, that
 allows cabal to build an executable, but turns on some of the same features as
 the library-only flag, i.e., no optimizations and reload versions of the
 Shakespearean template functions.
 
 In general, you will build as follows:
 
-* When developing, use +yesod devel+ exclusively.
+* When developing, use _yesod devel_ exclusively.
 
-* When building a production build, perform +cabal clean &amp;&amp; cabal
-  configure &amp;&amp; cabal build+. This will produce an optimized executable
-  in your +dist+ folder. (You can also use the +yesod keter+ command for this.)
+* When building a production build, perform _cabal clean &amp;&amp; cabal
+  configure &amp;&amp; cabal build_. This will produce an optimized executable
+  in your _dist_ folder.
 
 You might be surprised to see the +NoImplicitPrelude+ extension. We turn this
 on since the site includes its own module, +Import+, with a few changes to the
@@ -90,24 +92,24 @@ message from yesod devel.
 
 ==== Routes and entities
 
-Multiple times in this book, you've seen a comment like ``We're declaring our
+Multiple times in this book, you've seen a comment like "We're declaring our
 routes/entities with quasiquotes for convenience. In a production site, you
-should use an external file.'' The scaffolding uses such an external file.
+should use an external file." The scaffolding uses such an external file.
 
-Routes are defined in +config/routes+, and entities in +config/models+. They
+Routes are defined in _config/routes_, and entities in _config/models_. They
 have the exact same syntax as the quasiquoting you've seen throughout the book,
-and +yesod devel+ knows to automatically recompile the appropriate modules when
+and _yesod devel_ knows to automatically recompile the appropriate modules when
 these files change.
 
-The +models+ files is referenced by +Model.hs+. You are free to declare
+The _models_ files is referenced by +Model.hs+. You are free to declare
 whatever you like in this file, but here are some guidelines:
 
-* Any data types used in _entities_ *must* be imported/declared in +Model.hs+,
+* Any data types used in _entities_ *must* be imported/declared in _Model.hs_,
   above the +persistFile+ call.
 
 * Helper utilities should either be declared in +Import.hs+ or, if very
   model-centric, in a file within the +Model+ folder and imported into
-  +Import.hs+.
+  _Import.hs_.
 
 ==== Foundation and Application modules
 
@@ -138,11 +140,11 @@ In +Application.hs+, we call +mkYesodDispatch+, which creates our dispatch
 function. For this to work, all handler functions must be in scope, so be sure
 to add an import statement for any new handler modules you create.
 
-Other than that, +Application.hs+ is pretty simple. It provides two primary
-functions: +getApplicationDev+ is used by +yesod devel+ to launch your app, and
+Other than that, _Application.hs_ is pretty simple. It provides two primary
+functions: +getApplicationDev+ is used by _yesod devel_ to launch your app, and
 +makeApplication+ is used by the executable to launch.
 
-+Foundation.hs+ is much more exciting. It:
+_Foundation.hs_ is much more exciting. It:
 
 * Declares your foundation datatype
 
@@ -151,7 +153,7 @@ functions: +getApplicationDev+ is used by +yesod devel+ to launch your app, and
 
 * Imports the messages files. If you look for the line starting with
   +mkMessage+, you will see that it specifies the folder containing the
-  messages (+messages/+) and the default language (+en+, for English).
+  messages (_messages_) and the default language (en, for English).
 
 This is the right file for adding extra instances for your foundation, such as
 +YesodAuthEmail+ or +YesodBreadcrumbs+.
@@ -179,15 +181,10 @@ The solution is to turn on the +NoImplicitPrelude+ language extension,
 re-export the parts of +Prelude+ we want, add in all the other stuff we want,
 define our own functions as well, and then import this file in all handlers.
 
-NOTE: It is likely that, at some point after publishing this chapter, the
-scaffolded site will switch to an alternative prelude, such as
-+classy-prelude-yesod+. Don't be surprised if +Import+ looks quite different
-than it is described here.
-
 ==== Handler modules
 
-Handler modules should go inside the +Handler+ folder. The site template
-includes one module: +Handler/Home.hs+. How you split up your handler functions
+Handler modules should go inside the _Handler_ folder. The site template
+includes one module: _Handler/Home.hs_. How you split up your handler functions
 into individual modules is your decision, but a good rule of thumb is:
 
 * Different methods for the same route should go in the same file, e.g.
@@ -201,10 +198,10 @@ you do the following:
 
 * Add it to version control (you _are_ using version control, right?).
 * Add it to the cabal file.
-* Add it to the +Application.hs+ file.
+* Add it to the _Application.hs_ file.
 * Put a module statement at the top, and an +import Import+ line below it.
 
-You can use the +yesod add-handler+ command to automate the last three steps.
+You can use the _yesod add-handler_ command to automate the last three steps.
 
 === widgetFile
 
@@ -222,36 +219,36 @@ getHomeR = defaultLayout $(widgetFile "homepage")
 
 , Yesod will look for the following files:
 
-*  +templates/homepage.hamlet+
-*  +templates/homepage.lucius+
-*  +templates/homepage.cassius+
-*  +templates/homepage.julius+
+*  _templates/homepage.hamlet_ 
+*  _templates/homepage.lucius_ 
+*  _templates/homepage.cassius_ 
+*  _templates/homepage.julius_ 
 
 If any of those files are present, they will be automatically included in the
 output.
 
-NOTE: Due to the nature of how this works, if you launch your app with +yesod devel+,
-and then create a new file (e.g., +templates/homepage.julius+), the
+NOTE: Due to the nature of how this works, if you launch your app with _yesod
+devel_, and then create a new file (e.g., _templates/homepage.julius_), the
 contents will _not_ be included until the file calling +widgetFile+ is
 recompiled. In such a case, you may need to force a save of that file to get
-+yesod devel+ to recompile.
+_yesod devel_ to recompile.
 
 === defaultLayout
 
 One of the first things you're going to want to customize is the look of your
 site. The layout is actually broken up into two files:
 
-*  +templates/default-layout-wrapper.hamlet+ contains just the basic shell of a
+*  _templates/default-layout-wrapper.hamlet_ contains just the basic shell of a
    page. This file is interpreted as plain Hamlet, not as a Widget, and
    therefore cannot refer to other widgets, embed i18n strings, or add extra
    CSS/JS.
 
-*  +templates/default-layout.hamlet+ is where you would put the bulk of your
+*  _templates/default-layout.hamlet_ is where you would put the bulk of your
    page. You *must* remember to include the +widget+ value in the page, as that
    contains the per-page contents. This file is interpreted as a Widget.
 
 Also, since default-layout is included via the +widgetFile+ function, any
-Lucius, Cassius, or Julius files named +default-layout.*+ will automatically be
+Lucius, Cassius, or Julius files named _default-layout.*_ will automatically be
 included as well.
 
 === Static files
@@ -260,7 +257,7 @@ The scaffolded site automatically includes the static file subsite, optimized
 for serving files that will not change over the lifetime of the current build.
 What this means is that:
 
-* When your static file identifiers are generated (e.g., +static/mylogo.png+
+* When your static file identifiers are generated (e.g., _static/mylogo.png_
   becomes +mylogo_png+), a query-string parameter is added to it with a hash of
   the contents of the file. All of this happens at compile time.
 
@@ -272,7 +269,7 @@ What this means is that:
   new app, the query string will have changed, causing users to ignore the
   cached copy and download a new version.
 
-Additionally, you can set a specific static root in your +Settings.hs+ file to
+Additionally, you can set a specific static root in your _Settings.hs_ file to
 serve from a different domain name. This has the advantage of not requiring
 transmission of cookies for static file requests, and also lets you offload
 static file hosting to a CDN or a service like Amazon S3. See the comments in

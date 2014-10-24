@@ -51,6 +51,7 @@ Switch: החלף
 
 [source, haskell]
 ----
+-- @i18n-synopsis.hs
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE QuasiQuotes           #-}

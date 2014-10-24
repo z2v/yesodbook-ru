@@ -17,21 +17,10 @@ participants of a chat. This ends up looking like:
 [source, haskell]
 ----
 -- @Chat/Data.hs
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
 module Chat.Data where
 
-import           Blaze.ByteString.Builder.Char.Utf8  (fromText)
-import           Control.Concurrent.Chan
-import           Data.Monoid                         ((<>))
-import           Data.Text                           (Text)
-import           Network.Wai.EventSource
-import           Network.Wai.EventSource.EventStream
+import           Control.Concurrent.Chan (Chan)
+import           Network.Wai.EventSource (ServerEvent)
 import           Yesod
 
 -- | Our subsite foundation. We keep a channel of events that all connections
@@ -159,14 +148,20 @@ getReceiveR :: ChatHandler ()
 getReceiveR = do
     Chat chan0 <- getYesod
     chan <- liftIO $ dupChan chan0
-    sendWaiApplication $ eventSourceAppChan chan
+    req <- waiRequest
+    res <- liftResourceT $ eventSourceAppChan chan req
+    sendWaiResponse res
 ----
 
 We use +dupChan+ so that each new connection receives its own copy of newly
 generated messages. This is a standard method in concurrent Haskell of creating
-broadcast channels. The last line in our function exposes the underlying
-+wai-eventsource+ application as a Yesod handler, using the
-+sendWaiApplication+ function to promote a WAI application to a Yesod handler.
+broadcast channels. The last three lines of our function expose the underlying
++wai-eventsource+ application as a Yesod handler, by getting the raw WAI
+request, running the application on that request, and then sending the raw WAI
+response.
+
+NOTE: Starting with WAI 2.0, instead of using +liftResourceT+, you need to use
++liftIO+.
 
 Now that we've defined our handler functions, we can set up our dispatch. In a
 normal application, dispatching is handled by calling +mkYesod+, which creates
@@ -176,20 +171,7 @@ site. The formula we use is the following:
 
 [source, haskell]
 ----
--- @Chat.hs
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-module Chat where
-
-import           Chat.Data
-import           Yesod
-
+-- @Chat/Data.hs
 instance YesodChat master => YesodSubDispatch Chat (HandlerT master IO) where
     yesodSubDispatch = $(mkYesodSubDispatch resourcesChat)
 ----
@@ -215,7 +197,7 @@ URLs. Let's start off our widget:
 
 [source, haskell]
 ----
--- @Chat.hs
+-- @Chat/Data.hs
 chatWidget :: YesodChat master
            => (Route Chat -> Route master)
            -> WidgetT master IO ()
@@ -228,7 +210,7 @@ of creating them manually to avoid name collisions.
 
 [source, haskell]
 ----
--- @Chat.hs
+-- @Chat/Data.hs
     chat <- newIdent   -- the containing div
     output <- newIdent -- the box containing the messages
     input <- newIdent  -- input field from the user
@@ -240,7 +222,7 @@ function lives in the +Handler+ monad, we need to use +handlerToWidget+:
 
 [source, haskell]
 ----
--- @Chat.hs
+-- @Chat/Data.hs
     ili <- handlerToWidget isLoggedIn  -- check if we're already logged in
 ----
 
@@ -250,7 +232,7 @@ client-side code wrapped in a Widget:
 
 [source, haskell]
 ----
--- @Chat.hs
+-- @Chat/Data.hs
     if ili
         then do
             -- Logged in: show the widget
@@ -312,7 +294,7 @@ chat app.
 
 [source, haskell]
 ----
--- @Chat.hs
+-- @Chat/Data.hs
         else do
             -- User isn't logged in, give a not-logged-in message.
             master <- getYesod
@@ -337,31 +319,9 @@ representation. Each Wiki page is indicated by a list of names, and the contents
 
 [source, haskell]
 ----
--- @ChatMain.hs
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE ViewPatterns          #-}
-module ChatMain where
-
-import           Chat
-import           Chat.Data
-import           Control.Concurrent.Chan (newChan)
-import           Data.IORef
-import           Data.Map                (Map)
-import qualified Data.Map                as Map
-import           Data.Text               (Text)
-import qualified Data.Text.Lazy          as TL
-import           Text.Markdown
-import           Yesod
-import           Yesod.Auth
-import           Yesod.Auth.Dummy
-
 data App = App
     { getChat     :: Chat
-    , wikiContent :: IORef (Map [Text] Text)
+    , wikiContent :: IORef (Map.Map [Text] Text)
     }
 ----
 
@@ -369,7 +329,6 @@ Next we want to set up our routes:
 
 [source, haskell]
 ----
--- @ChatMain.hs
 mkYesod "App" [parseRoutes|
 /            HomeR GET      -- the homepage
 /wiki/*Texts WikiR GET POST -- note the multipiece for the wiki hierarchy
@@ -389,7 +348,6 @@ function will add in the chat widget on every page.
 
 [source, haskell]
 ----
--- @ChatMain.hs
 instance Yesod App where
     authRoute _ = Just $ AuthR LoginR -- get a working login link
 
@@ -400,7 +358,7 @@ instance Yesod App where
             widget
             chatWidget ChatR
         mmsg <- getMessage
-        withUrlRenderer
+        giveUrlRenderer
             [hamlet|
                 $doctype 5
                 <html>
@@ -423,7 +381,6 @@ Since we're using the chat subsite, we have to provide an instance of
 
 [source, haskell]
 ----
--- @ChatMain.hs
 instance YesodChat App where
     getUserName = do
         muid <- maybeAuthId
@@ -442,7 +399,6 @@ are rather bland:
 
 [source, haskell]
 ----
--- @ChatMain.hs
 -- Fairly standard YesodAuth instance. We'll use the dummy plugin so that you
 -- can create any name you want, and store the login name as the AuthId.
 instance YesodAuth App where
@@ -477,7 +433,6 @@ both handlers:
 
 [source, haskell]
 ----
--- @ChatMain.hs
 -- A form for getting wiki content
 wikiForm :: Maybe Textarea -> Html -> MForm Handler (FormResult Textarea, Widget)
 wikiForm mtext = renderDivs $ areq textareaField "Page body" mtext
@@ -489,7 +444,7 @@ getWikiR page = do
     icontent <- fmap wikiContent getYesod
 
     -- And read the map from inside the reference
-    content <- liftIO $ readIORef icontent
+    content <- liftIO $ I.readIORef icontent
 
     -- Lookup the contents of the current page, if available
     let mtext = Map.lookup page content
@@ -515,12 +470,12 @@ getWikiR page = do
 postWikiR :: [Text] -> Handler Html
 postWikiR page = do
     icontent <- fmap wikiContent getYesod
-    content <- liftIO $ readIORef icontent
+    content <- liftIO $ I.readIORef icontent
     let mtext = Map.lookup page content
     ((res, form), _) <- runFormPost $ wikiForm $ fmap Textarea mtext
     case res of
         FormSuccess (Textarea t) -> do
-            liftIO $ atomicModifyIORef icontent $
+            liftIO $ I.atomicModifyIORef icontent $
                 \m -> (Map.insert page t m, ())
             setMessage "Page updated"
             redirect $ WikiR page
@@ -543,14 +498,13 @@ those values, we can create an +App+ value and pass it to the +warp+ function.
 
 [source, haskell]
 ----
--- @ChatMain.hs
 main :: IO ()
 main = do
     -- Create our server event channel
     chan <- newChan
 
     -- Initially have a blank database of wiki pages
-    icontent <- newIORef Map.empty
+    icontent <- I.newIORef Map.empty
 
     -- Run our app
     warpEnv App
