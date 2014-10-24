@@ -9,3 +9,5 @@ tmp
 cabal.sandbox.config
 src/pr01.asciidoc
 src/yesod-web-framework-book.asciidoc
+src/CHANGELOG.asciidoc
+src/colo.asciidoc
