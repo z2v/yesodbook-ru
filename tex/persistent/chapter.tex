@@ -569,7 +569,7 @@ ID. Поскольку в этом случае значение может су
 
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
-    maybePerson <- getBy $ UniqueName "Michael" "Snoyman"
+    maybePerson <- getBy $ PersonName "Michael" "Snoyman"
     case maybePerson of
         Nothing -> liftIO $ putStrLn "Just kidding, not really there"
         Just (Entity personId person) -> liftIO $ print person
@@ -875,7 +875,7 @@ haveBirthday personId = update personId [PersonAge +=. 1]
 \begin{lstlisting}
     personId <- insert $ Person "Michael" "Snoyman" 26
     delete personId
-    deleteBy $ UniqueName "Michael" "Snoyman"
+    deleteBy $ PersonName "Michael" "Snoyman"
     deleteWhere [PersonFirstName ==. "Michael"]
 \end{lstlisting}
 
@@ -936,7 +936,7 @@ Person sql=the-person-table id=numeric_id
     firstName String sql=first_name
     lastName String sql=fldLastName
     age Int "sql=The Age of the Person"
-    UniqueName firstName lastName
+    PersonName firstName lastName
     deriving Show
 |]
 \end{lstlisting}
