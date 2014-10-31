@@ -1,0 +1,240 @@
+\chapter{Yesod для программистов на Haskell}
+
+Большая часть книги построена на предоставлении практической информации о том,
+как выполнить распространённые задачи без глубокого погружения в детали, что
+происходит <<под капотом>>. Хотя книга предполагает знание Haskell, она не
+следует типичному стилю множества введений в библиотеки Haskell. Многие опытные
+программисты на Haskell отвергаются таким сокрытием деталей реализации. Цель
+этой главы~--- исправить эти недостатки.
+
+В этой главе мы начнём с предельно минимального веб-приложения и постепенно
+перейдём к более сложным примерам, объясняя компоненты и их типы в процессе
+перехода.
+
+\section{Встречаем Warp}
+
+Давайте начнём с предельно простого приложения, какое мы можем придумать:
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import           Network.HTTP.Types       (status200)
+import           Network.Wai              (Application, responseLBS)
+import           Network.Wai.Handler.Warp (run)
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app _req = return $ responseLBS
+    status200
+    [("Content-Type", "text/plain")]
+    "Hello Warp!"
+\end{lstlisting}
+
+Минутку, но здесь отсутствует Yesod! Не волнуйтесь, дойдём и до него. Напомню,
+что мы начинаем построение снизу вверх, а в Yesod в самом низу находится WAI
+(Web Application Interface, интерфейс веб-приложения). WAI находится между
+\textbf{веб-обработчиком}, например, веб-сервером или функция для
+тестирования, и \textbf{веб-приложением}. В нашем случае, обработчик~--- это
+Warp, высокопроизводительный веб-сервер, а наше приложение~--- это
+функция~\lstinline'app'.
+
+Что за таинственный тип~\lstinline'Application'? Это просто синоним типа для
+\begin{lstlisting}
+type Application = Request -> IO Response
+\end{lstlisting}
+Значение типа \lstinline'Request' содержит информацию о запрошенном пути,
+параметры строки запроса, заголовки запроса, тело запроса и IP адрес клиента.
+Мы можем использовать её для выполнения простой диспетчеризации:
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import           Network.HTTP.Types       (status200)
+import           Network.Wai              (Application, pathInfo, responseLBS)
+import           Network.Wai.Handler.Warp (run)
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app req =
+    case pathInfo req of
+        ["foo", "bar"] -> return $ responseLBS
+            status200
+            [("Content-Type", "text/plain")]
+            "You requested /foo/bar"
+        _ -> return $ responseLBS
+            status200
+            [("Content-Type", "text/plain")]
+            "You requested something else"
+\end{lstlisting}
+
+WAI требует, чтобы путь был разбит на отдельные фрагменты (блоки между прямыми
+косыми чертами) и преобразован в текст. Это упрощает сравнение с шаблонами
+(pattern matching). Если вам нужно исходное немодифицированное значение
+типа~\lstinline'ByteString', вы можете воспользоваться
+функцией~\lstinline'rawPathInfo'. За более подробной информацией о доступных
+полях обращайтесь к документации WAI.
+
+Мы рассмотрели запрос, что насчёт ответов? Мы уже видели
+функцию~\lstinline'responseLBS', представляющую собой удобный способ создания
+ответа из ленивой~\lstinline'ByteString'. Эта функция принимает три аргумента:
+код ответа, список заголовков ответа (пары ключ/значение) и само тело ответа.
+Но \lstinline'responseLBS'~--- это просто удобная обёртка. Внутри WAI
+использует тип данных~\lstinline'Builder' из пакета~\texttt{blaze-builder} для
+представления сырых байтов. Давайте копнём ещё на уровень глубже в этом
+направлении и используем \lstinline'Builder' напрямую:
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import           Blaze.ByteString.Builder (Builder, fromByteString)
+import           Network.HTTP.Types       (status200)
+import           Network.Wai              (Application, responseBuilder)
+import           Network.Wai.Handler.Warp (run)
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app _req = return $ responseBuilder
+    status200
+    [("Content-Type", "text/plain")]
+    (fromByteString "Hello from blaze-builder!" :: Builder)
+\end{lstlisting}
+
+Это открывает некоторые замечательные возможности для эффективного построения
+тел ответов, так как \lstinline'Builder' позволяет использовать операции
+добавления с производительностью O(1). Также мы получаем возможность
+использовать преимущества пакета~\texttt{blaze-html}, базирующегося на
+\texttt{blaze-builder}. Давайте сделаем наше первое HTML приложение.
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import           Network.HTTP.Types            (status200)
+import           Network.Wai                   (Application, responseBuilder)
+import           Network.Wai.Handler.Warp      (run)
+import           Text.Blaze.Html.Renderer.Utf8 (renderHtmlBuilder)
+import           Text.Blaze.Html5              (Html, docTypeHtml)
+import qualified Text.Blaze.Html5              as H
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app _req = return $ responseBuilder
+    status200
+    [("Content-Type", "text/html")] -- yay!
+    (renderHtmlBuilder myPage)
+
+myPage :: Html
+myPage = docTypeHtml $ do
+    H.head $ do
+        H.title "Hello from blaze-html and Warp"
+    H.body $ do
+        H.h1 "Hello from blaze-html and Warp"
+\end{lstlisting}
+
+Но использование чистого значения типа~\lstinline'Buidler' накладывает одно
+ограничение: мы должны создать тело ответа целиком до того, как возвращать
+значение типа~\lstinline'Response'. С ленивым выполнением это не так плохо, как
+можно подумать, так как не всё тело целиком будет находиться в памяти
+единовременно. Однако, если нам потребуется выполнить какие-либо операции
+ввода/вывода для генерации тела запроса (например, чтение данных из базы), у
+нас возникнут проблемы.
+
+Для решения этой проблемы WAI использует кондуит для представления потокового
+тела ответа. Это также позволяет явно контролировать сброс потока путём
+оборачивания значения в тип данных~\lstinline'Flush'. Давайте посмотрим, как
+это работает.
+
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import           Blaze.ByteString.Builder           (Builder, fromByteString)
+import           Blaze.ByteString.Builder.Char.Utf8 (fromShow)
+import           Control.Concurrent                 (threadDelay)
+import           Control.Monad                      (forM_)
+import           Control.Monad.Trans.Class          (lift)
+import           Data.Conduit                       (Flush (Chunk, Flush),
+                                                     Source, yield)
+import           Data.Monoid                        ((<>))
+import           Network.HTTP.Types                 (status200)
+import           Network.Wai                        (Application,
+                                                     responseSource)
+import           Network.Wai.Handler.Warp           (run)
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app _req = return $ responseSource
+    status200
+    [("Content-Type", "text/plain")]
+    mySrc
+
+mySrc :: Source IO (Flush Builder)
+mySrc = do
+    yield $ Chunk $ fromByteString "Starting streaming response.\n"
+    yield $ Chunk $ fromByteString "Performing some I/O.\n"
+    yield Flush
+    -- pretend we're performing some I/O
+    lift $ threadDelay 1000000
+    yield $ Chunk $ fromByteString "I/O performed, here are some results.\n"
+    forM_ [1..50 :: Int] $ \i -> do
+        yield $ Chunk $ fromByteString "Got the value: " <>
+                        fromShow i <>
+                        fromByteString "\n"
+\end{lstlisting}
+
+Ещё одно частое требование при использовании потокового ответа~--- безопасное
+размещение дефицитных ресурсов, например, файлов. Под \textbf{безопасностью} я
+понимаю гарантию, что ресурс будет освобождён даже в случае возникновения
+исключения. В таких ситуациях вы можете использовать
+функцию~\lstinline'responseSourceBracket':
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import           Blaze.ByteString.Builder (fromByteString)
+import           Data.Conduit             (Flush (Chunk), ($=))
+import           Data.Conduit.Binary      (sourceHandle)
+import qualified Data.Conduit.List        as CL
+import           Network.HTTP.Types       (status200)
+import           Network.Wai              (Application, responseSourceBracket)
+import           Network.Wai.Handler.Warp (run)
+import           System.IO                (IOMode (ReadMode), hClose, openFile)
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app _req = responseSourceBracket
+    (openFile "index.html" ReadMode)
+    hClose
+    $ \handle -> return
+        ( status200
+        , [("Content-Type", "text/html")]
+        , sourceHandle handle $= CL.map (Chunk . fromByteString)
+        )
+\end{lstlisting}
+
+Однако, в случае обслуживания файлов, более эффективно использовать
+функцию~\lstinline'responseFile', которая может использовать системный
+вызов~\lstinline'sendfile' для избежания ненужных копий буфера:
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+import           Network.HTTP.Types       (status200)
+import           Network.Wai              (Application, responseFile)
+import           Network.Wai.Handler.Warp (run)
+
+main :: IO ()
+main = run 3000 app
+
+app :: Application
+app _req = return $ responseFile
+    status200
+    [("Content-Type", "text/html")]
+    "index.html"
+    Nothing -- means "serve whole file"
+            -- you can also serve specific ranges in the file
+\end{lstlisting}
+
+У WAI есть ещё много аспектов, здесь нерассмотренных. Одна из важных тем~---
+это компоненты промежуточного уровня (middleware), которую мы рассмотрим ближе
+к концу главы. Мы ещё вообще не заглядывали в тело запроса. Но для цели
+понимания Yesod, к этому моменту рассмотрено достаточно.
+
+\section{Что насчёт Yesod?}
