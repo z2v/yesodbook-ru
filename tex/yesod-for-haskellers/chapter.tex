@@ -358,3 +358,174 @@ URL. Мы создаём связанный тип данных для \lstinlin
 значение типобезопасного маршрута в кортеж, включающий список участков маршрута
 и список параметров строки запроса. Ниже мы рассмотрим более интересные
 примеры, пока же для нашей домашней страницы оба списка пусты.
+
+Класс \lstinline'YesodDispatch' определяет, как ведёт себя наше приложение. У
+него один метод~\lstinline'yesodDispatch', имеющий тип:
+\begin{lstlisting}
+yesodDispatch :: YesodRunnerEnv site -> Application
+\end{lstlisting}
+
+Класс \lstinline'YesodRunnerEnv' предоставляет три значения: \lstinline'Logger'
+для вывода протокольных сообщений, непосредственно основной тип данных и бэкенд
+для сессий, используемый для хранения и получения информации об активной сессии
+пользователя. В настоящих приложениях Yesod, как вы вскоре увидите, вам не
+потребуется взаимодействовать с этими значениями напрямую, но это полезно~---
+понимать, что находится под поверхностью.
+
+Возвращаемый тип функции~\lstinline'yesodDispatch'~--- значение
+типа~\lstinline'Application' из WAI. Но, как мы видели выше,
+\lstinline'Application'~--- это просто функцию, принимающая \lstinline'Request'
+и возвращающая~\lstinline'IO Response'. Поэтому наша реализация
+\lstinline'yesodDispatch' позволяет использовать всё, что мы выше узнали о WAI.
+Обратите внимание, как мы обращались к \lstinline'welcomeMessage' из нашего
+основного типа данных.
+
+Наконец, у нас есть функцию~\lstinline'main'. Значение~\lstinline'App' очень
+легко создать и, как вы можете видеть, столько же легко можно выполнить
+какие-либо операции ввода/вывода для размещения приветственного сообщения. Мы
+используем \lstinline'toWaiApp' для получения приложения WAI, а затем передаём
+наше приложение в Warp, как и раньше.
+
+Примите поздравления, вы только что видели ваше первое приложение Yesod! (По
+крайней мере, это было первое приложение Yesod в этой главе.)
+
+\section{Трансформатор монад HandlerT}
+Хотя наш пример технически использовал Yesod, он был невероятно скучным. Нет
+сомнений, что Yesod не сделал ничего нового на нашем пути к WAI. Но это только
+потому, что ещё не начали использовать преимущества, предлагаемые Yesod.
+Давайте исправим это, и начнём мы с трансформатора монад~\lstinline'HandlerT'.
+
+Часто при обработке запроса вам хочется сделать ещё некоторые вещи, например:
+\begin{itemize}
+    \item Вернуть некий HTML.
+    \item Перенаправить пользователя на другой URL.
+    \item Вернуть ошибку 404 для отсутствующего ресурса.
+    \item Выполнить протоколирование.
+\end{itemize}
+
+Для встраивания всей этой функциональности Yesod предоставляет трансформатор
+монад~\lstinline'HandlerT'. Подавляющая часть кода, который вы будете писать,
+используя Yesod, будет жить в этом трансформаторе, поэтому вам следует с ним
+познакомиться. Давайте начнём с замены нашего предыдущего
+экземпляра~\lstinline'YesodDispatch' на экземпляр, использующий
+преимущества~\lstinline'HandlerT':
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies      #-}
+import           Network.Wai              (pathInfo)
+import           Network.Wai.Handler.Warp (run)
+import qualified Text.Blaze.Html5         as H
+import           Yesod.Core               (HandlerT, Html, RenderRoute (..),
+                                           Yesod, YesodDispatch (..), getYesod,
+                                           notFound, toWaiApp, yesodRunner)
+
+-- | Our foundatation datatype.
+data App = App
+    { welcomeMessage :: !Html
+    }
+
+instance Yesod App
+
+instance RenderRoute App where
+    data Route App = HomeR -- just one accepted URL
+        deriving (Show, Read, Eq, Ord)
+
+    renderRoute HomeR = ( [] -- empty path info, means "/"
+                        , [] -- empty query string
+                        )
+
+getHomeR :: HandlerT App IO Html
+getHomeR = do
+    site <- getYesod
+    return $ welcomeMessage site
+
+instance YesodDispatch App where
+    yesodDispatch yesodRunnerEnv req =
+        let maybeRoute =
+                case pathInfo req of
+                    [] -> Just HomeR
+                    _  -> Nothing
+            handler =
+                case maybeRoute of
+                    Nothing -> notFound
+                    Just HomeR -> getHomeR
+         in yesodRunner handler yesodRunnerEnv maybeRoute req
+
+main :: IO ()
+main = do
+    -- We could get this message from a file instead if we wanted.
+    let welcome = H.p "Welcome to Yesod!"
+    waiApp <- toWaiApp App
+        { welcomeMessage = welcome
+        }
+    run 3000 waiApp
+\end{lstlisting}
+
+\lstinline'getHomeR'~--- наша первая функция-обработчик. (Имя следует ещё
+одному общепринятому соглашению мира Yesod: метод HTTP в нижнем регистре, за
+которым следует имя конструктора маршрута.) Обратите внимание на сигнатуру
+типа: \lstinline'HandlerT App IO HTML'. Этот стек монад так часто встречается,
+что большая часть приложений определяет для него синоним типа:
+\lstinline'type Handler = HandlerT App IO'. Функция возвращает некоторое
+значение типа~\lstinline'Html'. Вас, возможно, интересует, завязан ли Yesod
+жёстко на работу только со значениями типа~\lstinline'Html'. Мы обсудим эту
+деталь чуть ниже.
+
+Тело нашей функции коротко. Мы используем функцию~\lstinline'getYesod', чтобы
+получить основной тип данных, а затем возвращаем значение
+поля~\lstinline'welcomeMessage'. Мы сделаем обработчики поинтереснее в процессе
+дальнейшего обсуждения.
+
+Реализация функции~\lstinline'yesodDispatch' теперь существенно отличается.
+Ключевой момент~--- использование функции~\lstinline'yesodRunner',
+представляющей собою низкоуровневую функции для преобразования стеков
+\lstinline'HandlerT' в значение~\lstinline'Application' WAI. Давайте посмотрим
+на её сигнатуру типа:
+\begin{lstlisting}
+yesodRunner :: (ToTypedContent res, Yesod site)
+            => HandlerT site IO res
+            -> YesodRunnerEnv site
+            -> Maybe (Route site)
+            -> Application
+\end{lstlisting}
+
+Мы уже знакомы с \lstinline'YesodRunnerEnv' по предыдущему примеру. Как можно
+видеть из вызова \lstinline'yesodRunner' выше, мы передаём это значение без
+изменений. Вызывает интерес значение~\lstinline'Maybe (Route site)', которое
+даёт нам более глубокое понимание того, как работают типо-безопасные URL. До
+этого мы видели только отображающую (rendering) сторону. Но не менее важна
+\emph{разбирающая (parsing)} сторона: преобразование запрошенного пути в
+значение маршрута. В нашем примере этот код состоит из нескольких строк, и
+мы сохраняем результат в значении~\lstinline'maybeRoute'.
+
+\begin{remark}
+    Наша текущая функция разбора действительно мала, но в приложениях побольше
+    она может быть гораздо сложнее, например, обрабатывая динамические
+    параметры. В этот момент поддержание корректного соответствия между
+    разбирающей и отображающей функции становится нетривиальной задачей. Ниже
+    мы рассмотрим, как Yesod решает эту проблему.
+\end{remark}
+
+Вернёмся к параметрам функции~\lstinline'yesodRunner': мы уже рассмотрели
+\lstinline'Maybe (Route site)' и~\lstinline'YesodRunnerEnv site'. Для получения
+нашего значения~\lstinline'HandlerT site IO res' мы используем сопоставление с
+образцом значения~\lstinline'maybeRoute'. Если оно равно~\lstinline'Just HomeR',
+мы используем~\lstinline'getHomeR'. В противном случае, мы используем
+функцию~\lstinline'notFound'~--- это встроенная функция, которая возвращает
+ответ <<404 Not Found>>, используя шаблон сайта по умолчанию. Этот шаблон может
+быть переопределён в классе типов~\lstinline'Yesod'. Изначально, это просто
+скучная HTML страница.
+
+Всё это имеет смысл, за исключением одной проблемы: что это за класс
+типов~\lstinline'ToTypedContent', и какое отношение он имеет в нашему ответу
+типа~\lstinline'Html'? Начнём с ответа на вопрос, сформулированный выше: Yesod
+\textbf{никак} жёстко не фиксирует (hard-code) привязку к значением
+типа~\lstinline'Html'. Функция обработчик может вернуть любое значение, которое
+имеет экземпляр класса типов~\lstinline'ToTypedContent'. Этот класс типов
+(к рассмотрению которого мы сейчас приступим) предоставляет тип (mime-type) и
+представление (representation) данных, подходящие для WAI.
+Функция~\lstinline'yesodRunner' затем преобразует их в ответ WAI, устанавливая
+заголовок ответа \texttt{Content-Type} равным указанному типу, задавая код ответа
+равным <<<200 OK>> и отправляя тело ответа.
+
+\subsection{(To)Content, (To)TypedContent}
