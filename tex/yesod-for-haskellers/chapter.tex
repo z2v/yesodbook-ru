@@ -529,3 +529,182 @@ yesodRunner :: (ToTypedContent res, Yesod site)
 равным <<<200 OK>> и отправляя тело ответа.
 
 \subsection{(To)Content, (To)TypedContent}
+В ядре системы управления содержимым Yesod находятся следующие типы:
+\begin{lstlisting}
+data Content = ContentBuilder !Builder !(Maybe Int) -- ^ The content and optional content length.
+             | ContentSource !(Source (ResourceT IO) (Flush Builder))
+             | ContentFile !FilePath !(Maybe FilePart)
+             | ContentDontEvaluate !Content
+
+type ContentType = ByteString
+data TypedContent = TypedContent !ContentType !Content
+\end{lstlisting}
+
+Тип~\lstinline'Content' может слегка напоминать вам типы ответов WAI.
+Конструктор~\lstinline'ContentBuilder' аналогичен
+функции~\lstinline'responseBuilder', \lstinline'ContentSource'~---
+\lstinline'responseSource', а~\lstinline'ContentFile'~---
+\lstinline'responseFile'. В отличие от аналогов из WAI ни один из этих
+конструкторов не содержит информации о коде статуса или заголовках ответа; в
+Yesod это всё обрабатывается ортогональным образом.
+
+Единственный абсолютно новый конструктор~--- это
+~\lstinline'ContentDontEvaluate'. По умолчанию, при создании тела ответа, Yesod
+полностью вычисляет тело перед генерацией ответа. Причина~--- убедиться, что в
+вашем значении отсутствуют нечистые исключения. Yesod хочет перехватить все
+такие исключения до начала отправки ответа, чтобы, если исключение таки
+\textbf{возникнет}, генерировать корректный ответ <<500 Internal Server
+Error>>, а не просто умереть в процессе отправки ответа. Однако, выполнение
+такого вычисления может привести к повышенному потреблению памяти. Поэтому
+Yesod предоставляет средства для обхода такой проверки.
+
+Тип данных \lstinline'TypedContent'~--- это небольшое расширение
+типа~\lstinline'Content': просто добавляется значение
+типа~\lstinline'ContentType'. Добавив соглашение о том, что приложение
+возвращает статус <<200 OK>>, если не указано иное, мы получаем всё, что нам
+нужно от \lstinline'TypedContent' для создания ответа.
+
+Yesod \emph{мог бы} использовать подход, при котором от пользователя требуется
+всегда возвращать значение типа~\lstinline'TypedContent' из
+функции-обработчика, но это потребовало бы ручного преобразования в этот тип.
+Вместо этого Yesod использует пару классов типов, соответственно,
+\lstinline'ToContent' и~\lstinline'ToTypedContent'. У них вполне ожидаемые
+определения:
+\begin{lstlisting}
+class ToContent a where
+    toContent :: a -> Content
+class ToContent a => ToTypedContent a where
+    toTypedContent :: a -> TypedContent
+\end{lstlisting}
+
+И Yesod предоставляет экземпляры этих классов для ряда часто используемых
+типов, включая \lstinline'Text', \lstinline'Html' и
+\lstinline'Value' (для данных JSON) из пакета \texttt{aeson}. Вот поэтому
+функция~\lstinline'getHomeR' может вернуть просто \lstinline'Html': Yesod
+знает, как преобразовать его в значение~\lstinline'TypedContent', которое уже
+может быть в свою очередь преобразовано в ответ~\lstinline'WAI'.
+
+\subsection{HasContentType и представления}
+Такой подход с использованием класса типов позволяет использовать следующую
+замечательную абстракцию. Для многих типов, система типов сама может дать
+нам выяснить, какое значение content-type для содержимого должно быть.
+Например, для \lstinline'Html' всегда будет использоваться
+значение~\lstinline'text/html'.
+
+\begin{remark}
+    Это не так в общем случае экземпляра класса \lstinline'ToTypedContent'. Для
+    примера, рассмотрите экземпляр \lstinline'ToTypedContent TypedContent'.
+\end{remark}
+
+Некоторые запросы к веб-приложению могут быть отображены по разному с помощью
+различных \emph{представлений}. Например, запрос для табличных данных может
+быть обслужен как:
+\begin{itemize}
+    \item Таблица HTML.
+    \item Файл CSV.
+    \item XML.
+    \item Данные JSON для обработки неким кодом Javascript на стороне клиента.
+\end{itemize}
+
+Спецификация HTTP позволяет клиенту задать предпочитаемое представление,
+используя заголовок запроса~\lstinline'Accept'. А Yesod позволяет
+функции-обработчику использовать пару функций
+\lstinline'selectRep'/\lstinline'provideRep' для организации различных
+представлений, из которых фреймворк автоматически выберет подходящее,
+основываясь на заголовке запроса от клиента.
+
+Последний кусочек этой мозаики~--- класс типов~\lstinline'HasContentType':
+\begin{lstlisting}
+class ToTypedContent a => HasContentType a where
+    getContentType :: Monad m => m a -> ContentType
+\end{lstlisting}
+
+Параметр \lstinline'm a'~--- это просто ~\lstinline'Proxy' тип. Экземпляры
+этого класса типов доступны для большинства типов, поддерживаемых
+\lstinline'ToTypedContent'. Ниже код нашего примера, который немного доработан
+для возможности вывода различных представлений данных:
+
+\begin{lstlisting}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies      #-}
+import           Data.Text                (Text)
+import           Network.Wai              (pathInfo)
+import           Network.Wai.Handler.Warp (run)
+import qualified Text.Blaze.Html5         as H
+import           Yesod.Core               (HandlerT, Html, RenderRoute (..),
+                                           TypedContent, Value, Yesod,
+                                           YesodDispatch (..), getYesod,
+                                           notFound, object, provideRep,
+                                           selectRep, toWaiApp, yesodRunner,
+                                           (.=))
+
+-- | Our foundatation datatype.
+data App = App
+    { welcomeMessageHtml :: !Html
+    , welcomeMessageText :: !Text
+    , welcomeMessageJson :: !Value
+    }
+
+instance Yesod App
+
+instance RenderRoute App where
+    data Route App = HomeR -- just one accepted URL
+        deriving (Show, Read, Eq, Ord)
+
+    renderRoute HomeR = ( [] -- empty path info, means "/"
+                        , [] -- empty query string
+                        )
+
+getHomeR :: HandlerT App IO TypedContent
+getHomeR = do
+    site <- getYesod
+    selectRep $ do
+        provideRep $ return $ welcomeMessageHtml site
+        provideRep $ return $ welcomeMessageText site
+        provideRep $ return $ welcomeMessageJson site
+
+instance YesodDispatch App where
+    yesodDispatch yesodRunnerEnv req =
+        let maybeRoute =
+                case pathInfo req of
+                    [] -> Just HomeR
+                    _  -> Nothing
+            handler =
+                case maybeRoute of
+                    Nothing -> notFound
+                    Just HomeR -> getHomeR
+         in yesodRunner handler yesodRunnerEnv maybeRoute req
+
+main :: IO ()
+main = do
+    waiApp <- toWaiApp App
+        { welcomeMessageHtml = H.p "Welcome to Yesod!"
+        , welcomeMessageText = "Welcome to Yesod!"
+        , welcomeMessageJson = object ["msg" .= ("Welcome to Yesod!" :: Text)]
+        }
+    run 3000 waiApp
+\end{lstlisting}
+
+\subsection{Удобная функция \texttt{warp}}
+Ещё одна маленькая удобная вещь, которую вы частенько встретите в мире Yesod.
+Это настолько распространённый способ запуска приложений: вызвать
+функцию~\lstinline'toWaiApp' для создания значения~\lstinline'Application' WAI,
+а затем передать это значение в функцию~\lstinline'run' Warp, что Yesod для
+этого предоставляет удобную функцию-обёртку~\lstinline'warp'. Мы можем заменить
+функцию~\lstinline'main' из нашего примера на такую:
+\begin{lstlisting}
+main :: IO ()
+main =
+    warp 3000 App
+        { welcomeMessageHtml = H.p "Welcome to Yesod!"
+        , welcomeMessageText = "Welcome to Yesod!"
+        , welcomeMessageJson = object ["msg" .= ("Welcome to Yesod!" :: Text)]
+        }
+\end{lstlisting}
+
+Есть ещё функция~\lstinline'warpEnv', которая считывает номер порта из
+переменной окружения~\lstinline'PORT'. Её удобно использовать при работе с
+платформами наподобие FP Haskell Center или инструментами для деплоя типа
+Keter.
+
+\section{Написание обработчиков}
